@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "ezgamble",
+  "version": "${version}",
+  "name": "EzGamble",
+  "description": "Host gambling games on your SMP: players /pay you, you track every bet, chips and payout.",
+  "authors": ["ZKR5"],
+  "icon": "assets/ezgamble/icon.png",
+  "environment": "client",
+  "entrypoints": { "client": ["dev.ryaan.ezgamble.EzGambleMod"] },
+  "depends": { "fabricloader": ">=0.18.0", "fabric-api": "*", "minecraft": "1.21.11" }
+}

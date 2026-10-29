@@ -1,0 +1,7 @@
+{
+  "open":  { "sounds": [ { "name": "ezgamble:open",  "stream": false } ] },
+  "close": { "sounds": [ { "name": "ezgamble:close", "stream": false } ] },
+  "pay":   { "sounds": [ { "name": "ezgamble:pay",   "stream": false } ] },
+  "cash":  { "sounds": [ { "name": "ezgamble:cash",  "stream": false } ] },
+  "fail":  { "sounds": [ { "name": "ezgamble:fail",  "stream": false } ] }
+}
