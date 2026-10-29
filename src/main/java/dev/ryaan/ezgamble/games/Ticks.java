@@ -4,5 +4,6 @@ package dev.ryaan.ezgamble.games;
 public final class Ticks {
     private Ticks() {}
     public static void tick() {
+        dev.ryaan.ezgamble.games.crash.CrashTable.CX.tick();   // a Crash flight goes on (its auto cash out fires, it crashes) even with the menu closed
     }
 }
