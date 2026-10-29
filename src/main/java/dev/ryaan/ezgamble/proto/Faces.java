@@ -38,12 +38,19 @@ public final class Faces {
         if (name == null || name.isEmpty()) return null;
         MinecraftClient mc = MinecraftClient.getInstance();
         String k = key(name);
+        // the tab list first, read every time and never cached: right after joining (or while the server's skin is
+        // downloading) an entry hands out the DEFAULT skin, and caching that drew the player as a Steve for the whole
+        // session (seen live on ZKR5). A default from the tab list sends us to Mojang instead.
+        if (mc.getNetworkHandler() != null) {
+            for (PlayerListEntry e : mc.getNetworkHandler().getPlayerList()) {
+                if (!key(e.getProfile().name()).equals(k)) continue;
+                SkinTextures t = e.getSkinTextures();
+                if (!t.equals(DefaultSkinHelper.getSkinTextures(e.getProfile().id()))) return t;
+                break;
+            }
+        }
         SkinTextures ready = READY.get(k);
         if (ready != null) return ready;
-        if (mc.getNetworkHandler() != null) {
-            for (PlayerListEntry e : mc.getNetworkHandler().getPlayerList())
-                if (key(e.getProfile().name()).equals(k)) { SkinTextures t = e.getSkinTextures(); READY.put(k, t); return t; }
-        }
         CompletableFuture<Optional<SkinTextures>> f = FETCHING.get(k);
         if (f != null && f.isDone()) {
             SkinTextures t;
