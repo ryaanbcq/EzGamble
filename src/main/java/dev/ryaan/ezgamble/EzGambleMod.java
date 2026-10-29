@@ -34,6 +34,7 @@ public final class EzGambleMod implements ClientModInitializer {
         OPEN = dev.ryaan.ezgamble.proto.Snd.event("open"); CLOSE = dev.ryaan.ezgamble.proto.Snd.event("close"); PAY = dev.ryaan.ezgamble.proto.Snd.event("pay");
         CASH = dev.ryaan.ezgamble.proto.Snd.event("cash"); FAIL = dev.ryaan.ezgamble.proto.Snd.event("fail");
         GambleData.load();
+        dev.ryaan.ezgamble.duel.Duel.register();
         Updater.check();
         menuKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.ezgamble.menu", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_K, CATEGORY));
