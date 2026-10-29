@@ -143,7 +143,16 @@ public final class Liquid {
     private static void hspan(DrawContext g, int xa, int xb, int ya, int yb, Paint p, float op, float X, float Y, float W, float H) {
         if (xb <= xa) return;
         if (!p.horizontal()) { column(g, xa, xb, ya, yb, p, op, X, Y, W, H, (xa + xb) / 2f); return; }
-        int step = Math.max(2, Math.round(W / 48));
+        // as many columns as the colour really changes across the span (a step of ~4 levels is invisible): a faint
+        // wash needs a handful, a strong gradient up to ~48. Was always ~48, the HUD alone cost 1.2 ms a frame.
+        float v = ((ya + yb) / 2f - Y) / H, tv = 0;
+        int prev = mul(p.at((xa - X) / W, v), op);
+        for (int sIdx = 1; sIdx <= 8; sIdx++) {
+            int c = mul(p.at((xa + (xb - xa) * sIdx / 8f - X) / W, v), op);
+            tv += premulDiff(prev, c); prev = c;
+        }
+        int n = Math.max(1, Math.min(48, (int) Math.ceil(tv / 4)));
+        int step = Math.max(2, (int) Math.ceil((xb - xa) / (float) n));
         for (int i = xa; i < xb; i += step) { int e = Math.min(xb, i + step); column(g, i, e, ya, yb, p, op, X, Y, W, H, (i + e) / 2f); }
     }
 
@@ -322,6 +331,13 @@ public final class Liquid {
     // ------------------------------------------------------------------ colours
 
     private static int argb(float a, int r, int gg, int b) { return (Math.round(255 * Math.max(0, Math.min(1, a))) << 24) | (r << 16) | (gg << 8) | b; }
+
+    /** Largest channel difference between two colours once multiplied by their alpha (what the eye sees). */
+    private static float premulDiff(int a, int b) {
+        float aa = (a >>> 24) / 255f, ab = (b >>> 24) / 255f, d = Math.abs(aa - ab) * 255;
+        for (int sh = 0; sh <= 16; sh += 8) d = Math.max(d, Math.abs(((a >> sh) & 255) * aa - ((b >> sh) & 255) * ab));
+        return d;
+    }
 
     private static int mul(int c, float a) {
         int al = Math.round(((c >>> 24) & 255) * Math.max(0, Math.min(1, a)));

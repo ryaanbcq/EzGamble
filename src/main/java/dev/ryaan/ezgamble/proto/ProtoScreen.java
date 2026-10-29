@@ -62,9 +62,14 @@ public abstract class ProtoScreen extends Screen {
     @Override
     public void render(DrawContext d, int mouseX, int mouseY, float delta) {
         G g = new G(d);
+        long t0 = System.nanoTime();
         try { renderFg(g, mx(mouseX), my(mouseY)); }
         catch (Exception e) { fail(e); }
-        finally { g.closeAll(); }
+        finally {
+            g.closeAll();
+            // GambleScreen counts itself (its frame ends inside renderFg); the other screens are counted here
+            if (dev.ryaan.ezgamble.DebugRun.ON && !(this instanceof dev.ryaan.ezgamble.ui.GambleScreen)) { dev.ryaan.ezgamble.DebugRun.renderNanos += System.nanoTime() - t0; dev.ryaan.ezgamble.DebugRun.renderFrames++; }
+        }
     }
 
     private void fail(Exception e) {

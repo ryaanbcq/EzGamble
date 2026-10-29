@@ -33,6 +33,7 @@ public final class GambleHud implements HudElement {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.options.hudHidden || mc.currentScreen instanceof HudEditorScreen) return;   // F1, or the editor draws its own copy
         G g = new G(d);
+        long t0 = System.nanoTime();
         try {
             drawToast(g, toastK());
             for (String id : new String[]{"session", "pay"}) if (HUD.get(id).visible) { Rect r = wrect(id); drawWidget(g, id, r.x(), r.y()); }
@@ -40,6 +41,7 @@ public final class GambleHud implements HudElement {
             if (!logged) { logged = true; EzGambleMod.LOG.error("[ezgamble] HUD render failed (not logged again)", e); }
         } finally {
             g.closeAll();
+            if (dev.ryaan.ezgamble.DebugRun.ON && mc.currentScreen == null) { dev.ryaan.ezgamble.DebugRun.renderNanos += System.nanoTime() - t0; dev.ryaan.ezgamble.DebugRun.renderFrames++; }
         }
     }
 
