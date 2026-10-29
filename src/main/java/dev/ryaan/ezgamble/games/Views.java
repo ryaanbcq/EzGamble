@@ -18,6 +18,7 @@ public final class Views {
             case "duels" -> new dev.ryaan.ezgamble.duel.DuelsView(s);
             case "chips" -> new dev.ryaan.ezgamble.ui.ChipsView(s);
             case "player" -> new dev.ryaan.ezgamble.ui.PlayerView(s);
+            case "rollers" -> new dev.ryaan.ezgamble.ui.RollersView(s);
             default -> new Stub(s, id);
         };
     }

@@ -369,8 +369,9 @@ public final class GambleScreen extends ProtoScreen {
 
     private static final String[][] GAMES = {
             {"Blackjack", "Hit or stand", "game/blackjack"}, {"Auction", "Highest bid", "game/auction"}, {"Mines", "Avoid bombs", "game/mines"},
-            {"Crates", "Open crates", "game/crates"}, {"Roulette", "Red, black", "game/roulette"}, {"Crash", "Cash out", "game/crash"}, {"Coinflip", "Heads, tails", "game/coinflip"}};
-    private static final String[] GAME_IDS = {"blackjack", "auction", "mines", "crates", "roulette", "crash", "coinflip"};
+            {"Crates", "Open crates", "game/crates"}, {"Roulette", "Red, black", "game/roulette"}, {"Crash", "Cash out", "game/crash"}, {"Coinflip", "Heads, tails", "game/coinflip"},
+            {"High rollers", "Top wagers", "game/highrollers"}};
+    private static final String[] GAME_IDS = {"blackjack", "auction", "mines", "crates", "roulette", "crash", "coinflip", "rollers"};
 
     public double[] gamesClip() { double top = y0 + 152; return new double[]{x0 + PAD, top, W - 2 * PAD, y0 + H - PAD - top}; }
 

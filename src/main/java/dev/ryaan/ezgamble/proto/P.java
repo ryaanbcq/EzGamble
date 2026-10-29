@@ -102,6 +102,36 @@ public final class P {
     }
 
     /** Content card: accent, red, row, chart, soft. */
+    /**
+     * A chibi of the player, pixel art from his skin: the head at full size (8x8 texels), the body squashed to 8x6, arms 3x6,
+     * legs 4x4, every outer layer on top. p = GUI px per texel, (cx, feet) = bottom centre. It bobs one texel at a time
+     * (hop = a little jump every 1.6 s, the winner), crown = a pixel crown on the head.
+     */
+    public static void chibi(G g, String name, double cx, double feet, double p, long t, boolean hop, boolean crown) {
+        int ph = Math.abs(name.hashCode() % 400);   // each one breathes on his own beat
+        double by = ((t + ph) / 500) % 2 == 0 ? 0 : p;   // a one-texel step, never a smooth slide (pixel art)
+        if (hop) { long c = (t + ph) % 1600; if (c < 240) by = -Math.round(Math.sin(c / 240.0 * Math.PI) * 4) * p; }
+        g.fill(cx - 6 * p, feet - p * 0.5, cx + 6 * p, feet + p * 0.5, 0x40000000);   // shadow on the step
+        double x = cx - 7 * p, top = feet - 18 * p + by;
+        double lg = feet - 4 * p + Math.min(0, by);   // legs: on the step while breathing, in the air with the hop
+        // legs, then body and arms, then the head
+        g.drawSkinPart(name, 4, 20, 4, 12, x + 3 * p, lg, 4 * p, 4 * p);   g.drawSkinPart(name, 4, 36, 4, 12, x + 3 * p, lg, 4 * p, 4 * p);
+        g.drawSkinPart(name, 20, 52, 4, 12, x + 7 * p, lg, 4 * p, 4 * p);  g.drawSkinPart(name, 4, 52, 4, 12, x + 7 * p, lg, 4 * p, 4 * p);
+        double body = top + 8 * p;
+        g.drawSkinPart(name, 20, 20, 8, 12, x + 3 * p, body, 8 * p, 6 * p);         g.drawSkinPart(name, 20, 36, 8, 12, x + 3 * p, body, 8 * p, 6 * p);
+        g.drawSkinPart(name, 44, 20, 4, 12, x, body, 3 * p, 6 * p);                  g.drawSkinPart(name, 44, 36, 4, 12, x, body, 3 * p, 6 * p);
+        g.drawSkinPart(name, 36, 52, 4, 12, x + 11 * p, body, 3 * p, 6 * p);         g.drawSkinPart(name, 52, 52, 4, 12, x + 11 * p, body, 3 * p, 6 * p);
+        g.drawSkinPart(name, 8, 8, 8, 8, x + 3 * p, top, 8 * p, 8 * p);             g.drawSkinPart(name, 40, 8, 8, 8, x + 3 * p, top, 8 * p, 8 * p);
+        if (crown) {   // 8 texels wide, 3 high, three points and a ruby
+            double cy = top - 3 * p, c0 = x + 3 * p;
+            int gold = 0xFFF2C14E, dark = 0xFFC8902E;
+            for (int i : new int[]{0, 3, 4, 7}) g.fill(c0 + i * p, cy, c0 + (i + 1) * p, cy + p, gold);
+            g.fill(c0, cy + p, c0 + 8 * p, cy + 2 * p, gold);
+            g.fill(c0, cy + 2 * p, c0 + 8 * p, cy + 3 * p, dark);
+            g.fill(c0 + 3 * p, cy + p, c0 + 5 * p, cy + 2 * p, 0xFFE0475B);
+        }
+    }
+
     public static void card(G g, double x, double y, double w, double h, String kind) {
         switch (kind) {
             case "accent" -> smooth(g, x, y, w, h, 7, h(0x24A18CD1, 0x14FBC2EB), 0x4DFBC2EB);

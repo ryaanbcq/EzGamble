@@ -13,6 +13,10 @@ import java.util.List;
 public final class PlayerView implements GameView {
     /** The player whose profile is open (set by the Chips view). */
     public static String player;
+    /** Where ‹ goes back to: the Chips list, or the High rollers podium. */
+    public static String backTo = "chips";
+    private static long removeArmed;
+    private static GlassButton removeBtn;
 
     private final GambleScreen s;
 
@@ -20,7 +24,19 @@ public final class PlayerView implements GameView {
 
     @Override
     public void init() {
-        s.add(new GlassButton(s.x0 + GambleScreen.PAD, s.y0 + 80, 18, 16, "‹", "GHOST", () -> { GambleScreen.sub = "chips"; s.rebuild(); }));
+        s.add(new GlassButton(s.x0 + GambleScreen.PAD, s.y0 + 80, 18, 16, "‹", "GHOST", () -> { GambleScreen.sub = backTo; backTo = "chips"; s.rebuild(); }));
+        // Remove from the player database: first click arms for 3 s, the second removes (he comes back fresh if he pays again)
+        if (player != null) {
+            double nx = s.x0 + GambleScreen.PAD + 45 + F.width(player) + 8;
+            removeBtn = s.add(new GlassButton(nx, s.y0 + 81, 52, 14, removeArmed > P.now() ? "Sure?" : "Remove", "DANGER", () -> {
+                if (P.now() < removeArmed) {
+                    removeArmed = 0;
+                    dev.ryaan.ezgamble.data.GambleData.forget(player);
+                    P.play("click");
+                    GambleScreen.sub = backTo; backTo = "chips"; player = null; s.rebuild();
+                } else { removeArmed = P.now() + 3000; removeBtn.label = "Sure?"; }
+            }));
+        }
     }
 
     @Override public void tick() {}
@@ -28,6 +44,7 @@ public final class PlayerView implements GameView {
 
     @Override
     public void render(G g, double mx, double my) {
+        if (removeArmed != 0 && P.now() > removeArmed) { removeArmed = 0; if (removeBtn != null) removeBtn.label = "Remove"; }
         if (player == null) return;
         double lx = s.x0 + GambleScreen.PAD, rx = s.x0 + GambleScreen.W - GambleScreen.PAD;
         PlayerStats st = PlayerStats.of(player);

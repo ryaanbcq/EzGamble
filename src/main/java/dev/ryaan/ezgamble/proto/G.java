@@ -67,6 +67,15 @@ public final class G {
         pop();
     }
 
+    /** A rectangle (u, v, uw x vh texels) of the player's 64x64 skin, stretched to w x h GUI px, nearest texel (the chibi). */
+    public void drawSkinPart(String name, int u, int v, int uw, int vh, double x, double y, double w, double h) {
+        var tex = Faces.get(name);
+        if (tex == null) return;
+        push(); translate(x, y); scale(w / uw, h / vh);
+        d.drawTexture(RenderPipelines.GUI_TEXTURED, tex.body().texturePath(), 0, 0, u, v, uw, vh, uw, vh, 64, 64);
+        pop();
+    }
+
     public void enableScissor(double x1, double y1, double x2, double y2) { scissors++; d.enableScissor(r(x1), r(y1), r(x2), r(y2)); }
     public void disableScissor() { if (scissors > 0) { scissors--; d.disableScissor(); } }
 

@@ -100,6 +100,10 @@ public final class DebugRun {
                 var srv = c.getServer();
                 if (srv != null) srv.execute(() -> srv.getCommandManager().parseAndExecute(srv.getCommandSource(), arg));
             }
+            case "wager" -> {   // wager NAME AMOUNT [N]: N bets of AMOUNT placed with NAME's chips (High rollers)
+                int k = n.length > 2 ? Integer.parseInt(n[2]) : 1; long amt = dev.ryaan.ezgamble.Money.parse(n[1]);
+                for (int i = 0; i < k; i++) GambleData.record(new dev.ryaan.ezgamble.data.Txn(System.currentTimeMillis() + i, "Blackjack", amt, i % 2 == 0 ? amt : -amt, n[0], "debug " + n[0] + " " + i));
+            }
             case "demo" -> EzGambleMod.demoBets(Integer.parseInt(arg));
             case "chat" -> { c.inGameHud.getChatHud().addMessage(Text.literal(arg)); EzGambleMod.onChat(arg); }
             case "mouse" -> { mx = (int) Double.parseDouble(n[0]); my = (int) Double.parseDouble(n[1]); dev.ryaan.ezgamble.proto.ProtoScreen.forceMx = mx; dev.ryaan.ezgamble.proto.ProtoScreen.forceMy = my; }
