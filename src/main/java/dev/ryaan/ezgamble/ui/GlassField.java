@@ -12,7 +12,7 @@ public final class GlassField {
 
     public GlassField(TextRenderer f, int x, int y, int w, int h, String value, int max) {
         this.x = x; this.y = y; this.w = w; this.h = h;
-        field = new TextFieldWidget(f, x + 6, y + (h - 8) / 2, w - 12, 10, Text.literal(""));
+        field = new TextFieldWidget(f, x + 9, y + (h - 8) / 2, w - 18, 10, Text.literal(""));
         field.setDrawsBackground(false);
         field.setMaxLength(max);
         field.setEditableColor(Glass.WHITE);
@@ -20,9 +20,7 @@ public final class GlassField {
     }
 
     public void drawBox(DrawContext g) {
-        boolean focus = field.isFocused();
-        Glass.rounded(g, x, y, w, h, focus ? 0x14A18CD1 : Glass.FILL_SOFT);
-        Glass.outline(g, x, y, w, h, focus ? 0x99A18CD1 : Glass.BORDER_SOFT);
+        Liquid.capsule(g, x, y, w, h, field.isFocused() ? "selected" : "ghost", false, 1);
     }
 
     public boolean hit(double mx, double my) { return mx >= x && mx < x + w && my >= y && my < y + h; }

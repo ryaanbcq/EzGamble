@@ -86,8 +86,7 @@ public final class ProfitChart {
         var f = Ui.font();
         int tw = Math.max(f.getWidth(l1) + (r1.isEmpty() ? 0 : 12 + f.getWidth(r1)), f.getWidth(l2) + (r2.isEmpty() ? 0 : 12 + f.getWidth(r2))) + 12;
         int tx = Math.min(Math.max(lx, px - tw / 2), rx - tw), ty = cy - 2;
-        Glass.rounded(g, tx, ty - 24, tw, 26, 0xF0161022);
-        Glass.outline(g, tx, ty - 24, tw, 26, Glass.BORDER);
+        Liquid.glass(g, tx, ty - 24, tw, 26, 7, 0.8f, 0.8f);
         g.drawText(f, l1, tx + 6, ty - 20, Glass.WHITE, false);
         g.drawText(f, l2, tx + 6, ty - 9, c2, false);
         if (!r1.isEmpty()) g.drawText(f, r1, tx + tw - 6 - f.getWidth(r1), ty - 20, Glass.DIM, false);

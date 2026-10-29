@@ -33,10 +33,12 @@ public final class GlassSwitch extends ClickableWidget {
         long t = System.currentTimeMillis();
         float dt = (t - last) / 160f; last = t;
         anim = on ? Math.min(1, anim + dt) : Math.max(0, anim - dt);
-        if (on) { Glass.rounded(g, x + 1, y + 2, w, h, 0x40000000); Glass.accentRounded(g, x, y, w, h, 1f); }
-        else { Glass.rounded(g, x, y, w, h, isHovered() ? 0x18FFFFFF : Glass.FILL_SOFT); Glass.outline(g, x, y, w, h, 0x1FFFFFFF); }
-        int k = h - 6;
-        Glass.rounded(g, x + 3 + Math.round((w - 6 - k) * Ui.easeOut(anim)), y + 3, k, k, on ? Glass.INK : Glass.TEXT);
+        float e = Ui.easeOut(anim);
+        boolean hover = isHovered();
+        Liquid.capsule(g, x, y, w, h, "ghost", hover, 1);
+        if (e > 0) Liquid.capsule(g, x, y, w, h, "primary", hover, e);
+        int k = h - 4;
+        Liquid.knob(g, x + 2 + (w - 4 - k) * e, y + 2, k, k);
     }
 
     @Override

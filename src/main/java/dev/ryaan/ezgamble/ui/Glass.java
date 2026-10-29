@@ -8,8 +8,8 @@ public final class Glass {
     private Glass() {}
 
     public static final int LAV = 0xFFA18CD1, PINK = 0xFFFBC2EB;
-    public static final int TEXT = 0xFFCFC8DE, WHITE = 0xFFFFFFFF, MUTE = 0xFF7D7590, DIM = 0xFF5A536B;
-    public static final int GREEN = 0xFF4BE07A, RED = 0xFFFF5C5C, INK = 0xFF1A1226;
+    public static final int TEXT = 0xFFCFC8DE, WHITE = 0xFFFFFFFF, MUTE = 0xFFB8AFCC, DIM = 0xFF9C93B5;   // the vibrant greys of the glass (prototype MUTE_GLASS / DIM_GLASS)
+    public static final int GREEN = 0xFF4BE07A, RED = 0xFFFF8A8A, INK = 0xFF1A1226;
     public static final int PANEL_TOP = 0xF6161022, PANEL_BOT = 0xF80C0A14, HUD_TOP = 0xDC161022, HUD_BOT = 0xE60C0A14;
     public static final int BORDER = 0x4DFBC2EB, BORDER_SOFT = 0x1AFFFFFF, FILL_SOFT = 0x0AFFFFFF;
 

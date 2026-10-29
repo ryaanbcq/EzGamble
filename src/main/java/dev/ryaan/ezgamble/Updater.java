@@ -41,8 +41,16 @@ public final class Updater {
                 .map(m -> m.getMetadata().getVersion().getFriendlyString()).orElse("0");
     }
 
-    /** Called once at startup, off the main thread. */
+    private static volatile long checkedAt;
+
+    /** Opening the menu: look again if the last answer is more than 10 minutes old. */
+    public static void recheck() {
+        if ((state == State.UP_TO_DATE || state == State.FAILED) && System.currentTimeMillis() - checkedAt > 600_000) check();
+    }
+
+    /** Called at startup and by recheck(), off the main thread. */
     public static void check() {
+        checkedAt = System.currentTimeMillis();
         Thread t = new Thread(() -> {
             try {
                 // the query string skips GitHub's 5 min raw cache

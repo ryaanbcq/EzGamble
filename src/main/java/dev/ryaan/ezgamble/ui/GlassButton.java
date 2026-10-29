@@ -27,39 +27,29 @@ public final class GlassButton extends ClickableWidget {
     protected void renderWidget(DrawContext g, int mouseX, int mouseY, float delta) {
         int x = getX(), y = getY(), w = getWidth(), h = getHeight();
         boolean hover = isHovered() && active;
-        switch (kind) {
-            case PRIMARY -> {
-                Glass.rounded(g, x + 1, y + 2, w, h, 0x40000000);
-                Glass.accentRounded(g, x, y, w, h, active ? 1f : 0.4f);
-                if (hover) Glass.rounded(g, x, y, w, h, 0x22FFFFFF);
+        if (kind == Kind.SLIDERS) {
+            Liquid.capsule(g, x, y, w, h, "ghost", hover, 1);
+            int c = hover ? Glass.WHITE : Glass.TEXT, k = hover ? Glass.PINK : Glass.LAV;
+            int ix = x + (w - 12) / 2, iy = y + (h - 12) / 2;
+            int[] knob = {8, 2, 5};
+            for (int i = 0; i < 3; i++) {
+                int ly = iy + i * 5;
+                g.fill(ix, ly + 1, ix + 12, ly + 2, c);
+                g.fill(ix + knob[i], ly, ix + knob[i] + 3, ly + 3, k);
             }
-            case GHOST -> {
-                Glass.rounded(g, x, y, w, h, hover ? 0x18FFFFFF : Glass.FILL_SOFT);
-                Glass.outline(g, x, y, w, h, hover ? 0x40FFFFFF : 0x1FFFFFFF);
-            }
-            case DANGER -> {
-                Glass.rounded(g, x, y, w, h, hover ? 0x33FF5C5C : 0x14FF5C5C);
-                Glass.outline(g, x, y, w, h, hover ? 0xB3FF5C5C : 0x80FF5C5C);
-            }
-            case SLIDERS -> {
-                Glass.rounded(g, x, y, w, h, hover ? 0x18FFFFFF : Glass.FILL_SOFT);
-                Glass.outline(g, x, y, w, h, hover ? 0x40FFFFFF : 0x1FFFFFFF);
-                // three sliders, Mod Menu style: track + knob
-                int c = hover ? Glass.WHITE : Glass.TEXT, k = hover ? Glass.PINK : Glass.LAV;
-                int ix = x + (w - 12) / 2, iy = y + (h - 12) / 2;
-                int[] knob = {8, 2, 5};
-                for (int i = 0; i < 3; i++) {
-                    int ly = iy + i * 5;
-                    g.fill(ix, ly + 1, ix + 12, ly + 2, c);
-                    g.fill(ix + knob[i], ly, ix + knob[i] + 3, ly + 3, k);
-                }
-                return;
-            }
+            return;
         }
+        float op = active ? 1f : 0.4f;
+        g.getMatrices().pushMatrix();
+        if (hover && isFocused() && net.minecraft.client.MinecraftClient.getInstance().mouse.wasLeftButtonClicked()) {   // pressed: the capsule gives a little
+            g.getMatrices().translate(x + w / 2f, y + h / 2f); g.getMatrices().scale(0.96f, 0.96f); g.getMatrices().translate(-(x + w / 2f), -(y + h / 2f));
+        }
+        Liquid.capsule(g, x, y, w, h, kind == Kind.PRIMARY ? "primary" : kind == Kind.DANGER ? "danger" : "ghost", hover, op);
         var f = MinecraftClient.getInstance().textRenderer;
         String s = getMessage().getString();
         int color = switch (kind) { case PRIMARY -> Glass.INK; case GHOST, SLIDERS -> hover ? Glass.WHITE : Glass.TEXT; case DANGER -> Glass.RED; };
-        g.drawText(f, s, x + (w - f.getWidth(s)) / 2, y + (h - 8) / 2, color, kind != Kind.PRIMARY);
+        g.drawText(f, s, x + (w - f.getWidth(s)) / 2, y + (h - 8) / 2, Glass.alpha(color, op), kind != Kind.PRIMARY);
+        g.getMatrices().popMatrix();
     }
 
     @Override

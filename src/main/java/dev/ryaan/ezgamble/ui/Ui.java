@@ -19,13 +19,14 @@ public final class Ui {
     /** 0..1 over 1.2 s (AuctionHud.pulse). */
     public static float pulse(long t) { return 0.5f + 0.5f * (float) Math.sin(t / 1200.0 * 2 * Math.PI); }
 
-    /** Content card, flat look (the liquid glass shader comes later). kind: accent, red, row, soft, chart. */
+    /** Content card (Apple "standard material"): smooth corners, translucent fill. kind: accent, red, row, soft, chart. */
     public static void card(DrawContext g, int x, int y, int w, int h, String kind) {
         switch (kind) {
-            case "accent" -> { Glass.accentRounded(g, x, y, w, h, 0.16f); Glass.outline(g, x, y, w, h, 0x59A18CD1); }
-            case "red" -> { Glass.rounded(g, x, y, w, h, Glass.alpha(Glass.RED, 0.14f)); Glass.outline(g, x, y, w, h, Glass.alpha(Glass.RED, 0.45f)); }
-            case "row" -> Glass.rounded(g, x, y, w, h, 0x08FFFFFF);
-            default -> { Glass.rounded(g, x, y, w, h, 0x0AFFFFFF); if (kind.equals("soft")) Glass.outline(g, x, y, w, h, Glass.BORDER_SOFT); }
+            case "accent" -> Liquid.smooth(g, x, y, w, h, 7, Liquid.hgrad(0x24A18CD1, 0x14FBC2EB), 0x4DFBC2EB);
+            case "red" -> Liquid.smooth(g, x, y, w, h, h / 2f, 0x26FF5C5C, 0x80FF5C5C);
+            case "row" -> Liquid.smooth(g, x, y, w, h, 6, 0x0DFFFFFF, 0x0FFFFFFF);
+            case "chart" -> Liquid.smooth(g, x, y, w, h, 7, 0x0AFFFFFF, 0x0DFFFFFF);
+            default -> Liquid.smooth(g, x, y, w, h, 7, 0x0DFFFFFF, 0x14FFFFFF);
         }
     }
 
@@ -41,7 +42,7 @@ public final class Ui {
 
     /** Data capsule: quiet fill, grey label, value. */
     public static void pill(DrawContext g, int x, int y, String label, String value, int vc) {
-        Glass.rounded(g, x, y, pillW(label, value), 15, 0x14FFFFFF);
+        Liquid.smooth(g, x, y, pillW(label, value), 15, 7.5f, 0x10FFFFFF, 0);   // data, not a control: quiet fill, no rim
         int tx = x + 7;
         if (!label.isEmpty()) { g.drawText(font(), label, tx, y + 4, Glass.MUTE, false); tx += font().getWidth(label) + 4; }
         g.drawText(font(), value, tx, y + 4, vc, false);

@@ -54,15 +54,15 @@ public final class GlassSegmented extends ClickableWidget {
         for (int i = 0; i < ids.length; i++) if (ids[i].equals(cur)) sel = i;
         long t = System.currentTimeMillis();
         float dt = Math.min(64, t - last); last = t;
-        Glass.rounded(g, x, y, w, h, Glass.FILL_SOFT);
-        Glass.outline(g, x, y, w, h, 0x1FFFFFFF);
+        Liquid.capsule(g, x, y, w, h, "ghost", false, 1);
         if (sel >= 0) {
             int sx = segX(sel), sw = widths[sel];
             if (Float.isNaN(ix)) { ix = sx; iw = sw; }
             float f = 1 - (float) Math.exp(-dt / 70f);
+            float moving = Math.abs(sx - ix);
             ix += (sx - ix) * f; iw += (sw - iw) * f;
-            Glass.accentRounded(g, Math.round(ix), y + 2, Math.round(iw), h - 4, 0.22f);
-            Glass.outline(g, Math.round(ix), y + 2, Math.round(iw), h - 4, 0x73A18CD1);
+            float stretch = Math.min(10, moving * 0.35f);   // liquid: wider while it travels
+            Liquid.capsule(g, ix - stretch / 2, y + 2, iw + stretch, h - 4, "selected", isHovered(), 1);
         } else ix = Float.NaN;
         boolean over = isHovered();
         for (int i = 0; i < ids.length; i++) {

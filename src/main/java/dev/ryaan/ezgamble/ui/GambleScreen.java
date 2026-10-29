@@ -49,6 +49,7 @@ public final class GambleScreen extends Screen {
 
     public GambleScreen() {
         super(Text.literal("EzGamble"));
+        Updater.recheck();
         MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.ui(EzGambleMod.OPEN, 1.0f, 0.8f));
     }
 
@@ -160,10 +161,12 @@ public final class GambleScreen extends Screen {
     @Override
     public void renderBackground(DrawContext g, int mouseX, int mouseY, float delta) {
         float p = pop();
-        if (this.client != null && this.client.world != null) g.fill(0, 0, this.width, this.height, ((int) (0x8C * p) << 24) | 0x0A0710);
-        else super.renderBackground(g, mouseX, mouseY, delta);
+        if (this.client != null && this.client.world != null) {
+            g.applyBlur();   // the frosted backdrop (vanilla menu blur), then a light veil: the glass does the separating
+            g.fill(0, 0, this.width, this.height, ((int) (0x55 * p) << 24) | 0x0A0710);
+        } else super.renderBackground(g, mouseX, mouseY, delta);
         beginPop(g, p);
-        Glass.panel(g, x0, y0, W, H, false);
+        Liquid.glass(g, x0, y0, W, H, 12, 0.84f, 1f);
         renderTitle(g);
         if (!welcome) {
             String lbl = "Gambling mode";
@@ -279,8 +282,7 @@ public final class GambleScreen extends Screen {
         for (int i = 0; i < GAMES.length; i++) {
             int x = x0 + PAD + (i % cols) * (tw + gap), y = top + (i / cols) * (th + gap);
             boolean hover = mx >= x && mx < x + tw && my >= y && my < y + th;
-            Glass.rounded(g, x, y, tw, th, hover ? 0x18FFFFFF : Glass.FILL_SOFT);
-            Glass.outline(g, x, y, tw, th, hover ? 0x40FFFFFF : Glass.BORDER_SOFT);
+            Liquid.smooth(g, x, y, tw, th, 7, hover ? 0x18FFFFFF : 0x0DFFFFFF, hover ? Glass.alpha(Glass.PINK, 0.6f) : 0x14FFFFFF);
             Identifier icon = Identifier.of("ezgamble", "textures/gui/games/" + GAMES[i][0] + ".png");
             g.drawTexture(RenderPipelines.GUI_TEXTURED, icon, x + (tw - 32) / 2, y + 8, 0, 0, 32, 32, 32, 32);
             String name = GAMES[i][1];
