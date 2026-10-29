@@ -33,6 +33,14 @@ public final class Money {
         return "$" + v;
     }
 
+    /** 1500000 -> "$1 500 000". */
+    public static String full(long v) {
+        return "$" + String.format(Locale.ROOT, "%,d", Math.abs(v)).replace(',', ' ');
+    }
+
+    /** +$1.5M / -$300K. */
+    public static String signed(long v) { return (v >= 0 ? "+" : "-") + format(Math.abs(v)); }
+
     private static String trim(double d) {
         String s = String.format(Locale.ROOT, "%.2f", d);
         if (s.contains(".")) s = s.replaceAll("0+$", "").replaceAll("\\.$", "");
