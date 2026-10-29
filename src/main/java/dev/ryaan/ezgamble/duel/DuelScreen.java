@@ -54,7 +54,7 @@ public final class DuelScreen extends ProtoScreen {
     }
 
     private void accept() {
-        String r = Duel.accept(d);
+        String r = Duel.accept(null);   // null = the challenge on screen (passing d took it for a pending one: cur was never cleared and came back in Later)
         if (r != null) { err = r; errAt = now(); play("fail", 1.3, 0.4); }
     }
 
