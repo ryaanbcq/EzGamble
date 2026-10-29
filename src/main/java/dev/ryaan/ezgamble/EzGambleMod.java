@@ -52,8 +52,15 @@ public final class EzGambleMod implements ClientModInitializer {
             while (menuKey.wasPressed()) if (client.currentScreen == null) client.setScreen(new GambleScreen());
             while (modeKey.wasPressed()) GambleData.setMode(!GambleData.mode);
         });
-        net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents.GAME.register((m, overlay) -> { if (!overlay) onChat(m.getString()); });
-        net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents.CHAT.register((m, signed, sender, params, ts) -> onChat(m.getString()));
+        // read every line BEFORE the other mods: EzChat hides whispers (ALLOW_GAME returns false) and the later GAME /
+        // CHAT events never fire for them; duel challenges and table commands are whispers. We only look, never block.
+        var allowGame = net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents.ALLOW_GAME;
+        var allowChat = net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents.ALLOW_CHAT;
+        Identifier early = Identifier.of("ezgamble", "before_others");
+        allowGame.addPhaseOrdering(early, net.fabricmc.fabric.api.event.Event.DEFAULT_PHASE);
+        allowChat.addPhaseOrdering(early, net.fabricmc.fabric.api.event.Event.DEFAULT_PHASE);
+        allowGame.register(early, (m, overlay) -> { if (!overlay) onChat(m.getString()); return true; });
+        allowChat.register(early, (m, signed, sender, params, ts) -> { onChat(m.getString()); return true; });
         net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry.addLast(Identifier.of("ezgamble", "hud"), new dev.ryaan.ezgamble.hud.GambleHud());
         net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry.addLast(Identifier.of("ezgamble", "auction"), new dev.ryaan.ezgamble.auction.AuctionHud());
         // /ezgamble demo [n]: fake bets in the current session, to see the dashboard before the chat detection exists

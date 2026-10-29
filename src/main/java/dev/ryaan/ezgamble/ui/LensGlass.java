@@ -91,6 +91,15 @@ public final class LensGlass {
      * @return false when the shader is not available (draw the fallback instead)
      */
     public static boolean draw(G g, double cx, double cy, double w, double h, double pressed, double mag, double lean) {
+        return draw(g, cx, cy, w, h, pressed, mag, lean, cx - w, cy - h, cx + w, cy + h);
+    }
+
+    /**
+     * Same, with a fixed area (GUI px) the lens never leaves: used as its layer bounds, so they stay cached while it
+     * moves (no allocation at all per frame).
+     */
+    public static boolean draw(G g, double cx, double cy, double w, double h, double pressed, double mag, double lean,
+                               double ax1, double ay1, double ax2, double ay2) {
         if (!ok() || !ensureCopy()) return false;
         // no allocation on a frame at rest: elements come from a pool that GuiRendererMixin rewinds after each GUI
         // render, the texture setup is kept until the copy texture changes, the bounds until they change
@@ -103,7 +112,8 @@ public final class LensGlass {
         e.cx = (float) cx; e.cy = (float) cy; e.k = (float) k;
         e.wPx = (int) Math.round(w * k); e.hPx = (int) Math.round(h * k);
         e.pressed = (float) pressed; e.mag = (float) mag; e.lean = (float) lean;
-        int bx = (int) Math.floor(e.x1), by = (int) Math.floor(e.y1), bw = (int) Math.ceil(e.x2 - e.x1) + 1, bh = (int) Math.ceil(e.y2 - e.y1) + 1;
+        int bx = (int) Math.floor(Math.min(ax1, e.x1)), by = (int) Math.floor(Math.min(ay1, e.y1));
+        int bw = (int) Math.ceil(Math.max(ax2, e.x2)) - bx + 1, bh = (int) Math.ceil(Math.max(ay2, e.y2)) - by + 1;
         if (e.bounds == null || bx != e.bx || by != e.by || bw != e.bw || bh != e.bh || !e.pose.equals(e.boundsPose)) {
             e.bx = bx; e.by = by; e.bw = bw; e.bh = bh; e.boundsPose.set(e.pose);
             e.bounds = new ScreenRect(bx, by, bw, bh).transformEachVertex(e.pose);

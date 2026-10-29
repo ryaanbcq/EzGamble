@@ -138,7 +138,9 @@ public class GlassSegmented extends Widget {
         boolean ov = over(mx, my);
         labels(g, mx, ov, false);
         // the glass: a shader over what is already drawn (the row and its labels), one draw
-        dev.ryaan.ezgamble.ui.LensGlass.draw(g, lx, cy, LW, LH, pr, mag, lean * Math.min(1, Math.abs(qq) * 2.5));
+        // fixed area around the row (the lens, its stretch and its shadow stay inside): cached layer bounds
+        dev.ryaan.ezgamble.ui.LensGlass.draw(g, lx, cy, LW, LH, pr, mag, lean * Math.min(1, Math.abs(qq) * 2.5),
+                x - base * 2.5, y - base * 1.6, x + w + base * 2.5, y + h + base * 1.6);
         // then the labels again, crisp and magnified exactly like the shader's centre, only in the flat middle of the lens
         double bw = LH * 0.25 * (1 + 0.3 * pr);
         g.enableScissor(lx - LW / 2 + bw * 0.6, cy - LH / 2 + bw, lx + LW / 2 - bw * 0.6, cy + LH / 2 - bw);

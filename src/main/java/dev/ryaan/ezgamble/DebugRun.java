@@ -84,6 +84,11 @@ public final class DebugRun {
             case "paid" -> dev.ryaan.ezgamble.data.Payments.received(n[0], dev.ryaan.ezgamble.Money.parse(n[1]));
             case "mode" -> GambleData.setMode(arg.equals("on"));
             case "lens" -> GambleData.lens = arg.equals("on");
+            case "cmd" -> c.getNetworkHandler().sendChatCommand(arg);
+            case "srv" -> {   // run as the integrated server's console (full permission): tellraw reaches us as a real chat packet
+                var srv = c.getServer();
+                if (srv != null) srv.execute(() -> srv.getCommandManager().parseAndExecute(srv.getCommandSource(), arg));
+            }
             case "demo" -> EzGambleMod.demoBets(Integer.parseInt(arg));
             case "chat" -> { c.inGameHud.getChatHud().addMessage(Text.literal(arg)); EzGambleMod.onChat(arg); }
             case "mouse" -> { mx = (int) Double.parseDouble(n[0]); my = (int) Double.parseDouble(n[1]); dev.ryaan.ezgamble.proto.ProtoScreen.forceMx = mx; dev.ryaan.ezgamble.proto.ProtoScreen.forceMy = my; }
