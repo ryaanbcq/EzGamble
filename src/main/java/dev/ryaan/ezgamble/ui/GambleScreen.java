@@ -160,6 +160,12 @@ public final class GambleScreen extends Screen {
 
     @Override
     public void renderBackground(DrawContext g, int mouseX, int mouseY, float delta) {
+        long t0 = System.nanoTime();
+        renderBackgroundInner(g, mouseX, mouseY, delta);
+        if (dev.ryaan.ezgamble.DebugRun.ON) dev.ryaan.ezgamble.DebugRun.renderNanos += System.nanoTime() - t0;
+    }
+
+    private void renderBackgroundInner(DrawContext g, int mouseX, int mouseY, float delta) {
         float p = pop();
         if (this.client != null && this.client.world != null) {
             g.applyBlur();   // the frosted backdrop (vanilla menu blur), then a light veil: the glass does the separating
@@ -192,8 +198,22 @@ public final class GambleScreen extends Screen {
         g.drawText(this.textRenderer, "by ZKR5", x + this.textRenderer.getWidth("EZ GAMBLE") + 8, y + 1, Glass.alpha(Glass.MUTE, a), false);
     }
 
+    /** Smoke test hooks (DebugRun). */
+    public static void debug(String cmd, String arg) {
+        if (cmd.equals("tab")) tab = arg;
+        if (cmd.equals("range")) range = arg;
+        if (MinecraftClient.getInstance().currentScreen instanceof GambleScreen s) { s.chartAt = 0; s.rebuild(); }
+    }
+
     @Override
     public void render(DrawContext g, int mouseX, int mouseY, float delta) {
+        long t0 = System.nanoTime();
+        if (dev.ryaan.ezgamble.DebugRun.mx >= 0) { mouseX = dev.ryaan.ezgamble.DebugRun.mx; mouseY = dev.ryaan.ezgamble.DebugRun.my; }
+        renderInner(g, mouseX, mouseY, delta);
+        if (dev.ryaan.ezgamble.DebugRun.ON) { dev.ryaan.ezgamble.DebugRun.renderNanos += System.nanoTime() - t0; dev.ryaan.ezgamble.DebugRun.renderFrames++; }
+    }
+
+    private void renderInner(DrawContext g, int mouseX, int mouseY, float delta) {
         if (closing && System.currentTimeMillis() - closeAt >= CLOSE_MS) { closeNow(); return; }
         beginPop(g, pop());
         try {
@@ -242,8 +262,10 @@ public final class GambleScreen extends Screen {
 
     private void renderDashboard(DrawContext g, int mx, int my) {
         int lx = x0 + PAD, rx = x0 + W - PAD;
+        long td = System.nanoTime();
         List<Txn> list = GambleData.inRange(range);
         Stats st = Stats.of(list);
+        if (dev.ryaan.ezgamble.DebugRun.ON) dev.ryaan.ezgamble.DebugRun.dataNanos += System.nanoTime() - td;
         int half = (rx - lx) / 2, third = (rx - lx) / 3;
         // hero: profit in big digits, volume and count beside it
         int y = y0 + 80;
@@ -268,7 +290,9 @@ public final class GambleScreen extends Screen {
         float reveal = Ui.easeOut((System.currentTimeMillis() - chartAt) / 600f);
         long[] deltas = new long[list.size()];
         for (int i = 0; i < deltas.length; i++) deltas[i] = list.get(i).delta();
+        long tc = System.nanoTime();
         ProfitChart.Result r = ProfitChart.draw(g, deltas, lx, cy, rx - lx, ch, mx, my, false, 0, true, reveal);
+        if (dev.ryaan.ezgamble.DebugRun.ON) dev.ryaan.ezgamble.DebugRun.chartNanos += System.nanoTime() - tc;
         if (r.hover() > 0) {
             Txn t = list.get(r.hover() - 1);
             ProfitChart.tooltip(g, t.game(), Money.signed(t.delta()), t.delta() >= 0 ? Glass.GREEN : Glass.RED, r.px()[r.hover()], cy, lx, rx,

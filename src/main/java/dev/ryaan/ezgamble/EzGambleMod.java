@@ -39,6 +39,7 @@ public final class EzGambleMod implements ClientModInitializer {
                 "key.ezgamble.mode", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_G, CATEGORY));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             GambleData.tick();
+            DebugRun.tick(client);
             while (menuKey.wasPressed()) if (client.currentScreen == null) client.setScreen(new GambleScreen());
             while (modeKey.wasPressed()) GambleData.setMode(!GambleData.mode);
         });
@@ -51,6 +52,16 @@ public final class EzGambleMod implements ClientModInitializer {
     }
 
     private static int demo(net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource src, int n) {
+        demoBets(n);
+        src.sendFeedback(Text.literal("EzGamble: " + n + " demo bets added to this session."));
+        return 1;
+    }
+
+    /** Every game chat line (system and player chat), plain text. */
+    public static void onChat(String line) {
+    }
+
+    public static void demoBets(int n) {
         if (!GambleData.mode) GambleData.setMode(true);
         String[] games = {"Roulette", "Blackjack", "Coinflip", "Crash", "Mines"};
         ThreadLocalRandom r = ThreadLocalRandom.current();
@@ -60,8 +71,6 @@ public final class EzGambleMod implements ClientModInitializer {
             long delta = r.nextDouble() < 0.47 ? bet : -bet;
             GambleData.record(new Txn(t + i * 20_000L, games[r.nextInt(games.length)], bet, delta, null, "demo"));
         }
-        src.sendFeedback(Text.literal("EzGamble: " + n + " demo bets added to this session."));
-        return 1;
     }
 
     private static SoundEvent sound(String name) {
