@@ -54,6 +54,7 @@ public final class EzGambleMod implements ClientModInitializer {
         net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents.GAME.register((m, overlay) -> { if (!overlay) onChat(m.getString()); });
         net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents.CHAT.register((m, signed, sender, params, ts) -> onChat(m.getString()));
         net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry.addLast(Identifier.of("ezgamble", "hud"), new dev.ryaan.ezgamble.hud.GambleHud());
+        net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry.addLast(Identifier.of("ezgamble", "auction"), new dev.ryaan.ezgamble.auction.AuctionHud());
         // /ezgamble demo [n]: fake bets in the current session, to see the dashboard before the chat detection exists
         ClientCommandRegistrationCallback.EVENT.register((d, reg) -> d.register(ClientCommandManager.literal("ezgamble")
                 .then(ClientCommandManager.literal("demo")
