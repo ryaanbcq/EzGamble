@@ -37,7 +37,9 @@ public final class Duel {
     private Duel() {}
 
     /** DonutSMP EN / FR (EzChat's Parser.IN). */
-    public static final Pattern WHISPER_RE = Pattern.compile("^(\\.?[A-Za-z0-9_]{3,16}) (?:whispers to you|vous chuchote)\\s*:\\s*(.+)$", Pattern.CASE_INSENSITIVE);
+    // DonutSMP translates whispers for each client: "X whispers to you: hi", "X vous chuchote : hi", "X te chuchote : hi", "X flüstert dir: hi"...
+    // a name, then words that carry a stem of "whisper", then a colon; "You whisper to X" / "Tu chuchotes à X" (sent) never match
+    public static final Pattern WHISPER_RE = Pattern.compile("^(?!(?:you|vous|tu|du|sie|usted|voce|você|jij|ty|vy|sen)\\b)(\\.?[A-Za-z0-9_]{3,16}) (?:[\\p{L}'\u2019]+ ){0,4}?[\\p{L}'\u2019]*(?:whisper|chuchot|flüster|fluster|fluester|susurr|sussurr|fluister|szep|шеп|fısıld|fisild|hvisk|visk|kuisk|suttog|šep)[\\p{L}'\u2019]*(?: [\\p{L}'\u2019]+){0,4}\\s*:\\s*(.+)$", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
     static final Pattern DUEL_RE = Pattern.compile("^/?duel\\s+([a-z]+)(?:\\s+\\$?\\s*([\\d.,]+\\s*[kmbKMB]?))?\\s*$", Pattern.CASE_INSENSITIVE);
     /** Games that can be played on a challenge (the others are "soon"). */
     static final Map<String, String> DUEL_GAMES = Map.ofEntries(

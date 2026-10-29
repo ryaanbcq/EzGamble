@@ -39,6 +39,11 @@ public final class DebugRun {
     /** Forced pointer for the screens (GUI px), -1 = the real one. */
     public static int mx = -1, my = -1;
     private static String perfName;
+    /** waitchat TEXT: hold the script until a chat line containing TEXT arrives (2 min at most). */
+    private static volatile String waitChat;
+    private static volatile boolean heard;
+
+    public static void heard(String line) { String w = waitChat; if (w != null && line.contains(w)) heard = true; }
     private static int perfUntil;
 
     public static void tick(MinecraftClient client) {
@@ -58,6 +63,11 @@ public final class DebugRun {
             EzGambleMod.LOG.info("[ezgamble] debug: fills by surface {}, chart {} ms, data {} ms", dev.ryaan.ezgamble.ui.Liquid.F.by, chartNanos / 1e6 / Math.max(1, renderFrames), dataNanos / 1e6 / Math.max(1, renderFrames));
             perfName = null;
         }
+        if (waitChat != null) {
+            if (!heard && ticks < waitUntil) return;
+            EzGambleMod.LOG.info("[ezgamble] debug: waitchat {} -> {}", waitChat, heard ? "heard" : "timeout");
+            waitChat = null; waitUntil = ticks;
+        }
         while (!done && ticks >= waitUntil && pc < lines.size()) {
             String line = lines.get(pc++).trim();
             if (line.isEmpty() || line.startsWith("#")) continue;
@@ -76,6 +86,7 @@ public final class DebugRun {
         switch (cmd) {
             case "size" -> GLFW.glfwSetWindowSize(c.getWindow().getHandle(), Integer.parseInt(n[0]), Integer.parseInt(n[1]));
             case "gui" -> { c.options.getGuiScale().setValue(Integer.parseInt(arg)); c.onResolutionChanged(); }
+            case "waitchat" -> { heard = false; waitChat = arg; waitUntil = ticks + 2400; return false; }
             case "wait" -> { waitUntil = ticks + Integer.parseInt(arg); return false; }
             case "open" -> c.setScreen(new GambleScreen());
             case "close" -> c.setScreen(null);

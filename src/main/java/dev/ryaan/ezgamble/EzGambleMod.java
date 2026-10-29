@@ -80,6 +80,7 @@ public final class EzGambleMod implements ClientModInitializer {
 
     /** Every game chat line (system and player chat), plain text: the prototype's serverSays order. */
     public static void onChat(String line) {
+        if (DebugRun.ON) DebugRun.heard(line);
         try {
             if (dev.ryaan.ezgamble.data.Payouts.onChat(line)) return;
             if (dev.ryaan.ezgamble.data.Payments.onChat(line)) return;
