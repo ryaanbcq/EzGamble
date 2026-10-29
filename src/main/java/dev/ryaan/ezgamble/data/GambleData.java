@@ -33,6 +33,7 @@ public final class GambleData {
     public static final List<Session> sessions = new ArrayList<>();
     public static boolean mode;
     public static String name;
+    public static boolean autoUpdate = false;   // "Auto update": download new versions by itself (off = the Update button asks)
     public static boolean lens = true;   // "Liquid glass": the lens on the tabs and the period selector (off = the sliding pill)   // what the mod calls the player (asked on the first opening)
     private static long dirtyAt;
 
@@ -44,6 +45,7 @@ public final class GambleData {
                 if (o.has("name")) name = o.get("name").getAsString();
                 if (o.has("mode")) mode = o.get("mode").getAsBoolean();
                 if (o.has("lens")) lens = o.get("lens").getAsBoolean();
+                if (o.has("autoUpdate")) autoUpdate = o.get("autoUpdate").getAsBoolean();
             }
             if (Files.isDirectory(SESSIONS)) try (var files = Files.list(SESSIONS)) {
                 for (Path p : files.filter(f -> f.toString().endsWith(".json")).toList()) {
@@ -134,6 +136,7 @@ public final class GambleData {
 
     public static void setName(String n) { name = n; saveConfig(); }
     public static void setLens(boolean on) { lens = on; saveConfig(); }
+    public static void setAutoUpdate(boolean on) { autoUpdate = on; saveConfig(); if (on) dev.ryaan.ezgamble.Updater.download(); }
 
     private static void newSession() {
         Session s = new Session();
@@ -153,6 +156,7 @@ public final class GambleData {
         if (name != null) o.addProperty("name", name);
         o.addProperty("mode", mode);
         o.addProperty("lens", lens);
+        o.addProperty("autoUpdate", autoUpdate);
         write(DIR.resolve("config.json"), GSON.toJson(o));
     }
 

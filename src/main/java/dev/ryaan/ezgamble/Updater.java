@@ -64,6 +64,7 @@ public final class Updater {
                 if (!file.matches("ezgamble-[0-9A-Za-z.+-]+\\.jar")) throw new IllegalStateException("bad file name");
                 state = newer(latest, current()) ? State.AVAILABLE : State.UP_TO_DATE;
                 EzGambleMod.LOG.info("[ezgamble] update check: current {}, latest {}", current(), latest);
+                if (state == State.AVAILABLE && dev.ryaan.ezgamble.data.GambleData.autoUpdate) download();   // option "Auto update"
             } catch (Exception e) {
                 error = e.getMessage();
                 state = State.FAILED;

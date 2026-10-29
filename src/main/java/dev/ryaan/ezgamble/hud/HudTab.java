@@ -26,6 +26,7 @@ public final class HudTab {
         presets.place(rx - presets.w, s.y0 + 80 + ORDER.length * 28 + 6);
         s.add(presets);
         s.add(new GlassSwitch(rx - 28, s.y0 + 80 + ORDER.length * 28 + 34 + 4, 28, 14, () -> dev.ryaan.ezgamble.data.GambleData.lens, dev.ryaan.ezgamble.data.GambleData::setLens));
+        s.add(new GlassSwitch(rx - 28, s.y0 + 80 + ORDER.length * 28 + 62 + 4, 28, 14, () -> dev.ryaan.ezgamble.data.GambleData.autoUpdate, dev.ryaan.ezgamble.data.GambleData::setAutoUpdate));
         double by = s.y0 + GambleScreen.H - GambleScreen.PAD - 24;
         s.add(new GlassButton(lx, by, GambleScreen.W - 2 * GambleScreen.PAD - 74 - 60 - 8, 24, "EDIT LAYOUT", "PRIMARY",
                 () -> MinecraftClient.getInstance().setScreen(new HudEditorScreen())));
@@ -54,5 +55,8 @@ public final class HudTab {
         y += 28;
         g.drawText("Liquid glass", lx, y + 2, TEXT, false);
         g.drawText("a lens on the tabs, drag it", lx, y + 13, DIM, false);
+        y += 28;
+        g.drawText("Auto update", lx, y + 2, TEXT, false);
+        g.drawText("installed when the game closes", lx, y + 13, DIM, false);
     }
 }
