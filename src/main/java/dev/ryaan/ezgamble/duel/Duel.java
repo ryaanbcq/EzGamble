@@ -105,7 +105,7 @@ public final class Duel {
         Matcher m = DUEL_RE.matcher(w.group(2).trim());
         if (!m.find()) return false;
         String name = w.group(1), game = DUEL_GAMES.get(m.group(1).toLowerCase());
-        long amount = m.group(2) != null ? Money.parse(m.group(2).replaceAll("\\s", "")) : 0;
+        long amount = m.group(2) != null ? Money.parse(m.group(2).replaceAll("\\s", "")) : chips(name);   // "duel blackjack" with no amount: all his chips
         if (!GambleData.mode || game == null || !(amount > 0) || chips(name) < amount) return true;   // not a challenge we can take: read, ignored
         queue.removeIf(d -> Payouts.same(d.name, name));                                                // his last word replaces the one waiting
         if (pending.removeIf(d -> Payouts.same(d.name, name))) ver++;

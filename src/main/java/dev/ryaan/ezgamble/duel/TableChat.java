@@ -205,7 +205,7 @@ public final class TableChat {
         if (game == null || msgs.isEmpty()) return;
         int W = GambleScreen.W, H = GambleScreen.H; double gap = 8; long t = now();
         double right = menu.SW - 4 - (menu.x0 + W + gap), left = menu.x0 - gap - 4, room = Math.max(right, left);
-        if (room < 96) return;   // a screen too narrow for it: the whispers stay in the chat
+        if (room < 80) return;   // a screen too narrow for it: the whispers stay in the chat (GUI 5 on a laptop leaves ~93)
         double PW = Math.min(150, room), x = right >= left ? menu.x0 + W + gap : menu.x0 - gap - PW;
         double y = menu.y0;
         Host host = hostOf(game);

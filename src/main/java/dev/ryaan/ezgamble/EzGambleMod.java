@@ -59,6 +59,7 @@ public final class EzGambleMod implements ClientModInitializer {
         Identifier early = Identifier.of("ezgamble", "before_others");
         allowGame.addPhaseOrdering(early, net.fabricmc.fabric.api.event.Event.DEFAULT_PHASE);
         allowChat.addPhaseOrdering(early, net.fabricmc.fabric.api.event.Event.DEFAULT_PHASE);
+        net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents.COMMAND.register(c -> dev.ryaan.ezgamble.data.Payouts.typed(c));
         allowGame.register(early, (m, overlay) -> { if (!overlay) onChat(m.getString()); return true; });
         allowChat.register(early, (m, signed, sender, params, ts) -> { onChat(m.getString()); return true; });
         net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry.addLast(Identifier.of("ezgamble", "hud"), new dev.ryaan.ezgamble.hud.GambleHud());
@@ -82,8 +83,8 @@ public final class EzGambleMod implements ClientModInitializer {
         try {
             if (dev.ryaan.ezgamble.data.Payouts.onChat(line)) return;
             if (dev.ryaan.ezgamble.data.Payments.onChat(line)) return;
-            if (dev.ryaan.ezgamble.duel.TableChat.onChat(line)) return;
-            if (dev.ryaan.ezgamble.duel.Duel.onChat(line)) return;
+            boolean duel = dev.ryaan.ezgamble.duel.Duel.onChat(line);   // a challenge counts even while a game is open (it waits for the menu to close)
+            if (dev.ryaan.ezgamble.duel.TableChat.onChat(line) || duel) return;
             var tx = dev.ryaan.ezgamble.data.Detector.detect(line, System.currentTimeMillis());
             if (tx != null) GambleData.record(tx);
         } catch (Exception e) {

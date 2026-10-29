@@ -69,6 +69,17 @@ public final class Payouts {
         ver++;
     }
 
+    /** A /pay typed by hand to a player of the session: counted like one sent from the menu (exact amount from the command). */
+    public static void typed(String command) {
+        String[] a = command.trim().split("\\s+");
+        if (a.length != 3 || !a[0].equalsIgnoreCase("pay") || !GambleData.mode || session() == null) return;
+        String name = a[1]; long amount = Money.parse(a[2]);
+        if (amount <= 0 || pending.stream().anyMatch(p -> same(p.name, name))) return;
+        if (rows().stream().noneMatch(r -> same(r.name, name))) return;   // not someone you play for: a private /pay
+        pending.add(new Pending(name, amount, P.now()));
+        ver++;
+    }
+
     public static boolean onChat(String line) {
         String who = null; long amount = -1;
         Matcher m = OUT_DONUT.matcher(line);
