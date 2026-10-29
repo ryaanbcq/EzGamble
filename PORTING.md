@@ -56,3 +56,5 @@ Skip what is prototype-only: the fake world, the simulation, the dev bar, `Liqui
   few large fills. The whole menu must stay under ~3 ms of CPU per frame.
 - Work in your own git worktree and branch (your task says which), commit there, never push, never touch `main`.
 - Final report: the branch, the files, anything not ported or approximated and why.
+
+Cross-table defaults (`MN.backer = CR.backer || BJ.backer`): use `Host.lastBacker` (set it when your game starts a round).

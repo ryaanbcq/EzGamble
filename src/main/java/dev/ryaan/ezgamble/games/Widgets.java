@@ -148,7 +148,7 @@ public final class Widgets {
         public void pick(Payouts.Row r) {
             field.focused = false; field.value = "";
             if (r == null || r.name().equals(host.backer)) return;
-            P.play("click"); host.backer = r.name(); if (host.bet > r.bal()) host.clearBet();
+            P.play("click"); host.backer = r.name(); Host.lastBacker = r.name(); if (host.bet > r.bal()) host.clearBet();
         }
 
         public void close() { field.focused = false; field.value = ""; }

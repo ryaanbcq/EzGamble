@@ -20,6 +20,8 @@ public abstract class Host {
     public Widgets.BackerPicker picker;
     public Widgets.RefundPill refundPill;
     public Warn warn;
+    /** The player of the last game, any table (prototype: `MN.backer = CR.backer || BJ.backer`): set it when a game starts or a backer is picked. */
+    public static String lastBacker;
 
     public record Warn(String text, long until) {}
 
