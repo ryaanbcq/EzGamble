@@ -8,5 +8,6 @@
   "icon": "assets/ezgamble/icon.png",
   "environment": "client",
   "entrypoints": { "client": ["dev.ryaan.ezgamble.EzGambleMod"] },
+  "mixins": [{ "config": "ezgamble.mixins.json", "environment": "client" }],
   "depends": { "fabricloader": ">=0.18.0", "fabric-api": "*", "minecraft": "1.21.11" }
 }

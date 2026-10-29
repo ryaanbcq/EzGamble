@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.ryaan.ezgamble.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "DrawContextAccessor",
+    "GuiDrawAccessor",
+    "GuiRendererMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

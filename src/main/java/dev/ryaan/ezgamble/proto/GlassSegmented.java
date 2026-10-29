@@ -18,6 +18,8 @@ public class GlassSegmented extends Widget {
     private boolean held;
     private int lastSeg = -1;
     private long lastNs;
+    // jelly: squash/stretch amount and its speed, lean toward the motion (-1..1)
+    private double q, qv, lean;
 
     public GlassSegmented(double x, double y, double h, String[][] items, Supplier<String> get, Consumer<String> set) {
         super(x, y, 0, h);
@@ -31,7 +33,7 @@ public class GlassSegmented extends Widget {
     /** Moves it; the pill follows without a jump (prototype: s2.ix += x - px). */
     public void place(double nx, double ny) { if (ix != null) ix += nx - x; if (!Double.isNaN(lx)) { lx += nx - x; dragX += nx - x; } x = nx; y = ny; px = nx; }
 
-    private boolean lensOn() { return lens && dev.ryaan.ezgamble.data.GambleData.lens; }
+    private boolean lensOn() { return lens && dev.ryaan.ezgamble.data.GambleData.lens && dev.ryaan.ezgamble.ui.LensGlass.ok(); }
 
     public double[] seg(int i) { double sx = x + 2; for (int j = 0; j < i; j++) sx += widths[j]; return new double[]{sx, widths[i]}; }
 
@@ -72,6 +74,7 @@ public class GlassSegmented extends Widget {
     public void release(double mx, double my) {
         if (!held) return;
         held = false;
+        qv -= 2.5;   // let go: it springs back taller, then settles
         int i = nearest(mx);   // the segment under (or nearest to) the pointer: a plain click lands where it was clicked
         if (!items[i][0].equals(get.get())) { P.play("click"); set.accept(items[i][0]); }
     }
@@ -116,21 +119,30 @@ public class GlassSegmented extends Widget {
             lx += lv * st;
         }
         grow = held ? Math.min(1, grow + dts / 0.12) : Math.max(0, grow - dts / 0.12);
+        // jelly: the shape has its own soft, under-damped spring driven by the speed: stretched along the motion and
+        // squashed across while it travels, a wobble when it stops; the front swells (lean) like a blob being dragged
+        double want = Math.min(0.6, Math.abs(lv) / 600), jk = 240, jc = 2 * 0.28 * Math.sqrt(jk);
+        for (double left = dts; left > 1e-6; left -= 1 / 240.0) {
+            double st = Math.min(1 / 240.0, left);
+            qv += (jk * (want - q) - jc * qv) * st;
+            q += qv * st;
+        }
+        lean += (Math.max(-1, Math.min(1, lv / 700)) - lean) * (1 - Math.exp(-dts / 0.05));
         int segNow = nearest(lx);
         if (segNow != lastSeg) { lastSeg = segNow; if (held) P.play("click", 1.25, 0.35); }   // a tick for each tab crossed
-        double sc = 1 + 0.1 * P.easeOut(grow);
-        int LW = (int) Math.round((widthAt(lx) - 12) * 1.25 * sc + 12), LH = (int) Math.round((h + 4) * sc);
-        int LX = (int) Math.round(lx - LW / 2.0), LY = (int) Math.round(y + h / 2 - LH / 2.0);
-        P.capsule(g, x, y, w, h, "ghost", false);
-        // the row's labels outside the lens only (inside, the magnified copy replaces them)
-        boolean ov = over(mx, my);
-        g.enableScissor(x - 6, y - 6, LX, y + h + 6); labels(g, mx, ov, false); g.disableScissor();
-        g.enableScissor(LX + LW, y - 6, x + w + 6, y + h + 6); labels(g, mx, ov, false); g.disableScissor();
-        LensSprite.draw(g, LX, LY, LW, LH);
-        // the loupe: the same row x1.25 around the lens centre, clipped to the lens
+        double pr = P.easeOut(grow), sc = 1 + 0.1 * pr, mag = 1.1 + 0.1 * pr;
+        double qq = Math.max(-0.3, Math.min(0.6, q)), base = h * 1.35;
+        double LH = base * sc * (1 - 0.45 * qq), LW = Math.max(base * 1.4, (widthAt(lx) - 12) * mag + base * 0.75) * sc * (1 + qq);
         double cy = y + h / 2;
-        g.enableScissor(LX + 1, LY + 1, LX + LW - 1, LY + LH - 1);
-        g.push(); g.translate(lx, cy); g.scale(1.25, 1.25); g.translate(-lx, -cy);
+        P.capsule(g, x, y, w, h, "ghost", false);
+        boolean ov = over(mx, my);
+        labels(g, mx, ov, false);
+        // the glass: a shader over what is already drawn (the row and its labels), one draw
+        dev.ryaan.ezgamble.ui.LensGlass.draw(g, lx, cy, LW, LH, pr, mag, lean * Math.min(1, Math.abs(qq) * 2.5));
+        // then the labels again, crisp and magnified exactly like the shader's centre, only in the flat middle of the lens
+        double bw = LH * 0.25 * (1 + 0.3 * pr);
+        g.enableScissor(lx - LW / 2 + bw * 0.6, cy - LH / 2 + bw, lx + LW / 2 - bw * 0.6, cy + LH / 2 - bw);
+        g.push(); g.translate(lx, cy); g.scale(mag, mag); g.translate(-lx, -cy);
         labels(g, mx, ov, true);
         g.pop();
         g.disableScissor();
@@ -146,7 +158,7 @@ public class GlassSegmented extends Widget {
 
     @Override
     public void click(double mx, double my) {
-        if (lensOn() && !Double.isNaN(lx)) { held = true; dragX = mx; return; }
+        if (lensOn() && !Double.isNaN(lx)) { held = true; dragX = mx; qv += 3.5; return; }   // a press squishes it
         for (int i = 0; i < items.length; i++) {
             double[] s = seg(i);
             if (mx >= s[0] && mx < s[0] + s[1] && !items[i][0].equals(get.get())) { P.play("click"); set.accept(items[i][0]); }

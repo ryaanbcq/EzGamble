@@ -83,6 +83,7 @@ public final class DebugRun {
             case "name" -> GambleData.setName(arg);
             case "paid" -> dev.ryaan.ezgamble.data.Payments.received(n[0], dev.ryaan.ezgamble.Money.parse(n[1]));
             case "mode" -> GambleData.setMode(arg.equals("on"));
+            case "lens" -> GambleData.lens = arg.equals("on");
             case "demo" -> EzGambleMod.demoBets(Integer.parseInt(arg));
             case "chat" -> { c.inGameHud.getChatHud().addMessage(Text.literal(arg)); EzGambleMod.onChat(arg); }
             case "mouse" -> { mx = (int) Double.parseDouble(n[0]); my = (int) Double.parseDouble(n[1]); dev.ryaan.ezgamble.proto.ProtoScreen.forceMx = mx; dev.ryaan.ezgamble.proto.ProtoScreen.forceMy = my; }
@@ -93,6 +94,16 @@ public final class DebugRun {
                     Click ck = new Click(x, y, new MouseInput(cmd.equals("click") ? 0 : 1, 0));
                     c.currentScreen.mouseClicked(ck, false);
                     c.currentScreen.mouseReleased(ck);
+                }
+            }
+            case "press", "move", "up" -> {   // a held click in three steps (the lens drag)
+                double x = Double.parseDouble(n[0]), y = Double.parseDouble(n[1]);
+                mx = (int) x; my = (int) y; dev.ryaan.ezgamble.proto.ProtoScreen.forceMx = mx; dev.ryaan.ezgamble.proto.ProtoScreen.forceMy = my;
+                if (c.currentScreen != null) {
+                    Click ck = new Click(x, y, new MouseInput(0, 0));
+                    if (cmd.equals("press")) c.currentScreen.mouseClicked(ck, false);
+                    else if (cmd.equals("move")) c.currentScreen.mouseDragged(ck, 0, 0);
+                    else c.currentScreen.mouseReleased(ck);
                 }
             }
             case "key" -> { if (c.currentScreen != null) c.currentScreen.keyPressed(new KeyInput(Integer.parseInt(arg), 0, 0)); }
