@@ -73,6 +73,7 @@ public final class LensGlass {
         if (copy != null) copy.close();
         copy = dev.createTexture(() -> "ezgamble lens backdrop", GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_TEXTURE_BINDING, TextureFormat.RGBA8, w, h, 1, 1);
         copyView = dev.createTextureView(copy);
+        setup = null;
         if (sampler == null) sampler = dev.createSampler(AddressMode.CLAMP_TO_EDGE, AddressMode.CLAMP_TO_EDGE, FilterMode.LINEAR, FilterMode.LINEAR, 1, OptionalDouble.empty());
         return true;
     }
@@ -91,20 +92,46 @@ public final class LensGlass {
      */
     public static boolean draw(G g, double cx, double cy, double w, double h, double pressed, double mag, double lean) {
         if (!ok() || !ensureCopy()) return false;
-        Matrix3x2f pose = new Matrix3x2f(g.d.getMatrices());
-        double k = MinecraftClient.getInstance().getWindow().getScaleFactor() * Math.hypot(pose.m00(), pose.m01());
+        // no allocation on a frame at rest: elements come from a pool that GuiRendererMixin rewinds after each GUI
+        // render, the texture setup is kept until the copy texture changes, the bounds until they change
+        Element e = used < POOL.length ? POOL[used] : new Element();
+        if (used < POOL.length) used++;
+        e.pose.set(g.d.getMatrices());
+        double k = MinecraftClient.getInstance().getWindow().getScaleFactor() * Math.hypot(e.pose.m00(), e.pose.m01());
         double pad = h * 0.8;   // room for the shadow
-        float x1 = (float) (cx - w / 2 - pad), y1 = (float) (cy - h / 2 - pad), x2 = (float) (cx + w / 2 + pad), y2 = (float) (cy + h / 2 + pad);
-        ScreenRect bounds = new ScreenRect((int) Math.floor(x1), (int) Math.floor(y1), (int) Math.ceil(x2 - x1) + 1, (int) Math.ceil(y2 - y1) + 1).transformEachVertex(pose);
-        ((DrawContextAccessor) g.d).ezgamble$state().addSimpleElement(new Element(pose, x1, y1, x2, y2, (float) cx, (float) cy, (float) k,
-                (int) Math.round(w * k), (int) Math.round(h * k), (float) pressed, (float) mag, (float) lean, TextureSetup.of(copyView, sampler), bounds));
+        e.x1 = (float) (cx - w / 2 - pad); e.y1 = (float) (cy - h / 2 - pad); e.x2 = (float) (cx + w / 2 + pad); e.y2 = (float) (cy + h / 2 + pad);
+        e.cx = (float) cx; e.cy = (float) cy; e.k = (float) k;
+        e.wPx = (int) Math.round(w * k); e.hPx = (int) Math.round(h * k);
+        e.pressed = (float) pressed; e.mag = (float) mag; e.lean = (float) lean;
+        int bx = (int) Math.floor(e.x1), by = (int) Math.floor(e.y1), bw = (int) Math.ceil(e.x2 - e.x1) + 1, bh = (int) Math.ceil(e.y2 - e.y1) + 1;
+        if (e.bounds == null || bx != e.bx || by != e.by || bw != e.bw || bh != e.bh || !e.pose.equals(e.boundsPose)) {
+            e.bx = bx; e.by = by; e.bw = bw; e.bh = bh; e.boundsPose.set(e.pose);
+            e.bounds = new ScreenRect(bx, by, bw, bh).transformEachVertex(e.pose);
+        }
+        if (setup == null) setup = TextureSetup.of(copyView, sampler);
+        e.textureSetup = setup;
+        ((DrawContextAccessor) g.d).ezgamble$state().addSimpleElement(e);
         return true;
     }
 
-    private record Element(Matrix3x2f pose, float x1, float y1, float x2, float y2, float cx, float cy, float k, int wPx, int hPx,
-                           float pressed, float mag, float lean, TextureSetup textureSetup, ScreenRect bounds) implements SimpleGuiElementRenderState {
+    /** GuiRendererMixin, after the GUI of a frame is drawn: the pooled elements may be reused. */
+    public static void frameDone() { used = 0; }
+
+    private static final Element[] POOL = { new Element(), new Element(), new Element(), new Element() };
+    private static int used;
+    private static TextureSetup setup;
+
+    private static final class Element implements SimpleGuiElementRenderState {
+        final Matrix3x2f pose = new Matrix3x2f(), boundsPose = new Matrix3x2f();
+        float x1, y1, x2, y2, cx, cy, k, pressed, mag, lean;
+        int wPx, hPx, bx, by, bw, bh;
+        TextureSetup textureSetup;
+        ScreenRect bounds;
+
         @Override public RenderPipeline pipeline() { return PIPELINE; }
+        @Override public TextureSetup textureSetup() { return textureSetup; }
         @Override public ScreenRect scissorArea() { return null; }
+        @Override public ScreenRect bounds() { return bounds; }
 
         @Override
         public void setupVertices(VertexConsumer vc) {

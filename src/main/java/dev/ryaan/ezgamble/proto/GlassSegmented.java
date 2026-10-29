@@ -74,7 +74,7 @@ public class GlassSegmented extends Widget {
     public void release(double mx, double my) {
         if (!held) return;
         held = false;
-        qv -= 2.5;   // let go: it springs back taller, then settles
+        qv -= 3.5;   // let go: it springs back taller, then settles
         int i = nearest(mx);   // the segment under (or nearest to) the pointer: a plain click lands where it was clicked
         if (!items[i][0].equals(get.get())) { P.play("click"); set.accept(items[i][0]); }
     }
@@ -107,12 +107,12 @@ public class GlassSegmented extends Widget {
         double dts = lastNs == 0 ? 0 : Math.min(0.05, (ns - lastNs) / 1e9);
         lastNs = ns;
         if (Double.isNaN(lx)) { lx = centre(sel); lv = 0; grow = 0; lastSeg = sel; }
-        // spring on render time, in sub-steps so a slow frame stays stable: stiff and critically damped while it
+        // spring on render time, in sub-steps so a slow frame stays stable: soft and a little late while it
         // follows the pointer, softer and a little bouncy when it settles
         int n = items.length;
         double lo = centre(0), hi = centre(n - 1);
         double target = held ? Math.max(lo, Math.min(hi, dragX)) : centre(sel);
-        double k = held ? 1400 : 520, z = held ? 1 : 0.62, c = 2 * z * Math.sqrt(k);
+        double k = held ? 620 : 420, z = held ? 0.72 : 0.55, c = 2 * z * Math.sqrt(k);
         for (double left = dts; left > 1e-6; left -= 1 / 240.0) {
             double st = Math.min(1 / 240.0, left);
             lv += (k * (target - lx) - c * lv) * st;
@@ -121,7 +121,7 @@ public class GlassSegmented extends Widget {
         grow = held ? Math.min(1, grow + dts / 0.12) : Math.max(0, grow - dts / 0.12);
         // jelly: the shape has its own soft, under-damped spring driven by the speed: stretched along the motion and
         // squashed across while it travels, a wobble when it stops; the front swells (lean) like a blob being dragged
-        double want = Math.min(0.6, Math.abs(lv) / 600), jk = 240, jc = 2 * 0.28 * Math.sqrt(jk);
+        double want = Math.min(0.6, Math.abs(lv) / 520), jk = 150, jc = 2 * 0.2 * Math.sqrt(jk);
         for (double left = dts; left > 1e-6; left -= 1 / 240.0) {
             double st = Math.min(1 / 240.0, left);
             qv += (jk * (want - q) - jc * qv) * st;
@@ -158,7 +158,7 @@ public class GlassSegmented extends Widget {
 
     @Override
     public void click(double mx, double my) {
-        if (lensOn() && !Double.isNaN(lx)) { held = true; dragX = mx; qv += 3.5; return; }   // a press squishes it
+        if (lensOn() && !Double.isNaN(lx)) { held = true; dragX = mx; qv += 5; return; }   // a press squishes it
         for (int i = 0; i < items.length; i++) {
             double[] s = seg(i);
             if (mx >= s[0] && mx < s[0] + s[1] && !items[i][0].equals(get.get())) { P.play("click"); set.accept(items[i][0]); }

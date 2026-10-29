@@ -10,6 +10,8 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 import java.util.List;
@@ -38,4 +40,7 @@ public abstract class GuiRendererMixin {
         }
         if (to > start) render(name, fb, fog, dynamic, indices, type, start, to);
     }
+
+    @Inject(method = "render(Lcom/mojang/blaze3d/buffers/GpuBufferSlice;)V", at = @At("TAIL"))
+    private void ezgamble$frameDone(GpuBufferSlice fog, CallbackInfo ci) { LensGlass.frameDone(); }
 }
