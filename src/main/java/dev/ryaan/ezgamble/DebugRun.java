@@ -81,13 +81,14 @@ public final class DebugRun {
             case "close" -> c.setScreen(null);
             case "tab", "sub", "range", "hook" -> GambleScreen.debug(cmd, arg);
             case "name" -> GambleData.setName(arg);
+            case "paid" -> dev.ryaan.ezgamble.data.Payments.received(n[0], dev.ryaan.ezgamble.Money.parse(n[1]));
             case "mode" -> GambleData.setMode(arg.equals("on"));
             case "demo" -> EzGambleMod.demoBets(Integer.parseInt(arg));
             case "chat" -> { c.inGameHud.getChatHud().addMessage(Text.literal(arg)); EzGambleMod.onChat(arg); }
-            case "mouse" -> { mx = (int) Double.parseDouble(n[0]); my = (int) Double.parseDouble(n[1]); }
+            case "mouse" -> { mx = (int) Double.parseDouble(n[0]); my = (int) Double.parseDouble(n[1]); dev.ryaan.ezgamble.proto.ProtoScreen.forceMx = mx; dev.ryaan.ezgamble.proto.ProtoScreen.forceMy = my; }
             case "click", "rclick" -> {
                 double x = Double.parseDouble(n[0]), y = Double.parseDouble(n[1]);
-                mx = (int) x; my = (int) y;
+                mx = (int) x; my = (int) y; dev.ryaan.ezgamble.proto.ProtoScreen.forceMx = mx; dev.ryaan.ezgamble.proto.ProtoScreen.forceMy = my;
                 if (c.currentScreen != null) {
                     Click ck = new Click(x, y, new MouseInput(cmd.equals("click") ? 0 : 1, 0));
                     c.currentScreen.mouseClicked(ck, false);
@@ -98,7 +99,7 @@ public final class DebugRun {
             case "type" -> { if (c.currentScreen != null) for (int i = 0; i < arg.length(); i++) c.currentScreen.charTyped(new CharInput(arg.charAt(i), 0)); }
             case "scroll" -> { if (c.currentScreen != null) c.currentScreen.mouseScrolled(Double.parseDouble(n[0]), Double.parseDouble(n[1]), 0, Double.parseDouble(n[2])); }
             case "shot" -> ScreenshotRecorder.saveScreenshot(c.runDirectory, "ezgamble-" + arg + ".png", c.getFramebuffer(), 1, t -> {});
-            case "perf" -> { renderNanos = 0; renderFrames = 0; dev.ryaan.ezgamble.ui.Liquid.F.n = 0; dev.ryaan.ezgamble.ui.Liquid.F.nanos = 0; dev.ryaan.ezgamble.ui.Liquid.F.by.clear(); chartNanos = 0; dataNanos = 0; perfName = arg; perfUntil = ticks + 60; waitUntil = ticks + 62; return false; }
+            case "perf" -> { if (c.currentScreen instanceof dev.ryaan.ezgamble.proto.ProtoScreen) {} renderNanos = 0; renderFrames = 0; dev.ryaan.ezgamble.ui.Liquid.F.n = 0; dev.ryaan.ezgamble.ui.Liquid.F.nanos = 0; dev.ryaan.ezgamble.ui.Liquid.F.by.clear(); chartNanos = 0; dataNanos = 0; perfName = arg; perfUntil = ticks + 60; waitUntil = ticks + 62; return false; }
             case "quit" -> { done = true; c.scheduleStop(); return false; }
             default -> EzGambleMod.LOG.warn("[ezgamble] debug: unknown command {}", cmd);
         }

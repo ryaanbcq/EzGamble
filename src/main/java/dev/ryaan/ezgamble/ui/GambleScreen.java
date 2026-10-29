@@ -1,57 +1,67 @@
 package dev.ryaan.ezgamble.ui;
 
-import dev.ryaan.ezgamble.EzGambleMod;
+import dev.ryaan.ezgamble.DebugRun;
 import dev.ryaan.ezgamble.Money;
 import dev.ryaan.ezgamble.Updater;
 import dev.ryaan.ezgamble.data.GambleData;
 import dev.ryaan.ezgamble.data.Session;
 import dev.ryaan.ezgamble.data.Stats;
 import dev.ryaan.ezgamble.data.Txn;
+import dev.ryaan.ezgamble.games.Chips;
+import dev.ryaan.ezgamble.games.GameView;
+import dev.ryaan.ezgamble.games.Views;
+import dev.ryaan.ezgamble.data.Payouts;
+import dev.ryaan.ezgamble.data.Payments;
+import dev.ryaan.ezgamble.proto.*;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.RenderPipelines;
-import net.minecraft.client.gui.Click;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.input.KeyInput;
-import net.minecraft.client.sound.PositionedSoundInstance;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
 
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
-/** Main menu (K). Same geometry as the prototype's GambleScreen: 380 x 300, header, tabs at y0+33, status row at y0+56, page from y0+80. */
-public final class GambleScreen extends Screen {
-    private static final int W = 380, H = 300, PAD = 14;
-    private static final String[][] GAMES = {
-            {"blackjack", "Blackjack"}, {"auction", "Auction"}, {"mines", "Mines"}, {"crates", "Crates"},
-            {"roulette", "Roulette"}, {"crash", "Crash"}, {"coinflip", "Coinflip"}};
-    /** Dashboard greetings: before the name, after it. Never the same twice in a row. */
+/** Main menu (K), port of the prototype's GambleScreen: tabs Dashboard / History / Games / HUD, the game sub-views. */
+public final class GambleScreen extends ProtoScreen {
+    public static final int W = 380, H = 300, PAD = 14;
+    /** Sub-views drawn on the felt (their header replaces the Recording row). */
+    public static final List<String> GAME_SUBS = List.of("blackjack", "crates", "mines", "crash", "roulette", "coinflip");
     private static final String[][] GREETINGS = {
             {"Welcome back, ", ""}, {"Feeling lucky, ", "?"}, {"The table is yours, ", ""}, {"Place your bets, ", ""},
             {"Back for more, ", "?"}, {"Let's roll, ", ""}, {"Luck looks good on you, ", ""}, {"Good to see you, ", ""}};
     private static int lastGreeting = -1;
 
-    // kept between openings, like the prototype
-    private static String tab = "dashboard", range = "session";
+    // kept between openings, like the prototype (its GambleScreen lived on)
+    public static String tab = "dashboard", range = "session", filter = "all";
+    public static String sub;
 
-    private int x0, y0;
-    private boolean welcome = GambleData.name == null;
+    public double x0, y0;
+    public boolean welcome = GambleData.name == null;
     private String[] greeting = pickGreeting();
-    private long titleAt = System.currentTimeMillis(), chartAt = System.currentTimeMillis();
+    public long titleAt = P.now(), chartAt = P.now(), openedAt = P.now(), closeAt;
+    public boolean closing;
     private final Map<String, GlassSegmented> segs = new HashMap<>();
     private GlassField nameField;
     private boolean builtMode = GambleData.mode;
     private Updater.State shownUpdate = Updater.state();
+    private String lastSub;
+    /** The list under the pointer for the wheel (beginList). */
+    public double[] listHit; public String listHitId;
+    private final Map<String, GameView> views = new HashMap<>();
+    /** The Games tab's credit card (hover lift). */
+    private double cardK; private long cardT;
+    private Widget cardBtn;
 
     public GambleScreen() {
-        super(Text.literal("EzGamble"));
+        super("EzGamble");
         Updater.recheck();
-        MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.ui(EzGambleMod.OPEN, 1.0f, 0.8f));
+        P.play("open", 0.8);
     }
+
+    public static GambleScreen current() { return MinecraftClient.getInstance().currentScreen instanceof GambleScreen s ? s : null; }
+
+    public GameView view(String id) { return views.computeIfAbsent(id, k -> Views.create(k, this)); }
 
     private static String[] pickGreeting() {
         int h = LocalTime.now().getHour();
@@ -62,282 +72,447 @@ public final class GambleScreen extends Screen {
         return i == GREETINGS.length ? timed : GREETINGS[i];
     }
 
-    // ---- pop in / out, as in EzAuction
+    /**
+     * The felt of a game sub-view (prototype BlackjackView.prototype.geom): lx/rx = content edges, hy = the game's header
+     * row (the Recording row's place), fy/fh = the 156 px layout box, ft/fth = the felt itself, by = the bottom button row.
+     */
+    public record Geom(double lx, double rx, double hy, double fy, double fh, double ft, double fth, double by, double cx) {}
 
-    private static final long OPEN_MS = 280, CLOSE_MS = 220;
-    private final long openedAt = System.currentTimeMillis();
-    private long closeAt;
-    private boolean closing;
-
-    private float pop() {
-        long now = System.currentTimeMillis();
-        if (closing) { float f = Math.min(1f, (now - closeAt) / (float) CLOSE_MS); return 1f - f * f; }
-        return Ui.easeOut((now - openedAt) / (float) OPEN_MS);
+    public Geom geom() {
+        double lx = x0 + PAD, rx = x0 + W - PAD;
+        return new Geom(lx, rx, y0 + 56, y0 + 88, 156, y0 + 76, 180, y0 + H - PAD - 24, lx + (int) ((rx - lx) / 2));
     }
 
-    private void beginPop(DrawContext g, float p) {
-        g.getMatrices().pushMatrix();
-        if (p >= 1f) return;
-        float cx = x0 + W / 2f, cy = y0 + H / 2f, sc = 0.7f + 0.3f * p;
-        g.getMatrices().translate(cx, cy);
-        g.getMatrices().scale(sc, sc);
-        g.getMatrices().translate(-cx, -cy);
+    // ---- pop
+
+    public double pop() {
+        long t = P.now();
+        if (closing) { double f = Math.min(1, (t - closeAt) / 220.0); return 1 - f * f; }
+        return P.easeOut((t - openedAt) / 280.0);
+    }
+
+    private void beginPop(G g, double p) {
+        g.push();
+        if (p >= 1) return;
+        double cx = x0 + W / 2.0, cy = y0 + H / 2.0, sc = 0.7 + 0.3 * p;
+        g.translate(cx, cy); g.scale(sc, sc); g.translate(-cx, -cy);
     }
 
     // ---- layout
 
     @Override
-    protected void init() {
-        x0 = (this.width - W) / 2;
-        y0 = (this.height - H) / 2;
-        int lx = x0 + PAD, rx = x0 + W - PAD;
+    protected void init2() {
+        x0 = (int) ((SW - W) / 2); y0 = (int) ((SH - H) / 2);
+        double lx = x0 + PAD, rx = x0 + W - PAD;
         builtMode = GambleData.mode;
-        if (welcome) {   // name field + Continue, centred; nothing else until it is answered
-            int fw = 150, fx = x0 + (W - fw) / 2;
-            String prev = nameField != null ? nameField.text() : MinecraftClient.getInstance().getSession().getUsername();
-            nameField = new GlassField(this.textRenderer, fx, y0 + 150, fw, 22, prev, 24);
-            addDrawableChild(nameField.field);
-            setInitialFocus(nameField.field);
-            addDrawableChild(new GlassButton(fx, y0 + 182, fw, 22, "Continue", GlassButton.Kind.PRIMARY, this::submitName));
+        if (welcome) {
+            double fw = 150, fx = x0 + (W - fw) / 2;
+            if (nameField == null) nameField = new GlassField(0, 0, fw, 22, MinecraftClient.getInstance().getSession().getUsername(), "Your name");
+            nameField.x = fx; nameField.y = y0 + 150;
+            add(nameField);
+            add(new GlassButton(fx, y0 + 182, fw, 22, "Continue", "PRIMARY", this::submitName));
             return;
         }
-        addDrawableChild(new GlassSwitch(rx - 28, y0 + PAD - 3, 28, 14, () -> GambleData.mode, GambleData::setMode));
-        GlassSegmented tabs = seg("tabs", new String[][]{{"dashboard", "Dashboard"}, {"transactions", "History"}, {"games", "Games"}, {"hud", "HUD"}},
-                () -> tab, id -> {
-                    if (id.equals("dashboard")) greeting = pickGreeting();
-                    titleAt = chartAt = System.currentTimeMillis();
-                    tab = id;
-                    rebuild();
-                });
-        tabs.place(lx, y0 + 33);
-        addDrawableChild(tabs);
-        if (tab.equals("dashboard")) {
-            GlassSegmented r = seg("range", new String[][]{{"session", "Session"}, {"1h", "1h"}, {"24h", "24h"}, {"all", "All"}},
-                    () -> range, v -> { range = v; chartAt = System.currentTimeMillis(); });
-            r.place(rx - r.getWidth(), y0 + 33);
-            addDrawableChild(r);
-        }
-        if (!GambleData.mode && !tab.equals("games"))
-            addDrawableChild(new GlassButton(rx - 54, y0 + 58, 52, 14, "Turn on", GlassButton.Kind.PRIMARY, () -> GambleData.setMode(true)));
+        add(new GlassSwitch(rx - 28, y0 + PAD - 3, 28, 14, () -> GambleData.mode, GambleData::setMode));
         if (Updater.state() == Updater.State.AVAILABLE) {
             String label = "Update " + Updater.latest();
-            int w = this.textRenderer.getWidth(label) + 16, lw = this.textRenderer.getWidth("Gambling mode");
-            addDrawableChild(new GlassButton(rx - 28 - 6 - lw - 8 - w, y0 + PAD - 4, w, 16, label, GlassButton.Kind.PRIMARY,
-                    () -> { Updater.download(); rebuild(); }));
+            double w = F.width(label) + 16, lw = F.width("Gambling mode");
+            add(new GlassButton(rx - 28 - 6 - lw - 8 - w, y0 + PAD - 4, w, 16, label, "PRIMARY", () -> { Updater.download(); rebuild(); }));
         }
+        GlassSegmented tabs = seg("tabs", new String[][]{{"dashboard", "Dashboard"}, {"transactions", "History"}, {"games", "Games"}, {"hud", "HUD"}}, () -> tab, id -> {
+            leaveSub();
+            sub = null;
+            if (!id.equals(tab)) { if (id.equals("dashboard")) greeting = pickGreeting(); titleAt = P.now(); }
+            tab = id; chartAt = P.now(); rebuild();
+        });
+        tabs.place(lx, y0 + 33);
+        add(tabs);
+        if (tab.equals("dashboard")) rightGroup(new String[][]{{"session", "Session"}, {"1h", "1h"}, {"24h", "24h"}, {"all", "All"}}, () -> range, v -> { range = v; chartAt = P.now(); });
+        if (tab.equals("transactions")) rightGroup(new String[][]{{"all", "All"}, {"wins", "Wins"}, {"losses", "Losses"}}, () -> filter, v -> { filter = v; chartAt = P.now(); });
+        if (!GambleData.mode && !(tab.equals("games") && sub != null && GAME_SUBS.contains(sub)))
+            add(new GlassButton(rx - 54, y0 + 58, 52, 14, "Turn on", "PRIMARY", () -> GambleData.setMode(true)));
+        if (tab.equals("games") && sub == null) {
+            cardBtn = add(new Widget(lx, y0 + 80, rx - lx, 64) { @Override public void click(double mx, double my) { P.play("click"); sub = "chips"; rebuild(); } });
+            double[] gc = gamesClip();
+            Widget.Clip clip = new Widget.Clip(gc[0], gc[1], gc[2], gc[3]);
+            for (double[] tl : gameTilesRects()) {
+                String s = GAME_IDS[(int) tl[4]];
+                Widget w = add(new Widget(tl[0], tl[1], tl[2], tl[3]) { @Override public void click(double mx, double my) { P.play("click"); sub = s; rebuild(); } });
+                w.list = new Widget.ListPos("games", tl[1]); w.clip = clip;
+            }
+        }
+        if (tab.equals("games") && (sub == null || sub.equals("duels"))) {
+            int n = dev.ryaan.ezgamble.duel.Duel.pendingCount();
+            String lbl = n > 0 ? "Requests " + n : "Requests";
+            double bw = F.width(lbl) + 16;
+            add(new GlassButton(rx - bw, y0 + 34, bw, 16, lbl, n > 0 && !"duels".equals(sub) ? "PRIMARY" : "GHOST", () -> { sub = "duels".equals(sub) ? null : "duels"; rebuild(); }));
+        }
+        if (tab.equals("games") && sub != null) view(sub).init();
+        if (tab.equals("hud")) dev.ryaan.ezgamble.hud.HudTab.init(this);
     }
 
-    /** Segmented controls survive rebuilds so their pill keeps sliding instead of jumping. */
     private GlassSegmented seg(String key, String[][] items, java.util.function.Supplier<String> get, java.util.function.Consumer<String> set) {
-        return segs.computeIfAbsent(key, k -> new GlassSegmented(18, items, get, set));
+        return segs.computeIfAbsent(key, k -> new GlassSegmented(0, 0, 18, items, get, set));
     }
 
-    private void rebuild() { clearChildren(); init(); }
+    private void rightGroup(String[][] items, java.util.function.Supplier<String> get, java.util.function.Consumer<String> set) {
+        GlassSegmented s = seg("right-" + tab, items, get, set);
+        s.place(x0 + W - PAD - s.w, y0 + 33);
+        add(s);
+    }
 
-    private void submitName() {
-        String n = nameField.text().trim();
+    /** Leaving the current game sub-view: settle it (‹, tab change, close). */
+    public void leaveSub() { if (sub != null && tab.equals("games")) view(sub).leave(); }
+
+    /** ‹ from a sub-view. */
+    public void back() { leaveSub(); sub = null; rebuild(); }
+
+    public void submitName() {
+        String n = nameField.value.trim();
         GambleData.setName(n.isEmpty() ? MinecraftClient.getInstance().getSession().getUsername() : n);
-        welcome = false;
-        greeting = pickGreeting();
-        titleAt = System.currentTimeMillis();
-        MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.ui(EzGambleMod.PAY, 1.1f, 0.8f));
+        welcome = false; greeting = pickGreeting(); titleAt = P.now();
+        P.play("pay", 1.1);
         rebuild();
     }
 
     @Override
     public void tick() {
+        if (lastSub != null && !lastSub.equals(sub) && views.containsKey(lastSub)) views.get(lastSub).leave();
+        lastSub = sub;
+        if (tab.equals("games") && sub != null) { view(sub).tick(); }
         if (builtMode != GambleData.mode) rebuild();
         if (Updater.state() != shownUpdate) { shownUpdate = Updater.state(); rebuild(); }
+        if (duelVer != dev.ryaan.ezgamble.duel.Duel.ver()) { duelVer = dev.ryaan.ezgamble.duel.Duel.ver(); if (tab.equals("games") && (sub == null || sub.equals("duels"))) rebuild(); }
     }
-
-    @Override
-    public boolean keyPressed(KeyInput input) {
-        if (welcome && (input.key() == 257 || input.key() == 335)) { submitName(); return true; }   // Enter
-        return super.keyPressed(input);
-    }
+    private int duelVer = -1;
 
     // ---- drawing
 
     @Override
-    public void renderBackground(DrawContext g, int mouseX, int mouseY, float delta) {
+    protected void renderBg(G g, double mx, double my) {
         long t0 = System.nanoTime();
-        renderBackgroundInner(g, mouseX, mouseY, delta);
-        if (dev.ryaan.ezgamble.DebugRun.ON) dev.ryaan.ezgamble.DebugRun.renderNanos += System.nanoTime() - t0;
-    }
-
-    private void renderBackgroundInner(DrawContext g, int mouseX, int mouseY, float delta) {
-        float p = pop();
-        if (this.client != null && this.client.world != null) {
-            g.applyBlur();   // the frosted backdrop (vanilla menu blur), then a light veil: the glass does the separating
-            g.fill(0, 0, this.width, this.height, ((int) (0x55 * p) << 24) | 0x0A0710);
-        } else super.renderBackground(g, mouseX, mouseY, delta);
+        double p = pop();
+        if (client != null && client.world != null) {
+            g.d.applyBlur();
+            g.fill(0, 0, SW, SH, ((int) (0x55 * p) << 24) | 0x0A0710);
+        }
         beginPop(g, p);
-        Liquid.glass(g, x0, y0, W, H, 12, 0.84f, 1f);
+        P.glass(g, x0, y0, W, H, 12, 0.84, 1);
         renderTitle(g);
-        if (!welcome) {
-            String lbl = "Gambling mode";
-            g.drawText(this.textRenderer, lbl, x0 + W - PAD - 28 - 6 - this.textRenderer.getWidth(lbl), y0 + PAD, GambleData.mode ? Glass.TEXT : Glass.MUTE, false);
-        } else nameField.drawBox(g);
-        g.getMatrices().popMatrix();
+        String lbl = "Gambling mode";
+        if (!welcome) g.drawText(lbl, x0 + W - PAD - 28 - 6 - F.width(lbl), y0 + PAD, GambleData.mode ? P.TEXT : P.MUTE, false);
+        g.pop();
+        if (DebugRun.ON) DebugRun.renderNanos += System.nanoTime() - t0;
     }
 
-    /** "Welcome back, Ryan" on the Dashboard, the EZ GAMBLE wordmark elsewhere; fades and rises in on each change. */
-    private void renderTitle(DrawContext g) {
-        int x = x0 + PAD;
-        float f = Ui.easeOut((System.currentTimeMillis() - titleAt) / 260f);
-        int y = y0 + PAD + Math.round((1 - f) * 4);
-        float a = Math.max(0.02f, f);
+    private void renderTitle(G g) {
+        double x = x0 + PAD, f = P.easeOut((P.now() - titleAt) / 260.0), y = y0 + PAD + Math.round((1 - f) * 4), a = Math.max(0.02, f);
         if (GambleData.name != null && !welcome && tab.equals("dashboard")) {
             String pre = greeting[0], suf = greeting[1], name = GambleData.name;
-            g.drawText(this.textRenderer, pre, x, y, Glass.alpha(Glass.WHITE, a), true);
-            Ui.gradientText(g, name, x + this.textRenderer.getWidth(pre), y, true, a);
-            if (!suf.isEmpty()) g.drawText(this.textRenderer, suf, x + this.textRenderer.getWidth(pre + name), y, Glass.alpha(Glass.WHITE, a), true);
+            g.drawText(pre, x, y, P.alpha(P.WHITE, a), true);
+            P.gradientText(g, name, x + F.width(pre), y, true, a);
+            if (!suf.isEmpty()) g.drawText(suf, x + F.width(pre) + F.width(name), y, P.alpha(P.WHITE, a), true);
             return;
         }
-        Ui.gradientText(g, "EZ GAMBLE", x, y, true, a);
-        g.drawText(this.textRenderer, "by ZKR5", x + this.textRenderer.getWidth("EZ GAMBLE") + 8, y + 1, Glass.alpha(Glass.MUTE, a), false);
+        P.gradientText(g, "EZ GAMBLE", x, y, true, a);
+        g.drawText("by ZKR5", x + F.width("EZ GAMBLE") + 8, y + 1, P.alpha(P.MUTE, a), false);
     }
 
-    /** Smoke test hooks (DebugRun). */
-    public static void debug(String cmd, String arg) {
-        if (cmd.equals("tab")) tab = arg;
-        if (cmd.equals("range")) range = arg;
-        if (MinecraftClient.getInstance().currentScreen instanceof GambleScreen s) { s.chartAt = 0; s.rebuild(); }
+    private void renderWelcome(G g) {
+        double cx = x0 + W / 2.0;
+        String t1 = "Welcome to EzGamble";
+        g.push(); g.translate(cx - F.width(t1), y0 + 72); g.scale(2, 2); P.gradientText(g, t1, 0, 0, true); g.pop();
+        String q = "What should we call you?", h = "Shown at the top of your dashboard.";
+        g.drawText(q, cx - (F.width(q) >> 1), y0 + 120, P.WHITE, true);
+        g.drawText(h, cx - (F.width(h) >> 1), y0 + 133, P.MUTE, false);
     }
 
     @Override
-    public void render(DrawContext g, int mouseX, int mouseY, float delta) {
+    protected void renderFg(G g, double mx, double my) {
         long t0 = System.nanoTime();
-        if (dev.ryaan.ezgamble.DebugRun.mx >= 0) { mouseX = dev.ryaan.ezgamble.DebugRun.mx; mouseY = dev.ryaan.ezgamble.DebugRun.my; }
-        renderInner(g, mouseX, mouseY, delta);
-        if (dev.ryaan.ezgamble.DebugRun.ON) { dev.ryaan.ezgamble.DebugRun.renderNanos += System.nanoTime() - t0; dev.ryaan.ezgamble.DebugRun.renderFrames++; }
-    }
-
-    private void renderInner(DrawContext g, int mouseX, int mouseY, float delta) {
-        if (closing && System.currentTimeMillis() - closeAt >= CLOSE_MS) { closeNow(); return; }
+        if (closing && P.now() - closeAt >= 220) { closeNow(); return; }
         beginPop(g, pop());
-        try {
-            if (welcome) { renderWelcome(g); super.render(g, mouseX, mouseY, delta); return; }
-            if (!tab.equals("games")) renderStatus(g);
-            super.render(g, mouseX, mouseY, delta);
-            switch (tab) {
-                case "dashboard" -> renderDashboard(g, mouseX, mouseY);
-                case "games" -> renderGames(g, mouseX, mouseY);
-                default -> g.drawText(this.textRenderer, "Coming in the next update.", x0 + PAD, y0 + 84, Glass.MUTE, false);
-            }
+        if (welcome) { renderChildren(g, mx, my); renderWelcome(g); g.pop(); return; }
+        boolean game = tab.equals("games") && sub != null && GAME_SUBS.contains(sub);
+        if (!game) renderStatus(g);
+        listHit = null;
+        layoutListWidgets();
+        if (game) {
+            view(sub).render(g, mx, my);
+            renderChildren(g, mx, my);
+            g.pop();
+            dev.ryaan.ezgamble.duel.TableChat.render(g, this, pop());
             renderUpdateStatus(g);
-        } finally {
-            g.getMatrices().popMatrix();
-        }
-    }
-
-    private void renderWelcome(DrawContext g) {
-        int cx = x0 + W / 2;
-        String t1 = "Welcome to EzGamble";
-        g.getMatrices().pushMatrix();
-        g.getMatrices().translate(cx - this.textRenderer.getWidth(t1), y0 + 72);
-        g.getMatrices().scale(2, 2);
-        Ui.gradientText(g, t1, 0, 0, true, 1);
-        g.getMatrices().popMatrix();
-        String q = "What should we call you?", h = "Shown at the top of your dashboard.";
-        g.drawText(this.textRenderer, q, cx - this.textRenderer.getWidth(q) / 2, y0 + 120, Glass.WHITE, true);
-        g.drawText(this.textRenderer, h, cx - this.textRenderer.getWidth(h) / 2, y0 + 133, Glass.MUTE, false);
-    }
-
-    /** y0+56..74: the recording line, or the red OFF banner. */
-    private void renderStatus(DrawContext g) {
-        int lx = x0 + PAD, rx = x0 + W - PAD, y = y0 + 56;
-        if (!GambleData.mode) {
-            Ui.card(g, lx, y, rx - lx, 18, "red");
-            g.drawText(this.textRenderer, "✖", lx + 6, y + 5, Glass.RED, false);
-            g.drawText(this.textRenderer, "Gambling mode is off", lx + 18, y + 5, Glass.RED, false);
+            if (DebugRun.ON) { DebugRun.renderNanos += System.nanoTime() - t0; DebugRun.renderFrames++; }
             return;
         }
-        Session s = GambleData.current();
-        long now = System.currentTimeMillis();
-        Glass.dot(g, lx, y + 6, Glass.alpha(Glass.GREEN, 0.55f + 0.45f * Ui.pulse(now)));
-        g.drawText(this.textRenderer, "Recording", lx + 10, y + 6, Glass.WHITE, false);
-        if (s != null) Ui.pillsRight(g, rx, y + 2, new Object[][]{{"Session", Ui.clock(now - s.start)}, {"Bets", String.valueOf(s.txns.size())}});
-    }
-
-    private void renderDashboard(DrawContext g, int mx, int my) {
-        int lx = x0 + PAD, rx = x0 + W - PAD;
-        long td = System.nanoTime();
-        List<Txn> list = GambleData.inRange(range);
-        Stats st = Stats.of(list);
-        if (dev.ryaan.ezgamble.DebugRun.ON) dev.ryaan.ezgamble.DebugRun.dataNanos += System.nanoTime() - td;
-        int half = (rx - lx) / 2, third = (rx - lx) / 3;
-        // hero: profit in big digits, volume and count beside it
-        int y = y0 + 80;
-        Ui.card(g, lx, y, rx - lx, 46, "accent");
-        g.drawText(this.textRenderer, "Profit", lx + 10, y + 8, Glass.MUTE, false);
-        g.getMatrices().pushMatrix();
-        g.getMatrices().translate(lx + 10, y + 20);
-        g.getMatrices().scale(2, 2);
-        g.drawText(this.textRenderer, Money.signed(st.profit()), 0, 0, st.profit() >= 0 ? Glass.GREEN : Glass.RED, true);
-        g.getMatrices().popMatrix();
-        int q = (rx - lx - half) / 2;
-        Ui.tile(g, lx + half + 8, y + 8, "Volume", Money.format(st.volume()), Glass.WHITE);
-        Ui.tile(g, lx + half + 8 + q, y + 8, "Transactions", String.valueOf(st.n()), Glass.WHITE);
-        y += 50;
-        Ui.card(g, lx, y, rx - lx, 34, "soft");
-        Ui.tile(g, lx + 10, y + 6, "Win rate", st.n() > 0 ? Math.round(st.rate() * 100) + "%" : "-", st.n() > 0 ? Glass.WHITE : Glass.DIM);
-        Ui.tile(g, lx + 10 + third, y + 6, "Best win", st.best() == null ? "-" : Money.signed(st.best()), st.best() == null ? Glass.DIM : Glass.GREEN);
-        Ui.tile(g, lx + 10 + 2 * third, y + 6, "Worst loss", st.worst() == null ? "-" : Money.signed(st.worst()), st.worst() == null ? Glass.DIM : Glass.RED);
-        int cy = y + 40, ch = y0 + H - PAD - cy;
-        Ui.card(g, lx, cy, rx - lx, ch, "chart");
-        if (list.isEmpty()) { g.drawText(this.textRenderer, "No transaction yet.", lx + 8, cy + ch / 2 - 4, Glass.DIM, false); return; }
-        float reveal = Ui.easeOut((System.currentTimeMillis() - chartAt) / 600f);
-        long[] deltas = new long[list.size()];
-        for (int i = 0; i < deltas.length; i++) deltas[i] = list.get(i).delta();
-        long tc = System.nanoTime();
-        ProfitChart.Result r = ProfitChart.draw(g, deltas, lx, cy, rx - lx, ch, mx, my, false, 0, true, reveal);
-        if (dev.ryaan.ezgamble.DebugRun.ON) dev.ryaan.ezgamble.DebugRun.chartNanos += System.nanoTime() - tc;
-        if (r.hover() > 0) {
-            Txn t = list.get(r.hover() - 1);
-            ProfitChart.tooltip(g, t.game(), Money.signed(t.delta()), t.delta() >= 0 ? Glass.GREEN : Glass.RED, r.px()[r.hover()], cy, lx, rx,
-                    Ui.dateS(t.t()), t.bet() != null ? "Bet " + Money.format(t.bet()) : "");
+        if (tab.equals("games") && sub != null) {   // chips, player, auction, duels: drawn under their widgets like the prototype
+            renderChildren(g, mx, my);
+            view(sub).render(g, mx, my);
+        } else {
+            renderChildren(g, mx, my);
+            switch (tab) {
+                case "dashboard" -> renderDashboard(g, mx, my);
+                case "transactions" -> renderTransactions(g);
+                case "hud" -> dev.ryaan.ezgamble.hud.HudTab.render(this, g);
+                case "games" -> renderGames(g, mx, my);
+                default -> {}
+            }
         }
+        g.pop();
+        renderUpdateStatus(g);
+        if (DebugRun.ON) { DebugRun.renderNanos += System.nanoTime() - t0; DebugRun.renderFrames++; }
     }
 
-    /** 4 x 2 grid of tiles: icon, name, a "›" on hover. */
-    private void renderGames(DrawContext g, int mx, int my) {
-        int cols = 4, gap = 8, tw = (W - 2 * PAD - gap * (cols - 1)) / cols, th = 64, top = y0 + 62;
-        for (int i = 0; i < GAMES.length; i++) {
-            int x = x0 + PAD + (i % cols) * (tw + gap), y = top + (i / cols) * (th + gap);
-            boolean hover = mx >= x && mx < x + tw && my >= y && my < y + th;
-            Liquid.smooth(g, x, y, tw, th, 7, hover ? 0x18FFFFFF : 0x0DFFFFFF, hover ? Glass.alpha(Glass.PINK, 0.6f) : 0x14FFFFFF);
-            Identifier icon = Identifier.of("ezgamble", "textures/gui/games/" + GAMES[i][0] + ".png");
-            g.drawTexture(RenderPipelines.GUI_TEXTURED, icon, x + (tw - 32) / 2, y + 8, 0, 0, 32, 32, 32, 32);
-            String name = GAMES[i][1];
-            g.drawText(this.textRenderer, name, x + (tw - this.textRenderer.getWidth(name)) / 2, y + 46, Glass.WHITE, false);
-            if (hover) g.drawText(this.textRenderer, "›", x + tw - 10, y + 46, Glass.PINK, false);
-        }
-    }
-
-    private void renderUpdateStatus(DrawContext g) {
+    private void renderUpdateStatus(G g) {
         String t = switch (Updater.state()) {
             case DOWNLOADING -> "Downloading " + Updater.latest() + "...";
             case READY -> "Restart Minecraft to finish the update";
             default -> "";
         };
-        if (t.isEmpty()) return;
-        g.drawText(this.textRenderer, t, x0 + (W - this.textRenderer.getWidth(t)) / 2, y0 + H + 6,
-                Updater.state() == Updater.State.READY ? Glass.GREEN : Glass.MUTE, true);
+        if (!t.isEmpty()) g.drawText(t, x0 + (W - F.width(t)) / 2.0, y0 + H + 6, Updater.state() == Updater.State.READY ? P.GREEN : P.MUTE, true);
+    }
+
+    /** y0+56..74: recording line, or the red OFF banner. */
+    private void renderStatus(G g) {
+        double lx = x0 + PAD, rx = x0 + W - PAD, y = y0 + 56;
+        if (!GambleData.mode) {
+            P.card(g, lx, y, rx - lx, 18, "red");
+            g.drawText("✖", lx + 6, y + 5, P.RED, false);
+            g.drawText("Gambling mode is off", lx + 18, y + 5, P.RED, false);
+            return;
+        }
+        Session s = GambleData.current();
+        P.dot(g, lx, y + 6, P.alpha(P.GREEN, 0.55 + 0.45 * P.pulse(P.now())));
+        g.drawText("Recording", lx + 10, y + 6, P.WHITE, false);
+        if (s != null) P.pillsRight(g, rx, y + 2, new Object[][]{{"Session", P.clock(P.now() - s.start)}, {"Bets", String.valueOf(s.txns.size())}});
+    }
+
+    private void renderDashboard(G g, double mx, double my) {
+        double lx = x0 + PAD, rx = x0 + W - PAD;
+        List<Txn> list = GambleData.inRange(range);
+        Stats st = Stats.of(list);
+        double half = (int) ((rx - lx) / 2), third = (int) ((rx - lx) / 3);
+        double y = y0 + 80;
+        P.card(g, lx, y, rx - lx, 46, "accent");
+        g.drawText("Profit", lx + 10, y + 8, P.MUTE, false);
+        g.push(); g.translate(lx + 10, y + 20); g.scale(2, 2);
+        g.drawText(Money.signed(st.profit()), 0, 0, st.profit() >= 0 ? P.GREEN : P.RED, true);
+        g.pop();
+        double q = (int) ((rx - lx - half) / 2);
+        P.tile(g, lx + half + 8, y + 8, "Volume", Money.format(st.volume()), P.WHITE);
+        P.tile(g, lx + half + 8 + q, y + 8, "Transactions", String.valueOf(st.n()), P.WHITE);
+        y += 50;
+        P.card(g, lx, y, rx - lx, 34, "soft");
+        P.tile(g, lx + 10, y + 6, "Win rate", st.n() > 0 ? Math.round(st.rate() * 100) + "%" : "-", st.n() > 0 ? P.WHITE : P.DIM);
+        P.tile(g, lx + 10 + third, y + 6, "Best win", st.best() == null ? "-" : Money.signed(st.best()), st.best() == null ? P.DIM : P.GREEN);
+        P.tile(g, lx + 10 + 2 * third, y + 6, "Worst loss", st.worst() == null ? "-" : Money.signed(st.worst()), st.worst() == null ? P.DIM : P.RED);
+        double cy = y + 40, ch = y0 + H - PAD - cy;
+        P.card(g, lx, cy, rx - lx, ch, "chart");
+        if (list.isEmpty()) { g.drawText("No transaction yet.", lx + 8, cy + (int) (ch / 2) - 4, P.DIM, false); return; }
+        float reveal = (float) P.easeOut((P.now() - chartAt) / 600.0);
+        long[] deltas = new long[list.size()];
+        for (int i = 0; i < deltas.length; i++) deltas[i] = list.get(i).delta();
+        ProfitChart.Result r = ProfitChart.draw(g.d, deltas, (int) lx, (int) cy, (int) (rx - lx), (int) ch, (int) mx, (int) my, false, 0, true, reveal);
+        if (r.hover() > 0) {
+            Txn t = list.get(r.hover() - 1);
+            ProfitChart.tooltip(g.d, t.game(), Money.signed(t.delta()), t.delta() >= 0 ? P.GREEN : P.RED, r.px()[r.hover()], (int) cy, (int) lx, (int) rx,
+                    P.DATE_S(t.t()), t.bet() != null ? "Bet " + Money.format(t.bet()) : "");
+        }
+    }
+
+    /** Running all-time total, then the filter, newest first. */
+    private List<Txn> filtered() {
+        List<Txn> all = GambleData.all(), out = new ArrayList<>();
+        for (int i = all.size() - 1; i >= 0; i--) {
+            Txn t = all.get(i);
+            if (filter.equals("all") || (filter.equals("wins") ? t.delta() > 0 : t.delta() < 0)) out.add(t);
+        }
+        return out;
+    }
+
+    private void renderTransactions(G g) {
+        double lx = x0 + PAD, rx = x0 + W - PAD;
+        List<Txn> rows = filtered();
+        double top = y0 + 80, lh = y0 + H - PAD - 18 - top;
+        String id = "hist-" + filter;
+        if (rows.isEmpty()) g.drawText("No transaction yet.", lx, top + 4, P.DIM, false);
+        double off = beginList(g, id, lx, top, rx - lx, lh, rows.size() * 30 - 3);
+        int first = (int) Math.max(0, Math.floor(off / 30));
+        double y = top + first * 30 - off;
+        for (int i = first; i < Math.min(rows.size(), first + (int) Math.ceil(lh / 30) + 1); i++) {
+            Txn t = rows.get(i);
+            P.card(g, lx, y, rx - lx, 27, "row");
+            Icons.drawGameIcon(g, t.game(), lx + 4, y + 5, 16);
+            g.drawText(t.game(), lx + 26, y + 4, P.WHITE, false);
+            if (t.player() != null) {
+                double px = lx + 26 + F.width(t.game()) + 8;
+                g.drawHead(t.player(), px, y + 4, 8); g.drawText(F.trimToWidth(t.player(), 70), px + 11, y + 4, P.MUTE, false);
+            }
+            String d = P.DATE_S(t.t());
+            g.drawText(d, rx - 6 - F.width(d), y + 4, P.DIM, false);
+            if (t.bet() != null) g.drawText("Bet " + Money.format(t.bet()), lx + 26, y + 15, P.MUTE, false);
+            String right = Money.signed(t.delta());
+            g.drawText(right, rx - 6 - F.width(right), y + 15, t.delta() >= 0 ? P.GREEN : P.RED, false);
+            y += 30;
+        }
+        endList(g, id, rows.size() * 30 - 3);
+        Stats st = Stats.of(rows);
+        double fy = y0 + H - PAD - 10;
+        P.pill(g, lx, fy - 4, "Wins", String.valueOf(st.wins()), P.GREEN);
+        P.pill(g, lx + P.pillW("Wins", String.valueOf(st.wins())) + 4, fy - 4, "Losses", String.valueOf(st.losses()), P.RED);
+    }
+
+    // ---- Games tab
+
+    private static final String[][] GAMES = {
+            {"Blackjack", "Hit or stand", "game/blackjack"}, {"Auction", "Highest bid", "game/auction"}, {"Mines", "Avoid bombs", "game/mines"},
+            {"Crates", "Open crates", "game/crates"}, {"Roulette", "Red, black", "game/roulette"}, {"Crash", "Cash out", "game/crash"}, {"Coinflip", "Heads, tails", "game/coinflip"}};
+    private static final String[] GAME_IDS = {"blackjack", "auction", "mines", "crates", "roulette", "crash", "coinflip"};
+
+    public double[] gamesClip() { double top = y0 + 152; return new double[]{x0 + PAD, top, W - 2 * PAD, y0 + H - PAD - top}; }
+
+    /** x, y, w, h, index. */
+    private List<double[]> gameTilesRects() {
+        double lx = x0 + PAD, rx = x0 + W - PAD, tw = (int) ((rx - lx - 12) / 3), th = 52, y = gamesClip()[1];
+        List<double[]> out = new ArrayList<>();
+        for (int i = 0; i < GAMES.length; i++) out.add(new double[]{lx + (i % 3) * (tw + 6), y + Math.floor(i / 3.0) * (th + 6), tw, th, i});
+        return out;
+    }
+
+    /** The session credit as chips (who backed the gambler), then the game tiles. */
+    private void renderGames(G g, double mx, double my) {
+        double lx = x0 + PAD, rx = x0 + W - PAD, y = y0 + 80;
+        boolean hov = mx >= lx && mx < rx && my >= y && my < y + 64;
+        long t = P.now();
+        cardK = cardK + ((hov ? 1 : 0) - cardK) * Math.min(1, (t - (cardT == 0 ? t : cardT)) / 90.0);
+        cardT = t;
+        double ck = P.easeOut(Math.max(0, Math.min(1, cardK))), cxm = (lx + rx) / 2, cym = y + 32;
+        g.push();
+        double csc = cardBtn != null && cardBtn.down && hov ? 0.985 : 1 + 0.012 * ck;
+        g.translate(cxm, cym); g.scale(csc, csc); g.translate(-cxm, -cym);
+        P.card(g, lx, y, rx - lx, 64, "accent");
+        P.hoverSheen(g, lx, y, rx - lx, 64, 7, ck);
+        List<Payouts.Row> held = Payouts.rows().stream().filter(r -> r.bal() > 0).toList();
+        long total = held.stream().mapToLong(Payouts.Row::bal).sum();
+        var cb = Chips.chipsFor(total);
+        int nStacks = Math.min(4, cb.stacks().size());
+        for (int i = 0; i < nStacks; i++) {
+            var stk = cb.stacks().get(i);
+            double sx = lx + 20 + i * 28;
+            double bob = Payments.cur != null && P.now() - Payments.cur.at() < 400 ? Math.round(Math.sin((P.now() - Payments.cur.at()) / 40.0)) : 0;
+            Chips.chipStack(g, sx, y + 50 + bob, 12, stk.chip(), stk.n());
+            String lbl = "×" + stk.n();
+            g.drawText(lbl, sx - (F.width(lbl) >> 1), y + 53, P.DIM, false);
+        }
+        if (nStacks == 0) Chips.chipStack(g, lx + 20, y + 50, 12, Chips.GHOST, 1);
+        double tx = lx + 20 + Math.max(1, nStacks) * 28 - 4;
+        g.drawText("Credit", tx, y + 8, P.MUTE, false);
+        g.push(); g.translate(tx, y + 20); g.scale(2, 2); P.gradientText(g, Money.format(total), 0, 0, true); g.pop();
+        int players = held.size();
+        String me = MinecraftClient.getInstance().getSession().getUsername();
+        g.drawText(!GambleData.mode && total == 0 ? "Counted while gambling mode is on" : total > 0 ? "From " + players + " player" + (players == 1 ? "" : "s") : "Send /pay " + me + " to back the session",
+                tx, y + 44, P.DIM, false);
+        // backers: the biggest three
+        double bx = rx - 112;
+        for (int i = 0; i < Math.min(3, held.size()); i++) {
+            Payouts.Row r = held.get(i);
+            double by = y + 8 + i * 13;
+            g.drawHead(r.name(), bx, by, 8);
+            g.drawText(F.trimToWidth(r.name(), 52), bx + 11, by, P.TEXT, false);
+            String vs = Money.format(r.bal());
+            g.drawText(vs, rx - 8 - F.width(vs), by, P.GREEN, false);
+        }
+        g.pop();
+        // tiles, 3 per row, the grid scrolls
+        double[] gc = gamesClip();
+        List<double[]> tiles = gameTilesRects();
+        double gh = tiles.isEmpty() ? 0 : tiles.get(tiles.size() - 1)[1] + tiles.get(0)[3] - gc[1];
+        double goff = beginList(g, "games", gc[0], gc[1], gc[2], gc[3], gh);
+        boolean inGrid = my >= gc[1] && my < gc[1] + gc[3];
+        for (double[] tl : tiles) {
+            String[] gm = GAMES[(int) tl[4]];
+            double tx2 = tl[0], tw = tl[2], th = tl[3], ty = tl[1] - goff;
+            if (ty + th < gc[1] || ty > gc[1] + gc[3]) continue;
+            boolean h2 = inGrid && mx >= tx2 && mx < tx2 + tw && my >= ty && my < ty + th;
+            P.smooth(g, tx2, ty, tw, th, 8, h2 ? 0x17FFFFFF : 0x0DFFFFFF, h2 ? 0x80A18CD1 : 0x14FFFFFF);
+            g.drawSprite(gm[2], tx2 + 8, ty + 10, 32, 32);
+            g.drawText(gm[0], tx2 + 46, ty + 16, P.WHITE, true);
+            if (F.width(gm[1]) <= tw - 50) g.drawText(gm[1], tx2 + 46, ty + 28, P.MUTE, false);
+            if (h2) g.drawText("›", tx2 + tw - 10, ty + 22, P.PINK, false);
+        }
+        endList(g, "games", gh);
+    }
+
+    // ---- scrolling lists
+
+    public double beginList(G g, String id, double x, double y, double w, double h, double contentH) {
+        Scroller s = sc(id);
+        s.update(contentH - h);
+        listHit = new double[]{x, y, w, h}; listHitId = id;
+        g.enableScissor(x, y, x + w, y + h);
+        return Math.round(s.pos);
+    }
+
+    public void endList(G g, String id, double contentH) {
+        g.disableScissor();
+        if (listHit != null) sc(id).indicator(g, listHit[0] + listHit[2] - 4, listHit[1] + 2, listHit[3] - 4, contentH);
+    }
+
+    /** Widgets living in a list follow its scroll. */
+    public void layoutListWidgets() {
+        for (Widget c : children) if (c.list != null && c.clip != null) {
+            c.y = c.list.baseY() - Math.round(sc(c.list.id()).pos);
+            c.visible = c.y + c.h > c.clip.y() && c.y < c.clip.y() + c.clip.h();
+        }
     }
 
     @Override
-    public boolean shouldPause() { return false; }
+    public boolean mouseScrolled2(double mx, double my, double dy, double dx) {
+        if (tab.equals("games") && sub != null && view(sub).scrolled(mx, my, dy, dx)) return true;
+        double[] L = listHit;
+        if (L == null || mx < L[0] || mx >= L[0] + L[2] || my < L[1] || my >= L[1] + L[3]) return false;
+        sc(listHitId).wheel(dy);
+        return true;
+    }
+
+    // ---- input
+
+    @Override
+    public void key(Key e) {
+        if (welcome) {
+            if (e.is("Enter")) submitName();
+            else if (e.is("Escape")) close();
+            else nameField.type(e);
+            return;
+        }
+        if (tab.equals("games") && sub != null && view(sub).key(e)) return;
+        if (e.is("Escape") || e.is("k")) close();
+    }
+
+    @Override
+    public boolean mouseDown(double mx, double my, int button) {
+        boolean hit = super.mouseDown(mx, my, button);
+        if (tab.equals("games") && sub != null) view(sub).clicked(hit ? focusedDrag : null);
+        return hit;
+    }
 
     @Override
     public void close() {
         if (closing) return;
-        closing = true;
-        closeAt = System.currentTimeMillis();
-        if (this.client != null) this.client.getSoundManager().play(PositionedSoundInstance.ui(EzGambleMod.CLOSE, 1.0f, 0.8f));
+        leaveSub();
+        closing = true; closeAt = P.now();
+        P.play("close", 0.8);
     }
 
-    private void closeNow() {
-        if (this.client != null) this.client.setScreen(null);
+    private void closeNow() { if (client != null) client.setScreen(null); }
+
+    /** Smoke test hooks (DebugRun). */
+    public static void debug(String cmd, String arg) {
+        if (cmd.equals("tab")) { tab = arg; sub = null; }
+        if (cmd.equals("sub")) { tab = "games"; sub = arg.equals("none") ? null : arg; }
+        if (cmd.equals("range")) range = arg;
+        GambleScreen s = current();
+        if (s != null) { s.chartAt = 0; s.rebuild(); }
     }
 }

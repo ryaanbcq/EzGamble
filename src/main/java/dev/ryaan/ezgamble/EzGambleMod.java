@@ -30,7 +30,9 @@ public final class EzGambleMod implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        OPEN = sound("open"); CLOSE = sound("close"); PAY = sound("pay"); CASH = sound("cash"); FAIL = sound("fail");
+        dev.ryaan.ezgamble.proto.Snd.register();
+        OPEN = dev.ryaan.ezgamble.proto.Snd.event("open"); CLOSE = dev.ryaan.ezgamble.proto.Snd.event("close"); PAY = dev.ryaan.ezgamble.proto.Snd.event("pay");
+        CASH = dev.ryaan.ezgamble.proto.Snd.event("cash"); FAIL = dev.ryaan.ezgamble.proto.Snd.event("fail");
         GambleData.load();
         Updater.check();
         menuKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
@@ -39,10 +41,19 @@ public final class EzGambleMod implements ClientModInitializer {
                 "key.ezgamble.mode", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_G, CATEGORY));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             GambleData.tick();
+            dev.ryaan.ezgamble.data.Payments.tick();
+            dev.ryaan.ezgamble.data.Payouts.tick();
+            dev.ryaan.ezgamble.auction.Auction.tick();
+            dev.ryaan.ezgamble.duel.Duel.tick();
+            dev.ryaan.ezgamble.duel.TableChat.tick();
+            dev.ryaan.ezgamble.games.Ticks.tick();
             DebugRun.tick(client);
             while (menuKey.wasPressed()) if (client.currentScreen == null) client.setScreen(new GambleScreen());
             while (modeKey.wasPressed()) GambleData.setMode(!GambleData.mode);
         });
+        net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents.GAME.register((m, overlay) -> { if (!overlay) onChat(m.getString()); });
+        net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents.CHAT.register((m, signed, sender, params, ts) -> onChat(m.getString()));
+        net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry.addLast(Identifier.of("ezgamble", "hud"), new dev.ryaan.ezgamble.hud.GambleHud());
         // /ezgamble demo [n]: fake bets in the current session, to see the dashboard before the chat detection exists
         ClientCommandRegistrationCallback.EVENT.register((d, reg) -> d.register(ClientCommandManager.literal("ezgamble")
                 .then(ClientCommandManager.literal("demo")
@@ -57,8 +68,18 @@ public final class EzGambleMod implements ClientModInitializer {
         return 1;
     }
 
-    /** Every game chat line (system and player chat), plain text. */
+    /** Every game chat line (system and player chat), plain text: the prototype's serverSays order. */
     public static void onChat(String line) {
+        try {
+            if (dev.ryaan.ezgamble.data.Payouts.onChat(line)) return;
+            if (dev.ryaan.ezgamble.data.Payments.onChat(line)) return;
+            if (dev.ryaan.ezgamble.duel.TableChat.onChat(line)) return;
+            if (dev.ryaan.ezgamble.duel.Duel.onChat(line)) return;
+            var tx = dev.ryaan.ezgamble.data.Detector.detect(line, System.currentTimeMillis());
+            if (tx != null) GambleData.record(tx);
+        } catch (Exception e) {
+            LOG.warn("[ezgamble] chat line failed: {}", e.toString());
+        }
     }
 
     public static void demoBets(int n) {
@@ -73,8 +94,4 @@ public final class EzGambleMod implements ClientModInitializer {
         }
     }
 
-    private static SoundEvent sound(String name) {
-        Identifier id = Identifier.of("ezgamble", name);
-        return Registry.register(Registries.SOUND_EVENT, id, SoundEvent.of(id));
-    }
 }

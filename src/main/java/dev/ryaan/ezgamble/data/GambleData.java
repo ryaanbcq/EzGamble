@@ -48,6 +48,11 @@ public final class GambleData {
                     try {
                         Session s = GSON.fromJson(Files.readString(p), Session.class);
                         if (s.txns == null) s.txns = new ArrayList<>();
+                        if (s.credit == null) s.credit = new java.util.LinkedHashMap<>();
+                        if (s.sent == null) s.sent = new java.util.LinkedHashMap<>();
+                        if (s.won == null) s.won = new java.util.LinkedHashMap<>();
+                        if (s.payments == null) s.payments = new ArrayList<>();
+                        if (s.sends == null) s.sends = new ArrayList<>();
                         s.file = p.getFileName().toString();
                         sessions.add(s);
                     } catch (Exception e) { EzGambleMod.LOG.warn("[ezgamble] unreadable session {}", p); }
@@ -87,6 +92,9 @@ public final class GambleData {
         };
     }
 
+    /** When the last transaction was recorded (the HUD's toast). */
+    public static long lastTxAt;
+
     public static void setMode(boolean on) {
         if (on == mode) return;
         mode = on;
@@ -94,7 +102,7 @@ public final class GambleData {
         else { Session s = current(); if (s != null) { s.end = System.currentTimeMillis(); save(s); } }
         saveConfig();
         MinecraftClient mc = MinecraftClient.getInstance();
-        mc.getSoundManager().play(PositionedSoundInstance.ui(on ? EzGambleMod.OPEN : EzGambleMod.CLOSE, 0.8f, 0.6f));
+        dev.ryaan.ezgamble.proto.Snd.play(on ? "open" : "close", 0.8, 0.6);
         if (mc.inGameHud != null) mc.inGameHud.setOverlayMessage(Text.literal(on ? "Gambling mode ON" : "Gambling mode OFF")
                 .withColor(on ? 0x4BE07A : 0xFF5C5C), false);
     }
@@ -105,15 +113,19 @@ public final class GambleData {
         if (!mode || s == null) return false;
         s.txns.add(tx);
         dirtyAt = System.currentTimeMillis();
-        if (tx.delta() > 0) MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.ui(EzGambleMod.PAY, 1f, 0.35f));
+        lastTxAt = System.currentTimeMillis();
+        if (tx.delta() > 0) dev.ryaan.ezgamble.proto.Snd.play("pay", 1, 0.35);
         return true;
     }
+
+    /** A session changed (credit, chips...): written 2 s later. */
+    public static void touch() { dirtyAt = System.currentTimeMillis(); }
 
     /** Client tick: write the current session 2 s after its last change. */
     public static void tick() {
         if (dirtyAt != 0 && System.currentTimeMillis() - dirtyAt > 2000) {
             dirtyAt = 0;
-            Session s = current();
+            Session s = last();
             if (s != null) save(s);
         }
     }
