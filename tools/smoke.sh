@@ -12,7 +12,9 @@ find "$I/mods" -name 'ezgamble-*.jar' -delete
 cp build/libs/ezgamble-*.jar "$I/mods/"
 find "$I/screenshots" -name 'ezgamble-*.png' -delete 2>/dev/null
 cp "$SCRIPT" "$I/config/ezgamble-debug"
-"$PRISM" --launch EzTest --world "Nouveau monde" --offline EzTest >/dev/null 2>&1 &
+# SMOKE_SERVER=host: join that server with the real ZKR5 account instead of the offline world
+if [ -n "${SMOKE_SERVER:-}" ]; then "$PRISM" --launch EzTest --server "$SMOKE_SERVER" --profile ZKR5 >/dev/null 2>&1 &
+else "$PRISM" --launch EzTest --world "Nouveau monde" --offline EzTest >/dev/null 2>&1 &; fi
 sleep 8
 PID=""
 for i in $(seq 1 $TIMEOUT); do
