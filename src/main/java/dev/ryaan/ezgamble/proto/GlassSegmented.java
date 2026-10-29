@@ -74,7 +74,7 @@ public class GlassSegmented extends Widget {
     public void release(double mx, double my) {
         if (!held) return;
         held = false;
-        qv -= 3.5;   // let go: it springs back taller, then settles
+        qv -= 2.5;   // let go: it springs back taller, then settles
         int i = nearest(mx);   // the segment under (or nearest to) the pointer: a plain click lands where it was clicked
         if (!items[i][0].equals(get.get())) { P.play("click"); set.accept(items[i][0]); }
     }
@@ -121,7 +121,7 @@ public class GlassSegmented extends Widget {
         grow = held ? Math.min(1, grow + dts / 0.12) : Math.max(0, grow - dts / 0.12);
         // jelly: the shape has its own soft, under-damped spring driven by the speed: stretched along the motion and
         // squashed across while it travels, a wobble when it stops; the front swells (lean) like a blob being dragged
-        double want = Math.min(0.6, Math.abs(lv) / 520), jk = 150, jc = 2 * 0.2 * Math.sqrt(jk);
+        double want = Math.min(0.35, Math.abs(lv) / 520), jk = 150, jc = 2 * 0.2 * Math.sqrt(jk);
         for (double left = dts; left > 1e-6; left -= 1 / 240.0) {
             double st = Math.min(1 / 240.0, left);
             qv += (jk * (want - q) - jc * qv) * st;
@@ -160,7 +160,7 @@ public class GlassSegmented extends Widget {
 
     @Override
     public void click(double mx, double my) {
-        if (lensOn() && !Double.isNaN(lx)) { held = true; dragX = mx; qv += 5; return; }   // a press squishes it
+        if (lensOn() && !Double.isNaN(lx)) { held = true; dragX = mx; qv += 3; return; }   // a press squishes it (iOS keeps it nearly round)
         for (int i = 0; i < items.length; i++) {
             double[] s = seg(i);
             if (mx >= s[0] && mx < s[0] + s[1] && !items[i][0].equals(get.get())) { P.play("click"); set.accept(items[i][0]); }

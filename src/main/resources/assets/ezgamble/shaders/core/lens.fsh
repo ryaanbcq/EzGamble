@@ -71,6 +71,9 @@ void main() {
     vec2 G = normalize(vec2(-1.0, 1.0));
     col += (pow(max(dot(n, G), 0.0), 4.0) + pow(max(dot(n, -G), 0.0), 4.0)) * exp(sd / (1.6 * k)) * 0.75 * pressed;
     col += rim1 * 0.10 * pressed;
+    // held: an iridescent rim whose hue turns with the angle around the lens (the iOS rainbow edge)
+    vec3 iri = 0.5 + 0.5 * cos(atan(n.y, n.x) * 2.0 + vec3(0.0, 2.094, 4.189));
+    col += iri * exp(sd / (1.3 * k)) * 0.35 * pressed;
     // straight alpha for the TRANSLUCENT blend: the lens over its own shadow
     float a = aa + sh * (1.0 - aa);
     fragColor = vec4(min(col, vec3(1.0)) * aa / a, a);
