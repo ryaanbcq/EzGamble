@@ -152,7 +152,9 @@ public final class GambleScreen extends ProtoScreen {
     }
 
     private GlassSegmented seg(String key, String[][] items, java.util.function.Supplier<String> get, java.util.function.Consumer<String> set) {
-        return segs.computeIfAbsent(key, k -> new GlassSegmented(0, 0, 18, items, get, set));
+        GlassSegmented s = segs.computeIfAbsent(key, k -> new GlassSegmented(0, 0, 18, items, get, set));
+        s.lens = key.equals("tabs") || key.equals("right-dashboard");   // the Liquid Glass lens: main tabs and the dashboard period
+        return s;
     }
 
     private void rightGroup(String[][] items, java.util.function.Supplier<String> get, java.util.function.Consumer<String> set) {

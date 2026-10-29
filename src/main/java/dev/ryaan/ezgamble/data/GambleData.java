@@ -32,7 +32,8 @@ public final class GambleData {
 
     public static final List<Session> sessions = new ArrayList<>();
     public static boolean mode;
-    public static String name;   // what the mod calls the player (asked on the first opening)
+    public static String name;
+    public static boolean lens = true;   // "Liquid glass": the lens on the tabs and the period selector (off = the sliding pill)   // what the mod calls the player (asked on the first opening)
     private static long dirtyAt;
 
     public static void load() {
@@ -42,6 +43,7 @@ public final class GambleData {
                 JsonObject o = GSON.fromJson(Files.readString(cfg), JsonObject.class);
                 if (o.has("name")) name = o.get("name").getAsString();
                 if (o.has("mode")) mode = o.get("mode").getAsBoolean();
+                if (o.has("lens")) lens = o.get("lens").getAsBoolean();
             }
             if (Files.isDirectory(SESSIONS)) try (var files = Files.list(SESSIONS)) {
                 for (Path p : files.filter(f -> f.toString().endsWith(".json")).toList()) {
@@ -131,6 +133,7 @@ public final class GambleData {
     }
 
     public static void setName(String n) { name = n; saveConfig(); }
+    public static void setLens(boolean on) { lens = on; saveConfig(); }
 
     private static void newSession() {
         Session s = new Session();
@@ -149,6 +152,7 @@ public final class GambleData {
         JsonObject o = new JsonObject();
         if (name != null) o.addProperty("name", name);
         o.addProperty("mode", mode);
+        o.addProperty("lens", lens);
         write(DIR.resolve("config.json"), GSON.toJson(o));
     }
 
