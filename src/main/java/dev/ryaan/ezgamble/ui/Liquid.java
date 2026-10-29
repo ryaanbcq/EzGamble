@@ -85,6 +85,25 @@ public final class Liquid {
     }
 
     /**
+     * A corner of a shape: one quad when the paint is flat over it, otherwise horizontal bands that follow the paint's
+     * vertical gradient (a single colour per corner left lighter squares at the ends of a capsule's sheen).
+     */
+    private static void corner(DrawContext g, net.minecraft.util.Identifier id, int r, int q, int x, int y, Paint p, float op, float X, float Y, float W, float H) {
+        float u = (x + r / 2f - X) / W;
+        int top = mul(p.at(u, (y - Y) / H), op), bot = mul(p.at(u, (y + r - Y) / H), op);
+        if (top == bot) { quarter(g, id, r, q, x, y, top); return; }
+        int n = Math.min(8, Math.max(2, r / 3));
+        for (int i = 0; i < n; i++) {
+            int a = i * r / n, b = (i + 1) * r / n;
+            if (b <= a) continue;
+            int c = mul(p.at(u, (y + (a + b) / 2f - Y) / H), op);
+            if ((c >>> 24) == 0) continue;
+            F.n++;
+            g.drawTexture(net.minecraft.client.gl.RenderPipelines.GUI_TEXTURED, id, x, y + a, (q % 2) * r, (q / 2) * r + a, r, b - a, 2 * r, 2 * r, c);
+        }
+    }
+
+    /**
      * Rounded rect filled with paint, opacity op, in real pixels: four textured corners, the straight parts as
      * vertical-gradient columns (exact for any paint linear in v); a paint that changes along x is cut in ~48 columns.
      */
@@ -97,10 +116,10 @@ public final class Liquid {
         X = x0; Y = y0; W = w; H = h;
         if (r > 0) {
             net.minecraft.util.Identifier m = mask(r, 0);
-            quarter(g, m, r, 0, x0, y0, mul(p.at(r / 2f / W, r / 2f / H), op));
-            quarter(g, m, r, 1, x1 - r, y0, mul(p.at(1 - r / 2f / W, r / 2f / H), op));
-            quarter(g, m, r, 2, x0, y1 - r, mul(p.at(r / 2f / W, 1 - r / 2f / H), op));
-            quarter(g, m, r, 3, x1 - r, y1 - r, mul(p.at(1 - r / 2f / W, 1 - r / 2f / H), op));
+            corner(g, m, r, 0, x0, y0, p, op, X, Y, W, H);
+            corner(g, m, r, 1, x1 - r, y0, p, op, X, Y, W, H);
+            corner(g, m, r, 2, x0, y1 - r, p, op, X, Y, W, H);
+            corner(g, m, r, 3, x1 - r, y1 - r, p, op, X, Y, W, H);
             column(g, x0, x0 + r, y0 + r, y1 - r, p, op, X, Y, W, H, x0 + r / 2f);
             column(g, x1 - r, x1, y0 + r, y1 - r, p, op, X, Y, W, H, x1 - r / 2f);
         }
