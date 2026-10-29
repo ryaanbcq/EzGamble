@@ -52,14 +52,14 @@ void main() {
     float t = clamp(-sd / bw, 0.0, 1.0);
     float edge = pow(1.0 - t, 2.5);
     vec2 base = d / mag;
-    vec2 o = n * bw * (0.4 + 2.6 * pressed) * edge;
-    float ca = 0.05 + 0.25 * pressed;                   // chromatic aberration: R, G, B bent a little differently
+    vec2 o = n * bw * (0.4 + 3.2 * pressed) * edge;
+    float ca = 0.05 + 0.40 * pressed;                   // chromatic aberration: R, G, B bent a little differently
     float fr = k * mix(1.3, 0.9, pressed);             // frost radius: dull at rest, clear when pressed
     vec3 col = vec3(frost(base + o * (1.0 + ca), fr).r, frost(base + o, fr).g, frost(base + o * (1.0 - ca), fr).b);
     // tint: a little lighter and more saturated inside, a white veil at rest (the frosted pill)
     float l = dot(col, vec3(0.299, 0.587, 0.114));
     col = mix(vec3(l), col, 1.15);
-    col += (1.0 - col) * mix(0.16, 0.08, pressed);
+    col += (1.0 - col) * mix(0.16, 0.02, pressed);   // pressed: almost clear glass
     // thickness: the inner rim slightly darker
     col *= 1.0 - 0.13 * edge;
     // highlights: a thin bright rim top left, a softer one bottom right
@@ -67,6 +67,9 @@ void main() {
     float rim1 = exp(sd / (1.1 * k)), rim2 = exp(sd / (2.6 * k));
     col += pow(max(dot(n, L), 0.0), 5.0) * rim1 * (0.45 + 0.45 * pressed);
     col += pow(max(dot(n, -L), 0.0), 3.0) * rim2 * (0.12 + 0.14 * pressed);
+    // pressed: two bright glints on the diagonal, bottom left and top right, like the iOS lens
+    vec2 G = normalize(vec2(-1.0, 1.0));
+    col += (pow(max(dot(n, G), 0.0), 4.0) + pow(max(dot(n, -G), 0.0), 4.0)) * exp(sd / (1.6 * k)) * 0.75 * pressed;
     col += rim1 * 0.10 * pressed;
     // straight alpha for the TRANSLUCENT blend: the lens over its own shadow
     float a = aa + sh * (1.0 - aa);

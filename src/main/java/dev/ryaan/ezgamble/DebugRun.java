@@ -93,7 +93,7 @@ public final class DebugRun {
             case "chat" -> { c.inGameHud.getChatHud().addMessage(Text.literal(arg)); EzGambleMod.onChat(arg); }
             case "mouse" -> { mx = (int) Double.parseDouble(n[0]); my = (int) Double.parseDouble(n[1]); dev.ryaan.ezgamble.proto.ProtoScreen.forceMx = mx; dev.ryaan.ezgamble.proto.ProtoScreen.forceMy = my; }
             case "click", "rclick" -> {
-                double x = Double.parseDouble(n[0]), y = Double.parseDouble(n[1]);
+                double x = coord(n[0], true), y = coord(n[1], false);
                 mx = (int) x; my = (int) y; dev.ryaan.ezgamble.proto.ProtoScreen.forceMx = mx; dev.ryaan.ezgamble.proto.ProtoScreen.forceMy = my;
                 if (c.currentScreen != null) {
                     Click ck = new Click(x, y, new MouseInput(cmd.equals("click") ? 0 : 1, 0));
@@ -102,7 +102,7 @@ public final class DebugRun {
                 }
             }
             case "press", "move", "up" -> {   // a held click in three steps (the lens drag)
-                double x = Double.parseDouble(n[0]), y = Double.parseDouble(n[1]);
+                double x = coord(n[0], true), y = coord(n[1], false);
                 mx = (int) x; my = (int) y; dev.ryaan.ezgamble.proto.ProtoScreen.forceMx = mx; dev.ryaan.ezgamble.proto.ProtoScreen.forceMy = my;
                 if (c.currentScreen != null) {
                     Click ck = new Click(x, y, new MouseInput(0, 0));
@@ -120,5 +120,13 @@ public final class DebugRun {
             default -> EzGambleMod.LOG.warn("[ezgamble] debug: unknown command {}", cmd);
         }
         return true;
+    }
+
+    /** "123" = GUI px; "@49" = relative to the menu panel (x0 / y0), the same whatever the window size. */
+    private static double coord(String s, boolean isX) {
+        if (!s.startsWith("@")) return Double.parseDouble(s);
+        dev.ryaan.ezgamble.ui.GambleScreen g = dev.ryaan.ezgamble.ui.GambleScreen.current();
+        double base = g == null ? 0 : isX ? g.x0 : g.y0;
+        return base + Double.parseDouble(s.substring(1));
     }
 }

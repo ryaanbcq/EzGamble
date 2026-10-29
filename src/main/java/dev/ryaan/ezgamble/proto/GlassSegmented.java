@@ -130,7 +130,7 @@ public class GlassSegmented extends Widget {
         lean += (Math.max(-1, Math.min(1, lv / 700)) - lean) * (1 - Math.exp(-dts / 0.05));
         int segNow = nearest(lx);
         if (segNow != lastSeg) { lastSeg = segNow; if (held) P.play("click", 1.25, 0.35); }   // a tick for each tab crossed
-        double pr = P.easeOut(grow), sc = 1 + 0.1 * pr, mag = 1.1 + 0.1 * pr;
+        double pr = P.easeOut(grow), sc = 1 + 0.15 * pr, mag = 1.1 + 0.1 * pr;
         double qq = Math.max(-0.3, Math.min(0.6, q)), base = h * 1.35;
         double LH = base * sc * (1 - 0.45 * qq), LW = Math.max(base * 1.4, (widthAt(lx) - 12) * mag + base * 0.75) * sc * (1 + qq);
         double cy = y + h / 2;
