@@ -39,7 +39,7 @@ public final class Liquid {
     /** White sheen from the top, fading to nothing at v = end. */
     static Paint sheen(float end, float alpha) {
         return new Paint() {
-            public int at(float u, float v) { return v >= end ? 0 : Glass.alpha(0xFFFFFFFF, alpha * (1 - v / end)); }
+            public int at(float u, float v) { return v >= end ? 0x00FFFFFF : Glass.alpha(0xFFFFFFFF, alpha * (1 - v / end)); }   // transparent WHITE at the end: a gradient to 0 (transparent black) went through grey
             public float[] stops() { return new float[]{end}; }
         };
     }
@@ -89,6 +89,19 @@ public final class Liquid {
      * vertical gradient (a single colour per corner left lighter squares at the ends of a capsule's sheen).
      */
     private static void corner(DrawContext g, net.minecraft.util.Identifier id, int r, int q, int x, int y, Paint p, float op, float X, float Y, float W, float H) {
+        if (p.horizontal()) {   // a left-right gradient: vertical slices, each with the colour of its own x
+            int n = Math.min(8, Math.max(2, r / 3));
+            float v = (y + r / 2f - Y) / H;
+            for (int i = 0; i < n; i++) {
+                int a = i * r / n, b = (i + 1) * r / n;
+                if (b <= a) continue;
+                int c = mul(p.at((x + (a + b) / 2f - X) / W, v), op);
+                if ((c >>> 24) == 0) continue;
+                F.n++;
+                g.drawTexture(net.minecraft.client.gl.RenderPipelines.GUI_TEXTURED, id, x + a, y, (q % 2) * r + a, (q / 2) * r, b - a, r, 2 * r, 2 * r, c);
+            }
+            return;
+        }
         float u = (x + r / 2f - X) / W;
         int top = mul(p.at(u, (y - Y) / H), op), bot = mul(p.at(u, (y + r - Y) / H), op);
         if (top == bot) { quarter(g, id, r, q, x, y, top); return; }
