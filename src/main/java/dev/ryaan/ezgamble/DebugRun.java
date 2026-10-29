@@ -113,7 +113,7 @@ public final class DebugRun {
             }
             case "key" -> { if (c.currentScreen != null) c.currentScreen.keyPressed(new KeyInput(Integer.parseInt(arg), 0, 0)); }
             case "type" -> { if (c.currentScreen != null) for (int i = 0; i < arg.length(); i++) c.currentScreen.charTyped(new CharInput(arg.charAt(i), 0)); }
-            case "scroll" -> { if (c.currentScreen != null) c.currentScreen.mouseScrolled(Double.parseDouble(n[0]), Double.parseDouble(n[1]), 0, Double.parseDouble(n[2])); }
+            case "scroll" -> { if (c.currentScreen != null) c.currentScreen.mouseScrolled(coord(n[0], true), coord(n[1], false), 0, Double.parseDouble(n[2])); }
             case "shot" -> ScreenshotRecorder.saveScreenshot(c.runDirectory, "ezgamble-" + arg + ".png", c.getFramebuffer(), 1, t -> {});
             case "perf" -> { if (c.currentScreen instanceof dev.ryaan.ezgamble.proto.ProtoScreen) {} renderNanos = 0; renderFrames = 0; dev.ryaan.ezgamble.ui.Liquid.F.n = 0; dev.ryaan.ezgamble.ui.Liquid.F.nanos = 0; dev.ryaan.ezgamble.ui.Liquid.F.by.clear(); chartNanos = 0; dataNanos = 0; perfName = arg; perfUntil = ticks + 60; waitUntil = ticks + 62; return false; }
             case "quit" -> { done = true; c.scheduleStop(); return false; }
