@@ -32,6 +32,9 @@ public final class Faces {
     private static final Map<String, Long> FAILED = new HashMap<>();
     private static final ExecutorService POOL = Executors.newSingleThreadExecutor(r -> { Thread t = new Thread(r, "ezgamble-skins"); t.setDaemon(true); return t; });
 
+    /** Smoke test: skip authlib, as if its lookup had failed. */
+    public static boolean forceDirect;
+
     private static String key(String name) { return name.toLowerCase(Locale.ROOT).replaceFirst("^\\.", ""); }
 
     public static SkinTextures get(String name) {
@@ -76,13 +79,39 @@ public final class Faces {
                 UUID id = client.getApiServices().profileRepository().findProfileByName(name).map(NameAndId::id).orElse(null);
                 if (id == null) { fail(k, Long.MAX_VALUE); return; }
                 ProfileResult r = client.getApiServices().sessionService().fetchProfile(id, false);
-                if (r == null || r.profile().properties().get("textures").isEmpty()) { fail(k, System.currentTimeMillis() + 60_000); return; }
-                GameProfile p = r.profile();
+                // authlib caches a FAILED lookup for 6 hours (insecureProfiles): one hiccup of the session server drew the
+                // player as a Steve all evening (seen live on NotRyzn). Then we ask the session server ourselves.
+                GameProfile p = !forceDirect && r != null && !r.profile().properties().get("textures").isEmpty() ? r.profile() : direct(id, name);
+                if (p == null) { fail(k, System.currentTimeMillis() + 30_000); return; }
                 client.execute(() -> { FETCHING.put(k, client.getSkinProvider().fetchSkinTextures(p)); PENDING.remove(k); });
             } catch (Exception e) {
+                dev.ryaan.ezgamble.EzGambleMod.LOG.info("[ezgamble] skin lookup of {} failed: {}", name, e.toString());
                 fail(k, System.currentTimeMillis() + 60_000);
             }
         });
+    }
+
+    private static final java.net.http.HttpClient HTTP = java.net.http.HttpClient.newBuilder().connectTimeout(java.time.Duration.ofSeconds(8)).build();
+
+    /** The profile with its signed textures, straight from the session server (no authlib cache), or null. */
+    private static GameProfile direct(UUID id, String name) {
+        try {
+            var req = java.net.http.HttpRequest.newBuilder(java.net.URI.create("https://sessionserver.mojang.com/session/minecraft/profile/"
+                    + id.toString().replace("-", "") + "?unsigned=false")).timeout(java.time.Duration.ofSeconds(10)).GET().build();
+            var res = HTTP.send(req, java.net.http.HttpResponse.BodyHandlers.ofString());
+            if (res.statusCode() != 200) { dev.ryaan.ezgamble.EzGambleMod.LOG.info("[ezgamble] skin of {}: session server {}", name, res.statusCode()); return null; }
+            var o = com.google.gson.JsonParser.parseString(res.body()).getAsJsonObject();
+            com.google.common.collect.Multimap<String, com.mojang.authlib.properties.Property> m = com.google.common.collect.LinkedHashMultimap.create();
+            for (var e : o.getAsJsonArray("properties")) {
+                var po = e.getAsJsonObject();
+                if (!po.get("name").getAsString().equals("textures")) continue;
+                m.put("textures", new com.mojang.authlib.properties.Property("textures", po.get("value").getAsString(), po.has("signature") ? po.get("signature").getAsString() : null));
+            }
+            return m.isEmpty() ? null : new GameProfile(id, o.has("name") ? o.get("name").getAsString() : name, new com.mojang.authlib.properties.PropertyMap(m));
+        } catch (Exception e) {
+            dev.ryaan.ezgamble.EzGambleMod.LOG.info("[ezgamble] skin of {}: {}", name, e.toString());
+            return null;
+        }
     }
 
     private static void fail(String k, long until) {

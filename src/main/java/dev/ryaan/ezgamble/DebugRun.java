@@ -117,6 +117,7 @@ public final class DebugRun {
             case "balance" -> dev.ryaan.ezgamble.data.Balance.debug(dev.ryaan.ezgamble.Money.parse(n[0]), n.length > 1 ? dev.ryaan.ezgamble.Money.parse(n[1]) : -1);   // balance SIDEBAR [BAL]
             case "win" -> GambleData.setWindow(Double.parseDouble(n[0]), Double.parseDouble(n[1]), Double.parseDouble(n[2]));   // win X Y ZOOM: the menu window, applied at the next open
             case "fairroll" -> { for (int i = 0; i < Integer.parseInt(arg); i++) { var fr = dev.ryaan.ezgamble.data.Fair.round("Roulette"); fr.result(String.valueOf((int) Math.floor(fr.next() * 37))); } }   // fairroll N: N roulette rounds on the fair seed
+            case "skindirect" -> dev.ryaan.ezgamble.proto.Faces.forceDirect = true;
             case "demo" -> EzGambleMod.demoBets(Integer.parseInt(arg));
             case "chat" -> { c.inGameHud.getChatHud().addMessage(Text.literal(arg)); EzGambleMod.onChat(arg); }
             case "mouse" -> { mx = (int) Double.parseDouble(n[0]); my = (int) Double.parseDouble(n[1]); dev.ryaan.ezgamble.proto.ProtoScreen.forceMx = mx; dev.ryaan.ezgamble.proto.ProtoScreen.forceMy = my; }
