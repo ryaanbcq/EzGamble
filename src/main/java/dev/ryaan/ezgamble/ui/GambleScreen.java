@@ -57,6 +57,8 @@ public final class GambleScreen extends ProtoScreen {
         super("EzGamble");
         viewX = GambleData.winX; viewY = GambleData.winY; viewZ = GambleData.winZoom;
         Updater.recheck();
+        // the podium's skins load while you look at the dashboard: all there once you open High rollers
+        for (String r : new String[]{"session", "all"}) dev.ryaan.ezgamble.proto.Faces.prefetch(dev.ryaan.ezgamble.data.PlayerStats.highRollers(r).stream().limit(12).map(dev.ryaan.ezgamble.data.PlayerStats.Roller::name).toList());
         P.play("open", 0.8);
     }
 

@@ -83,6 +83,7 @@ public final class Payments {
     /** A payment of `amount` from `name` (also used by the smoke test). */
     public static void received(String name, long amount) {
         EzGambleMod.LOG.info("[ezgamble] paid by {} {}", name, amount);
+        dev.ryaan.ezgamble.proto.Faces.get(name);   // his skin starts loading now, long before the podium shows it
         queue.add(new Paid(name, amount, 0));
         total += amount; count++;
         Session cs = GambleData.current();

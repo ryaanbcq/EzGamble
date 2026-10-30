@@ -45,6 +45,7 @@ public final class RollersView implements GameView {
         s.add(rangeSeg);
         s.add(new GlassButton(lx, s.y0 + 80, 18, 16, "‹", "GHOST", s::back));
         List<PlayerStats.Roller> rows = PlayerStats.highRollers(range);
+        dev.ryaan.ezgamble.proto.Faces.prefetch(rows.stream().map(PlayerStats.Roller::name).toList());
         for (int col = 0; col < 3; col++) {   // the podium: step and chibi open the profile
             int rank = ORDER[col];
             if (rank >= rows.size()) continue;
