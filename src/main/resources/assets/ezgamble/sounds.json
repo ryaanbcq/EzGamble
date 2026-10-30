@@ -1,218 +1,234 @@
 {
- "cash": {
-  "sounds": [
-   {
-    "name": "ezgamble:cash",
-    "stream": false
-   }
-  ]
- },
- "close": {
-  "sounds": [
-   {
-    "name": "ezgamble:close",
-    "stream": false
-   }
-  ]
- },
- "fail": {
-  "sounds": [
-   {
-    "name": "ezgamble:fail",
-    "stream": false
-   }
-  ]
- },
- "open": {
-  "sounds": [
-   {
-    "name": "ezgamble:open",
-    "stream": false
-   }
-  ]
- },
- "pay": {
-  "sounds": [
-   {
-    "name": "ezgamble:pay",
-    "stream": false
-   }
-  ]
- },
- "ui_cards_close": {
-  "sounds": [
-   {
-    "name": "ezgamble:ui_cards_close",
-    "stream": false
-   }
-  ]
- },
- "ui_cards_open": {
-  "sounds": [
-   {
-    "name": "ezgamble:ui_cards_open",
-    "stream": false
-   }
-  ]
- },
- "ui_chips_close": {
-  "sounds": [
-   {
-    "name": "ezgamble:ui_chips_close",
-    "stream": false
-   }
-  ]
- },
- "ui_chips_open": {
-  "sounds": [
-   {
-    "name": "ezgamble:ui_chips_open",
-    "stream": false
-   }
-  ]
- },
- "ui_coin_close": {
-  "sounds": [
-   {
-    "name": "ezgamble:ui_coin_close",
-    "stream": false
-   }
-  ]
- },
- "ui_coin_open": {
-  "sounds": [
-   {
-    "name": "ezgamble:ui_coin_open",
-    "stream": false
-   }
-  ]
- },
- "ui_double_close": {
-  "sounds": [
-   {
-    "name": "ezgamble:ui_double_close",
-    "stream": false
-   }
-  ]
- },
- "ui_double_open": {
-  "sounds": [
-   {
-    "name": "ezgamble:ui_double_open",
-    "stream": false
-   }
-  ]
- },
- "ui_jackpot_close": {
-  "sounds": [
-   {
-    "name": "ezgamble:ui_jackpot_close",
-    "stream": false
-   }
-  ]
- },
- "ui_jackpot_open": {
-  "sounds": [
-   {
-    "name": "ezgamble:ui_jackpot_open",
-    "stream": false
-   }
-  ]
- },
- "ui_kcards_close": {
-  "sounds": [
-   {
-    "name": "ezgamble:ui_kcards_close",
-    "stream": false
-   }
-  ]
- },
- "ui_kcards_open": {
-  "sounds": [
-   {
-    "name": "ezgamble:ui_kcards_open",
-    "stream": false
-   }
-  ]
- },
- "ui_kcollide_close": {
-  "sounds": [
-   {
-    "name": "ezgamble:ui_kcollide_close",
-    "stream": false
-   }
-  ]
- },
- "ui_kcollide_open": {
-  "sounds": [
-   {
-    "name": "ezgamble:ui_kcollide_open",
-    "stream": false
-   }
-  ]
- },
- "ui_khandle_close": {
-  "sounds": [
-   {
-    "name": "ezgamble:ui_khandle_close",
-    "stream": false
-   }
-  ]
- },
- "ui_khandle_open": {
-  "sounds": [
-   {
-    "name": "ezgamble:ui_khandle_open",
-    "stream": false
-   }
-  ]
- },
- "ui_kstack_close": {
-  "sounds": [
-   {
-    "name": "ezgamble:ui_kstack_close",
-    "stream": false
-   }
-  ]
- },
- "ui_kstack_open": {
-  "sounds": [
-   {
-    "name": "ezgamble:ui_kstack_open",
-    "stream": false
-   }
-  ]
- },
- "ui_pop_close": {
-  "sounds": [
-   {
-    "name": "ezgamble:ui_pop_close",
-    "stream": false
-   }
-  ]
- },
- "ui_pop_open": {
-  "sounds": [
-   {
-    "name": "ezgamble:ui_pop_open",
-    "stream": false
-   }
-  ]
- },
- "ui_tick_close": {
-  "sounds": [
-   {
-    "name": "ezgamble:ui_tick_close",
-    "stream": false
-   }
-  ]
- },
- "ui_tick_open": {
-  "sounds": [
-   {
-    "name": "ezgamble:ui_tick_open",
-    "stream": false
-   }
-  ]
- }
+  "cash": {
+    "sounds": [
+      {
+        "name": "ezgamble:cash",
+        "stream": false
+      }
+    ]
+  },
+  "close": {
+    "sounds": [
+      {
+        "name": "ezgamble:close",
+        "stream": false
+      }
+    ]
+  },
+  "fail": {
+    "sounds": [
+      {
+        "name": "ezgamble:fail",
+        "stream": false
+      }
+    ]
+  },
+  "open": {
+    "sounds": [
+      {
+        "name": "ezgamble:open",
+        "stream": false
+      }
+    ]
+  },
+  "pay": {
+    "sounds": [
+      {
+        "name": "ezgamble:pay",
+        "stream": false
+      }
+    ]
+  },
+  "ui_cards_close": {
+    "sounds": [
+      {
+        "name": "ezgamble:ui_cards_close",
+        "stream": false
+      }
+    ]
+  },
+  "ui_cards_open": {
+    "sounds": [
+      {
+        "name": "ezgamble:ui_cards_open",
+        "stream": false
+      }
+    ]
+  },
+  "ui_chips_close": {
+    "sounds": [
+      {
+        "name": "ezgamble:ui_chips_close",
+        "stream": false
+      }
+    ]
+  },
+  "ui_chips_open": {
+    "sounds": [
+      {
+        "name": "ezgamble:ui_chips_open",
+        "stream": false
+      }
+    ]
+  },
+  "ui_coin_close": {
+    "sounds": [
+      {
+        "name": "ezgamble:ui_coin_close",
+        "stream": false
+      }
+    ]
+  },
+  "ui_coin_open": {
+    "sounds": [
+      {
+        "name": "ezgamble:ui_coin_open",
+        "stream": false
+      }
+    ]
+  },
+  "ui_double_close": {
+    "sounds": [
+      {
+        "name": "ezgamble:ui_double_close",
+        "stream": false
+      }
+    ]
+  },
+  "ui_double_open": {
+    "sounds": [
+      {
+        "name": "ezgamble:ui_double_open",
+        "stream": false
+      }
+    ]
+  },
+  "ui_jackpot_close": {
+    "sounds": [
+      {
+        "name": "ezgamble:ui_jackpot_close",
+        "stream": false
+      }
+    ]
+  },
+  "ui_jackpot_open": {
+    "sounds": [
+      {
+        "name": "ezgamble:ui_jackpot_open",
+        "stream": false
+      }
+    ]
+  },
+  "ui_kcards_close": {
+    "sounds": [
+      {
+        "name": "ezgamble:ui_kcards_close",
+        "stream": false
+      }
+    ]
+  },
+  "ui_kcards_open": {
+    "sounds": [
+      {
+        "name": "ezgamble:ui_kcards_open",
+        "stream": false
+      }
+    ]
+  },
+  "ui_kcollide_close": {
+    "sounds": [
+      {
+        "name": "ezgamble:ui_kcollide_close",
+        "stream": false
+      }
+    ]
+  },
+  "ui_kcollide_open": {
+    "sounds": [
+      {
+        "name": "ezgamble:ui_kcollide_open",
+        "stream": false
+      }
+    ]
+  },
+  "ui_khandle_close": {
+    "sounds": [
+      {
+        "name": "ezgamble:ui_khandle_close",
+        "stream": false
+      }
+    ]
+  },
+  "ui_khandle_open": {
+    "sounds": [
+      {
+        "name": "ezgamble:ui_khandle_open",
+        "stream": false
+      }
+    ]
+  },
+  "ui_kstack_close": {
+    "sounds": [
+      {
+        "name": "ezgamble:ui_kstack_close",
+        "stream": false
+      }
+    ]
+  },
+  "ui_kstack_open": {
+    "sounds": [
+      {
+        "name": "ezgamble:ui_kstack_open",
+        "stream": false
+      }
+    ]
+  },
+  "ui_pop_close": {
+    "sounds": [
+      {
+        "name": "ezgamble:ui_pop_close",
+        "stream": false
+      }
+    ]
+  },
+  "ui_pop_open": {
+    "sounds": [
+      {
+        "name": "ezgamble:ui_pop_open",
+        "stream": false
+      }
+    ]
+  },
+  "ui_tick_close": {
+    "sounds": [
+      {
+        "name": "ezgamble:ui_tick_close",
+        "stream": false
+      }
+    ]
+  },
+  "ui_tick_open": {
+    "sounds": [
+      {
+        "name": "ezgamble:ui_tick_open",
+        "stream": false
+      }
+    ]
+  },
+  "seg_select": {
+    "sounds": [
+      {
+        "name": "ezgamble:seg_select",
+        "stream": false
+      }
+    ]
+  },
+  "seg_tick": {
+    "sounds": [
+      {
+        "name": "ezgamble:seg_tick",
+        "stream": false
+      }
+    ]
+  }
 }

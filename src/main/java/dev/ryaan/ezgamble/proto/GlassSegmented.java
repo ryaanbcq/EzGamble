@@ -76,7 +76,7 @@ public class GlassSegmented extends Widget {
         held = false;
         qv -= 2.5;   // let go: it springs back taller, then settles
         int i = nearest(mx);   // the segment under (or nearest to) the pointer: a plain click lands where it was clicked
-        if (!items[i][0].equals(get.get())) { P.play("click"); set.accept(items[i][0]); }
+        if (!items[i][0].equals(get.get())) { P.play("seg_select", 1, 0.7); set.accept(items[i][0]); }
     }
 
     private double centre(int i) { double[] s = seg(i); return s[0] + s[1] / 2; }
@@ -129,7 +129,7 @@ public class GlassSegmented extends Widget {
         }
         lean += (Math.max(-1, Math.min(1, lv / 700)) - lean) * (1 - Math.exp(-dts / 0.05));
         int segNow = nearest(lx);
-        if (segNow != lastSeg) { lastSeg = segNow; if (held) P.play("click", 1.25, 0.35); }   // a tick for each tab crossed
+        if (segNow != lastSeg) { lastSeg = segNow; if (held) P.play("seg_tick", 1, 0.45); }   // a tick for each tab crossed
         double pr = P.easeOut(grow), sc = 1 + 0.15 * pr, mag = 1.1 + 0.1 * pr;
         double qq = Math.max(-0.3, Math.min(0.6, q)), base = h * 1.35;
         double LH = base * sc * (1 - 0.45 * qq), LW = Math.max(base * 1.4, (widthAt(lx) - 12) * mag + base * 0.75) * sc * (1 + qq);
@@ -163,7 +163,7 @@ public class GlassSegmented extends Widget {
         if (lensOn() && !Double.isNaN(lx)) { held = true; dragX = mx; qv += 3; return; }   // a press squishes it (iOS keeps it nearly round)
         for (int i = 0; i < items.length; i++) {
             double[] s = seg(i);
-            if (mx >= s[0] && mx < s[0] + s[1] && !items[i][0].equals(get.get())) { P.play("click"); set.accept(items[i][0]); }
+            if (mx >= s[0] && mx < s[0] + s[1] && !items[i][0].equals(get.get())) { P.play("seg_select", 1, 0.7); set.accept(items[i][0]); }
         }
     }
 }

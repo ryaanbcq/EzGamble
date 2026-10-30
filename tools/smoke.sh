@@ -13,6 +13,8 @@ find "$I/mods" -name 'ezgamble-*.jar' -delete
 cp build/libs/ezgamble-*.jar "$I/mods/"
 find "$I/screenshots" -name 'ezgamble-*.png' -delete 2>/dev/null
 cp "$SCRIPT" "$I/config/ezgamble-debug"
+# the previous run's log says "Stopping!" too: left in place, the loop below took it for this run's end and killed the game while it loaded
+rm -f "$I/logs/latest.log"
 # SMOKE_NAME=name: play offline under that name (screenshots for the site). SMOKE_SERVER=host: join that server with the real ZKR5 account instead of the offline world
 if [ -n "${SMOKE_SERVER:-}" ]; then "$PRISM" --launch EzTest --server "$SMOKE_SERVER" --profile ZKR5 >/dev/null 2>&1 &
 else "$PRISM" --launch EzTest --world "Nouveau monde" --offline "${SMOKE_NAME:-EzTest}" >/dev/null 2>&1 &; fi
