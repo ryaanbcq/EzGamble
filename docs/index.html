@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EzGamble</title>
+<meta name="description" content="EzGamble: a Fabric mod for Minecraft 1.21.11 that turns your menu into a casino table. Payments, games, payouts, provably fair.">
+<link rel="icon" href="assets/fair.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="site.css">
+<style>
+  /* ---- hero */
+  .hero { min-height: 100vh; display: grid; place-items: center; text-align: center; padding: 120px 20px 0; }
+  .hero h1 { font-size: clamp(64px, 13vw, 176px); margin: 0; }
+  .hero h1 span { background: linear-gradient(90deg, #a18cd1, #fbc2eb 40%, #fff 50%, #fbc2eb 60%, #a18cd1); background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: sheen 2.4s .3s cubic-bezier(.2, .7, .2, 1) both; }
+  @keyframes sheen { from { background-position: 100% 0; } to { background-position: 0 0; } }
+  .hero .tag { font-size: clamp(20px, 2.4vw, 28px); margin: 18px auto 8px; max-width: 22em; }
+  .hero .meta { color: var(--mute); margin: 0 auto; max-width: 30em; }
+  .hero .cta { display: flex; gap: 10px; justify-content: center; margin: 28px 0 0; flex-wrap: wrap; }
+  .stage { perspective: 1400px; margin: 64px auto 0; width: min(1000px, 92vw); }
+  .screen { border-radius: clamp(10px, 2.2vw, 22px); overflow: hidden; box-shadow: 0 40px 120px rgba(0, 0, 0, .55), 0 0 0 1px rgba(255, 255, 255, .12); transform-origin: 50% 100%; will-change: transform; }
+  .screen img { width: 100%; height: auto; aspect-ratio: 1140 / 900; }
+
+  /* ---- the menu, pinned while its tabs go by */
+  .tour { height: 420vh; position: relative; }
+  .tour .pin { position: sticky; top: 0; height: 100vh; display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 1.45fr); gap: 48px; align-items: center; max-width: 1180px; margin: 0 auto; padding: 80px 24px 24px; }
+  .steps { position: relative; min-height: 300px; }
+  .step { position: absolute; inset: 0 0 auto 0; opacity: 0; transform: translateY(-8px); transition: opacity .18s, transform .18s; pointer-events: none; }
+  .step.on { opacity: 1; transform: none; pointer-events: auto; transition: opacity .45s .2s, transform .5s .2s cubic-bezier(.2, .7, .2, 1); }
+  .step h3 { font: 400 clamp(30px, 3.6vw, 46px)/1.08 var(--pixel); margin: 0 0 14px; }
+  .step p { color: var(--mute); margin: 0; max-width: 24em; }
+  .tabs { display: inline-flex; gap: 2px; padding: 4px; border-radius: 999px; margin-bottom: 28px; }
+  .tabs b { font: 13px var(--pixel); font-weight: 400; color: var(--mute); padding: 7px 13px; border-radius: 999px; transition: background .3s, color .3s; }
+  .tabs b.on { color: var(--text); background: rgba(255, 255, 255, .14); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3); }
+  .device { position: relative; aspect-ratio: 1140 / 900; }
+  .device img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: clamp(10px, 1.8vw, 20px); box-shadow: 0 30px 90px rgba(0, 0, 0, .5), 0 0 0 1px rgba(255, 255, 255, .12); opacity: 0; transform: scale(.97); transition: opacity .5s, transform .6s cubic-bezier(.2, .7, .2, 1); }
+  .device img.on { opacity: 1; transform: none; }
+  .device img.wide { object-fit: cover; object-position: 30% 50%; }
+  @media (max-width: 860px) {
+    .tour { height: auto; }
+    .tour .pin { position: static; height: auto; grid-template-columns: 1fr; padding: 40px 20px; gap: 0; }
+    .steps { min-height: 0; } .step { position: static; opacity: 1; transform: none; margin: 40px 0 16px; }
+    .tabs { display: none; }
+    .device { display: none; } .step .shot { display: block; }
+  }
+  .step .shot { display: none; margin-top: 18px; border-radius: 14px; box-shadow: 0 0 0 1px rgba(255, 255, 255, .12); }
+
+  /* ---- games: a rail of tables */
+  section.block { padding: 140px 0 40px; }
+  .rail { scroll-padding-inline: max(20px, calc((100vw - 1120px) / 2 + 20px)); display: grid; grid-auto-flow: column; grid-auto-columns: minmax(280px, 340px); gap: 18px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 36px max(20px, calc((100vw - 1120px) / 2 + 20px)) 30px; scrollbar-width: none; }
+  .rail::-webkit-scrollbar { display: none; }
+  .table { scroll-snap-align: start; border-radius: 26px; padding: 12px 12px 18px; }
+  .table .felt { border-radius: 16px; overflow: hidden; aspect-ratio: 4 / 3; box-shadow: 0 0 0 1px rgba(255, 255, 255, .1); }
+  .table img.shot { width: 100%; height: 100%; object-fit: cover; transform: scale(1.45); transform-origin: 50% 60%; transition: transform .6s cubic-bezier(.2, .7, .2, 1); }
+  .table:hover img.shot { transform: scale(1.32); }
+  .table .t { display: flex; align-items: center; gap: 10px; margin: 14px 6px 4px; }
+  .table .t img { width: 32px; height: 32px; }
+  .table h4 { font: 400 20px var(--pixel); margin: 0; }
+  .table p { color: var(--mute); margin: 0 6px; font-size: 15px; }
+  .railnav { display: flex; gap: 8px; justify-content: flex-end; }
+  .railnav button { width: 40px; height: 40px; border-radius: 50%; color: var(--text); font: 18px var(--sans); cursor: pointer; }
+
+  /* ---- the podium */
+  .podium { display: grid; grid-template-columns: 1fr 1.2fr; gap: 40px; align-items: center; }
+  .podium canvas { width: 100%; height: auto; display: block; }
+  .board { border-radius: 30px; padding: 10px; }
+  @media (max-width: 860px) { .podium { grid-template-columns: 1fr; } }
+
+  /* ---- fair: commit, play, reveal is a real sequence */
+  .fair { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 44px; }
+  .fair .lg { border-radius: 24px; padding: 22px; }
+  .fair i { font: normal 13px var(--pixel); color: var(--pink); }
+  .fair h4 { font: 400 22px var(--pixel); margin: 8px 0 8px; }
+  .fair p { color: var(--mute); margin: 0; font-size: 15px; }
+  .fair code { display: block; margin-top: 14px; font: 12px var(--pixel); color: var(--text); word-break: break-all; opacity: .85; min-height: 3.2em; }
+  @media (max-width: 860px) { .fair { grid-template-columns: 1fr; } }
+
+  /* ---- the end */
+  .end { text-align: center; padding: 160px 20px 120px; }
+  .end h2 { font-size: clamp(44px, 7vw, 96px); margin: 0 0 18px; }
+  .end .cta { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 28px; }
+  footer { color: var(--dim); font-size: 13px; text-align: center; padding: 0 20px 40px; }
+</style>
+</head>
+<body>
+<div class="sky" aria-hidden="true"><div class="orb a"></div><div class="orb b"></div><div class="orb c"></div></div>
+
+<nav class="nav lg" aria-label="Sections">
+  <a class="mark" href="#top">EzGamble</a>
+  <a class="l opt" href="#menu">Menu</a>
+  <a class="l opt" href="#games">Games</a>
+  <a class="l opt" href="#podium">High rollers</a>
+  <a class="l opt" href="#fair">Fair</a>
+  <a class="btn primary" href="#get">Get it</a>
+</nav>
+
+<header class="hero" id="top">
+  <div>
+    <h1 class="display"><span>EzGamble</span></h1>
+    <p class="tag">Your casino table, inside your Minecraft menu.</p>
+    <p class="meta">A Fabric mod for 1.21.11. Players pay you, the mod counts their chips, you run the games, it shows who to pay back.</p>
+    <div class="cta"><a class="btn primary" href="#get">Get EzGamble</a><a class="btn ghost lg" href="#menu">See the menu</a></div>
+    <div class="stage"><div class="screen" id="heroScreen"><img src="media/dash.webp" alt="The EzGamble menu: profit, win rate and the session's curve" fetchpriority="high"></div></div>
+  </div>
+</header>
+
+<section class="tour" id="menu" aria-label="The menu">
+  <div class="pin">
+    <div>
+      <div class="tabs lg" aria-hidden="true"><b data-i="0">Dashboard</b><b data-i="1">History</b><b data-i="2">Games</b><b data-i="3">HUD</b></div>
+      <div class="steps">
+        <div class="step" data-i="0"><h3>Your profit, live.</h3><p>Every bet counts the moment it lands. Profit, volume, win rate and the session's curve, one key away.</p><img class="shot" src="media/dash.webp" alt="" loading="lazy"></div>
+        <div class="step" data-i="1"><h3>Every bet, on record.</h3><p>Games, payments and payouts in one list, filtered by wins or losses. Sessions are saved, so yesterday is still there.</p><img class="shot" src="media/hist.webp" alt="" loading="lazy"></div>
+        <div class="step" data-i="2"><h3>Chips from /pay.</h3><p>When a player pays you, the mod turns it into chips in their name. Pick a table, bet their chips, and it keeps the count.</p><img class="shot" src="media/games.webp" alt="" loading="lazy"></div>
+        <div class="step" data-i="3"><h3>Always on screen.</h3><p>Your balance, the session's profit and every payment that comes in, on the HUD, where you put it. Off when gambling mode is off.</p><img class="shot" src="media/hud-full.webp" alt="" loading="lazy"></div>
+      </div>
+    </div>
+    <div class="device" aria-hidden="true">
+      <img data-i="0" src="media/dash.webp" alt="">
+      <img data-i="1" src="media/hist.webp" alt="" loading="lazy">
+      <img data-i="2" src="media/games.webp" alt="" loading="lazy">
+      <img data-i="3" class="wide" src="media/hud-full.webp" alt="" loading="lazy">
+    </div>
+  </div>
+</section>
+
+<section class="block" id="games" aria-labelledby="gamesTitle">
+  <div class="wrap">
+    <h2 class="sec" id="gamesTitle">Pick a table.</h2>
+    <p class="sub">Six games drawn right in the menu, each with its own animation and sounds. The odds are written on the felt.</p>
+    <div class="railnav"><button class="lg" data-d="-1" aria-label="Previous games">‹</button><button class="lg" data-d="1" aria-label="Next games">›</button></div>
+  </div>
+  <div class="rail" id="rail">
+    <article class="table lg"><div class="felt"><img class="shot" src="media/bj.webp" alt="Blackjack table" loading="lazy"></div><div class="t"><img class="pix" src="assets/blackjack.png" alt=""><h4>Blackjack</h4></div><p>A real six-deck shoe. The dealer stands on 17.</p></article>
+    <article class="table lg"><div class="felt"><img class="shot" src="media/roulette.webp" alt="Roulette wheel" loading="lazy"></div><div class="t"><img class="pix" src="assets/roulette.png" alt=""><h4>Roulette</h4></div><p>European wheel, 37 pockets, bets placed with chips.</p></article>
+    <article class="table lg"><div class="felt"><img class="shot" src="media/crash.webp" alt="Crash curve" loading="lazy"></div><div class="t"><img class="pix" src="assets/crash.png" alt=""><h4>Crash</h4></div><p>The multiplier climbs. Cash out before it pops.</p></article>
+    <article class="table lg"><div class="felt"><img class="shot" src="media/mines.webp" alt="Mines board" loading="lazy"></div><div class="t"><img class="pix" src="assets/mines.png" alt=""><h4>Mines</h4></div><p>25 tiles, choose how many bombs, stop whenever you like.</p></article>
+    <article class="table lg"><div class="felt"><img class="shot" src="media/crates.webp" alt="Crate opening" loading="lazy"></div><div class="t"><img class="pix" src="assets/crates.png" alt=""><h4>Crates</h4></div><p>The reel shows the true odds. No fake near misses.</p></article>
+    <article class="table lg"><div class="felt"><img class="shot" src="media/coin.webp" alt="Coinflip" loading="lazy"></div><div class="t"><img class="pix" src="assets/coinflip.png" alt=""><h4>Coinflip</h4></div><p>Heads or tails, double or nothing.</p></article>
+  </div>
+</section>
+
+<section class="block" id="podium" aria-labelledby="podTitle">
+  <div class="wrap podium">
+    <div>
+      <h2 class="sec" id="podTitle">Crown your high rollers.</h2>
+      <p class="sub">The biggest wagers stand on a podium as pixel chibis of their own skins. The winner gets the crown. Remove anyone from the database in two clicks.</p>
+    </div>
+    <div class="board lg"><canvas id="pod" width="720" height="460" aria-label="A podium: NotRyzn first with a crown, ZKR5 second, Notch third" role="img"></canvas></div>
+  </div>
+</section>
+
+<section class="block" id="fair" aria-labelledby="fairTitle">
+  <div class="wrap">
+    <h2 class="sec" id="fairTitle">Fair, and you can check.</h2>
+    <p class="sub">Every outcome comes from a secret seed you commit to before the first roll. Nothing is whispered for you: you copy, you paste.</p>
+    <div class="fair">
+      <div class="lg"><i>1</i><h4>Before</h4><p>Copy the seed's hash and paste it in chat. It can't change after this.</p><code id="h1"></code></div>
+      <div class="lg"><i>2</i><h4>During</h4><p>A viewer can give you a word as client seed. Each round draws its numbers from both.</p><code id="h2"></code></div>
+      <div class="lg"><i>3</i><h4>After</h4><p>Reveal the seed. Anyone can recompute every round and match the hash.</p><code id="h3"></code></div>
+    </div>
+    <div class="cta" style="margin-top:28px"><a class="btn primary" href="verify.html">Check a reveal</a></div>
+  </div>
+</section>
+
+<section class="end" id="get">
+  <h2 class="display gradtext">Open the table.</h2>
+  <p class="sub" style="margin:0 auto">Fabric, Minecraft 1.21.11. Press K in game to open the menu. Updates install themselves if you turn on Auto update.</p>
+  <div class="cta"><a class="btn primary" id="dl" href="https://github.com/ryaanbcq/EzGamble">Download EzGamble</a><a class="btn ghost lg" href="https://github.com/ryaanbcq/EzGamble">Source on GitHub</a></div>
+</section>
+<footer>EzGamble by ZKR5. Not affiliated with Mojang or Microsoft. Pixel font: Monocraft (SIL OFL).</footer>
+
+<script>
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+
+// the specular highlight follows the pointer on any glass under it
+addEventListener('pointermove', (e) => {
+  const el = e.target.closest && e.target.closest('.lg');
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  el.style.setProperty('--mx', (e.clientX - r.left) + 'px'); el.style.setProperty('--my', (e.clientY - r.top) + 'px');
+}, { passive: true });
+
+// the latest jar, straight from the updater's own file
+fetch('https://raw.githubusercontent.com/ryaanbcq/EzGamble/main/update/latest.json?t=' + Date.now()).then((r) => r.json()).then((o) => {
+  const a = document.getElementById('dl');
+  a.href = 'https://raw.githubusercontent.com/ryaanbcq/EzGamble/main/update/' + o.file;
+  a.textContent = 'Download ' + o.version;
+}).catch(() => {});
+
+// hero: the menu lies back, then stands up as you scroll
+const hero = document.getElementById('heroScreen');
+// tour: which tab is showing
+const tour = document.getElementById('menu'), steps = [...tour.querySelectorAll('.step')], shots = [...tour.querySelectorAll('.device img')], tabs = [...tour.querySelectorAll('.tabs b')];
+let shown = -1;
+function frame() {
+  const vh = innerHeight;
+  if (!reduce) {
+    const p = clamp(1 - hero.getBoundingClientRect().top / vh);
+    hero.style.transform = `rotateX(${(1 - p) * 24}deg) scale(${0.88 + p * 0.12})`;
+  }
+  const r = tour.getBoundingClientRect(), p = clamp(-r.top / (r.height - vh));
+  const i = Math.min(3, Math.floor(p * 4));
+  if (i !== shown) {
+    shown = i;
+    for (const list of [steps, shots, tabs]) list.forEach((el) => el.classList.toggle('on', +el.dataset.i === i));
+  }
+}
+addEventListener('scroll', () => requestAnimationFrame(frame), { passive: true });
+addEventListener('resize', frame);
+frame();
+
+// games rail arrows
+document.querySelectorAll('.railnav button').forEach((b) => b.addEventListener('click', () => {
+  const rail = document.getElementById('rail');
+  rail.scrollBy({ left: +b.dataset.d * rail.clientWidth * 0.8, behavior: reduce ? 'auto' : 'smooth' });
+}));
+
+// ---- the podium, drawn like the mod: pixel chibis from the real skins (P.chibi)
+const cv = document.getElementById('pod'), g = cv.getContext('2d');
+g.imageSmoothingEnabled = false;
+const PLAYERS = [['NotRyzn', '$18M', '9 bets'], ['ZKR5', '$12M', '4 bets'], ['Notch', '$3M', '3 bets']];
+const MEDAL = ['#f2c14e', '#c7ccd6', '#cd8b5a'], STEP_H = [170, 132, 104], ORDER = [1, 0, 2];
+const skins = PLAYERS.map(([n]) => { const im = new Image(); im.src = 'media/skins/' + n + '.png'; return im; });
+let t0 = null;
+const ease = (x) => 1 - Math.pow(1 - clamp(x), 3);
+function rrect(x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
+function chibi(im, cx, feet, p, t, hop, seed) {
+  if (!im.complete || !im.naturalWidth) return;
+  let by = Math.floor((t + seed) / 500) % 2 ? p : 0;
+  if (hop) { const c = (t + seed) % 1600; if (c < 240) by = -Math.round(Math.sin(c / 240 * Math.PI) * 4) * p; }
+  g.fillStyle = 'rgba(0,0,0,.28)'; g.fillRect(cx - 6 * p, feet - p * .5, 12 * p, p);
+  const x = cx - 7 * p, top = feet - 18 * p + by, lg = feet - 4 * p + Math.min(0, by), body = top + 8 * p;
+  const legacy = im.naturalHeight < 64;   // an old 64x32 skin: no left limbs, no body overlays; the right limbs stand in (Minecraft mirrors them)
+  const S = (u, v, uw, vh, dx, dy, w, h) => { if (v + vh > im.naturalHeight) return; g.drawImage(im, u, v, uw, vh, Math.round(dx), Math.round(dy), Math.round(w), Math.round(h)); };
+  S(4, 20, 4, 12, x + 3 * p, lg, 4 * p, 4 * p); S(4, 36, 4, 12, x + 3 * p, lg, 4 * p, 4 * p);
+  S(legacy ? 4 : 20, legacy ? 20 : 52, 4, 12, x + 7 * p, lg, 4 * p, 4 * p); S(4, 52, 4, 12, x + 7 * p, lg, 4 * p, 4 * p);
+  S(20, 20, 8, 12, x + 3 * p, body, 8 * p, 6 * p); S(20, 36, 8, 12, x + 3 * p, body, 8 * p, 6 * p);
+  S(44, 20, 4, 12, x, body, 3 * p, 6 * p); S(44, 36, 4, 12, x, body, 3 * p, 6 * p);
+  S(legacy ? 44 : 36, legacy ? 20 : 52, 4, 12, x + 11 * p, body, 3 * p, 6 * p); S(52, 52, 4, 12, x + 11 * p, body, 3 * p, 6 * p);
+  S(8, 8, 8, 8, x + 3 * p, top, 8 * p, 8 * p); if (!legacy) S(40, 8, 8, 8, x + 3 * p, top, 8 * p, 8 * p);   // old skins often paint the hat layer solid black; Minecraft drops it
+  return top;
+}
+function crown(cx, top, p, drop) {
+  const c0 = cx - 4 * p, cy = top - 3 * p - drop;
+  g.fillStyle = '#f2c14e'; for (const i of [0, 3, 4, 7]) g.fillRect(c0 + i * p, cy, p, p);
+  g.fillRect(c0, cy + p, 8 * p, p); g.fillStyle = '#c8902e'; g.fillRect(c0, cy + 2 * p, 8 * p, p);
+  g.fillStyle = '#e0475b'; g.fillRect(c0 + 3 * p, cy + p, 2 * p, p);
+}
+function sparkles(cx, feet, p, t) {
+  [[-11, 15], [10, 18], [-9, 5], [12, 8], [6, 21]].forEach(([dx, dy], i) => {
+    const f = Math.floor(t / 110 + i * 5) % 16; if (f > 4) return;
+    const x = cx + dx * p, y = feet - dy * p, q = p * .75, col = i % 2 ? '#fff4c8' : '#f2c14e';
+    g.fillStyle = col; g.fillRect(x, y, q, q);
+    if (f === 2 || f === 3) { g.globalAlpha = .6; g.fillRect(x - q, y, q, q); g.fillRect(x + q, y, q, q); g.fillRect(x, y - q, q, q); g.fillRect(x, y + q, q, q); g.globalAlpha = 1; }
+  });
+}
+function draw(now) {
+  const t = reduce ? 1e9 : (t0 == null ? 0 : now - t0), W = cv.width, H = cv.height, base = H - 24, sw = 210, gap = 14, p = 6;
+  g.clearRect(0, 0, W, H);
+  ORDER.forEach((rank, col) => {
+    const sx = W / 2 - sw * 1.5 - gap + col * (sw + gap), cx = sx + sw / 2, m = MEDAL[rank];
+    const grow = ease((t - [500, 250, 0][rank]) / 700), sh = STEP_H[rank] * grow, top = base - sh;
+    if (sh < 1) return;
+    // halo
+    const k = rank === 0 ? 1 : .55, hy = top - 10 * p, gr = g.createRadialGradient(cx, hy, 0, cx, hy, 15 * p);
+    gr.addColorStop(0, m + Math.round(40 * k).toString(16).padStart(2, '0')); gr.addColorStop(1, m + '00');
+    g.fillStyle = gr; g.fillRect(cx - 16 * p, hy - 16 * p, 32 * p, 32 * p);
+    // the step, tinted glass with a medal lip
+    const sg = g.createLinearGradient(0, top, 0, base); sg.addColorStop(0, m + '40'); sg.addColorStop(1, m + '08');
+    rrect(sx, top, sw, sh, 14); g.fillStyle = sg; g.fill(); g.strokeStyle = m + '88'; g.lineWidth = 2; g.stroke();
+    g.fillStyle = m; g.fillRect(sx + 16, top + 2, sw - 32, 3);
+    g.font = '44px Monocraft'; g.textAlign = 'center'; g.fillStyle = m; if (sh > 52) g.fillText(String(rank + 1), cx, top + 52);
+    const [name, amt, bets] = PLAYERS[rank];
+    g.font = '20px Monocraft'; g.fillStyle = '#fff'; if (sh > 82) g.fillText(amt, cx, top + 80);
+    g.font = '15px Monocraft'; g.fillStyle = '#b3a6cc'; if (sh > 106) g.fillText(bets, cx, top + 102);
+    // the chibi drops onto its step once it has grown
+    const land = ease((t - [500, 250, 0][rank] - 600) / 380), feet = top - 2 - (1 - land) * 140;
+    if (land <= 0) return;
+    g.globalAlpha = clamp(land * 2);
+    const head = chibi(skins[rank], cx, feet, p, t, rank === 0 && land >= 1, rank * 137);
+    g.font = '18px Monocraft'; g.fillStyle = rank === 0 ? '#fbc2eb' : '#f1ecfa'; g.fillText(name, cx, feet - 18 * p - (rank === 0 ? 3 * p : 0) - 12);
+    if (rank === 0 && head != null) { const cd = (1 - ease((t - 1700) / 420)) * 90; if (t > 1500) crown(cx, head, p, cd); if (t > 2100) sparkles(cx, feet, p, t); }
+    g.globalAlpha = 1;
+  });
+  requestAnimationFrame(draw);
+}
+new IntersectionObserver((es, o) => { if (es[0].isIntersecting) { t0 = performance.now(); o.disconnect(); } }, { threshold: .45 }).observe(cv);
+document.fonts.ready.then(() => requestAnimationFrame(draw));
+
+// fair: three hashes typed once, when the section comes into view
+const rnd = (n) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) => b.toString(16).padStart(2, '0')).join('');
+const lines = { h1: 'hash ' + rnd(32), h2: 'client seed lucky7, round 1, 2, 3...', h3: 'seed ' + rnd(32) };
+new IntersectionObserver((es, o) => {
+  if (!es[0].isIntersecting) return; o.disconnect();
+  Object.entries(lines).forEach(([id, s], k) => {
+    const el = document.getElementById(id);
+    if (reduce) { el.textContent = s; return; }
+    let i = 0; setTimeout(function type() { el.textContent = s.slice(0, ++i); if (i < s.length) setTimeout(type, 14); }, k * 500);
+  });
+}, { threshold: .4 }).observe(document.querySelector('.fair'));
+</script>
+</body>
+</html>
