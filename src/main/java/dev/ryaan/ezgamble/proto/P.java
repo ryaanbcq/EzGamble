@@ -132,6 +132,32 @@ public final class P {
         }
     }
 
+    /** The outline of a chibi in faint glass: an empty spot on the podium. */
+    public static void chibiGhost(G g, double cx, double feet, double p) {
+        double x = cx - 7 * p, top = feet - 18 * p;
+        int c = 0x0CFFFFFF;
+        g.fill(x + 3 * p, top, x + 11 * p, top + 8 * p, c);              // head
+        g.fill(x, top + 8 * p, x + 14 * p, top + 14 * p, c);             // arms and body
+        g.fill(x + 3 * p, top + 14 * p, x + 11 * p, feet, c);            // legs
+    }
+
+    private static final int[][] SPARKLES = {{-11, 15}, {10, 18}, {-9, 5}, {12, 8}, {6, 21}};
+
+    /** Pixel sparkles twinkling around the winner, each on its own beat: a dot that grows into a little cross. */
+    public static void sparkles(G g, double cx, double feet, double p, long t) {
+        for (int i = 0; i < SPARKLES.length; i++) {
+            long f = Math.floorMod(t / 110 + i * 5L, 16);   // 0-1 dot, 2-3 cross, 4 dot, then dark
+            if (f > 4) continue;
+            double x = cx + SPARKLES[i][0] * p, y = feet - SPARKLES[i][1] * p, q = p * 0.75;
+            int col = i % 2 == 1 ? 0xFFFFF4C8 : 0xFFF2C14E, arm = alpha(col, 0.6);
+            g.fill(x, y, x + q, y + q, col);
+            if (f == 2 || f == 3) {
+                g.fill(x - q, y, x, y + q, arm); g.fill(x + q, y, x + 2 * q, y + q, arm);
+                g.fill(x, y - q, x + q, y, arm); g.fill(x, y + q, x + q, y + 2 * q, arm);
+            }
+        }
+    }
+
     public static void card(G g, double x, double y, double w, double h, String kind) {
         switch (kind) {
             case "accent" -> smooth(g, x, y, w, h, 7, h(0x24A18CD1, 0x14FBC2EB), 0x4DFBC2EB);

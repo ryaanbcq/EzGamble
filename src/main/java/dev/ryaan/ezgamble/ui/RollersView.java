@@ -19,15 +19,21 @@ public final class RollersView implements GameView {
     public static String range = "all";
     private static GlassSegmented rangeSeg;
     /** Podium order left to right: 2nd, 1st, 3rd; step heights and medal colours by rank. */
-    private static final int[] ORDER = {1, 0, 2}, STEP_H = {58, 46, 36}, MEDAL = {0xFFF2C14E, 0xFFC7CCD6, 0xFFCD8B5A};
+    private static final int[] ORDER = {1, 0, 2}, MEDAL = {0xFFF2C14E, 0xFFC7CCD6, 0xFFCD8B5A};
+    /** Step heights: with the list under the podium, and with the podium alone on the page. */
+    private static final int[] STEP_LIST = {58, 46, 36}, STEP_TALL = {64, 50, 40};
     private static final double STEP_W = 100, GAP = 6, ROW_H = 16;
 
     private final GambleScreen s;
 
     public RollersView(GambleScreen s) { this.s = s; }
 
-    private double base() { return s.y0 + 218; }
-    private Widget.Clip listClip() { double top = base() + 6; return new Widget.Clip(s.x0 + GambleScreen.PAD, top, GambleScreen.W - 2 * GambleScreen.PAD, s.y0 + GambleScreen.H - GambleScreen.PAD - top); }
+    /** With nobody listed under it the podium fills the page (chibis at 3 px per texel), else 2 px. */
+    private static boolean list(int n) { return n > 3; }
+    private double base(int n) { return s.y0 + (list(n) ? 218 : 272); }
+    private static int[] stepH(int n) { return list(n) ? STEP_LIST : STEP_TALL; }
+    private static double px(int n) { return list(n) ? 2 : 3; }
+    private Widget.Clip listClip() { double top = base(4) + 6; return new Widget.Clip(s.x0 + GambleScreen.PAD, top, GambleScreen.W - 2 * GambleScreen.PAD, s.y0 + GambleScreen.H - GambleScreen.PAD - top); }
     private double stepX(int col) { double cx = s.x0 + GambleScreen.W / 2.0; return cx - STEP_W * 1.5 - GAP + col * (STEP_W + GAP); }
 
     @Override
@@ -43,8 +49,9 @@ public final class RollersView implements GameView {
             int rank = ORDER[col];
             if (rank >= rows.size()) continue;
             String name = rows.get(rank).name();
-            double top = base() - STEP_H[rank];
-            s.add(Widgets.area(stepX(col), top - 52, STEP_W, STEP_H[rank] + 52, () -> open(name)));
+            int n = rows.size();
+            double sh = stepH(n)[rank], top = base(n) - sh;
+            s.add(Widgets.area(stepX(col), top - 22 * px(n), STEP_W, sh + 22 * px(n), () -> open(name)));
         }
         Widget.Clip clip = listClip();
         for (int i = 3; i < rows.size(); i++) {
@@ -81,20 +88,32 @@ public final class RollersView implements GameView {
             g.drawText(b, lx + (rx - lx - F.width(b)) / 2, y + 72, MUTE, false);
             return;
         }
-        double base = base();
+        int n = rows.size();
+        double base = base(n), p = px(n);
         for (int col = 0; col < 3; col++) {
-            int rank = ORDER[col];
-            double sx = stepX(col), sh = STEP_H[rank], top = base - sh, cx = sx + STEP_W / 2;
-            boolean has = rank < rows.size();
-            boolean hov = has && mx >= sx && mx < sx + STEP_W && my >= top - 52 && my < base;
-            // the step: glass, a medal-coloured lip on top
-            smooth(g, sx, top, STEP_W, sh, 6, has ? (hov ? 0x1FFFFFFF : 0x12FFFFFF) : 0x08FFFFFF, has ? 0x26FFFFFF : 0x12FFFFFF);
-            g.fill(sx + 6, top, sx + STEP_W - 6, top + 2, has ? MEDAL[rank] : 0x22FFFFFF);
+            int rank = ORDER[col], m = MEDAL[rank];
+            double sx = stepX(col), sh = stepH(n)[rank], top = base - sh, cx = sx + STEP_W / 2;
+            boolean has = rank < n;
+            boolean hov = has && mx >= sx && mx < sx + STEP_W && my >= top - 22 * p && my < base;
+            if (has) {   // a soft halo of stacked ovals behind whoever stands there, the winner's the brightest
+                double k = rank == 0 ? 1 : 0.55, hy = top - 1 - 10 * p;
+                for (int r : new int[]{15, 11, 7}) smooth(g, cx - r * p, hy - r * p * 0.9, 2 * r * p, 1.8 * r * p, r * p * 0.9, alpha(m, 0.06 * k));
+                smooth(g, cx - 8 * p, top - 2, 16 * p, 4, 2, alpha(m, 0.35 * k));
+            }
+            // the step: glass tinted with its medal, a lip of the medal along the top
+            if (has) smooth(g, sx, top, STEP_W, sh, 6, v(alpha(m, hov ? 0.26 : 0.18), alpha(m, 0.03)), alpha(m, hov ? 0.7 : 0.45));
+            else smooth(g, sx, top, STEP_W, sh, 6, 0x08FFFFFF, 0x12FFFFFF);
+            g.fill(sx + 8, top + 1, sx + STEP_W - 8, top + 2, has ? alpha(m, 0.9) : 0x16FFFFFF);
             String num = String.valueOf(rank + 1);
             g.push(); g.translate(cx - F.width(num), top + 6); g.scale(2, 2);
-            g.drawText(num, 0, 0, has ? MEDAL[rank] : DIM, true);
+            g.drawText(num, 0, 0, has ? m : DIM, true);
             g.pop();
-            if (!has) continue;
+            if (!has) {   // an open seat: a ghost waiting for its high roller
+                chibiGhost(g, cx, top - 1, p);
+                String o = "Open seat";
+                g.drawText(o, cx - F.width(o) / 2.0, top + 25, DIM, false);
+                continue;
+            }
             PlayerStats.Roller r = rows.get(rank);
             String v = Money.format(r.wagered());
             if (rank == 0) gradientText(g, v, cx - F.width(v) / 2.0, top + 25, true);
@@ -102,9 +121,10 @@ public final class RollersView implements GameView {
             String bets = r.bets() + (r.bets() == 1 ? " bet" : " bets");
             if (sh >= 46) g.drawText(bets, cx - F.width(bets) / 2.0, top + 36, MUTE, false);
             // the chibi on top, his name over his head
-            chibi(g, r.name(), cx, top - 1, 2, t, rank == 0, rank == 0);
+            chibi(g, r.name(), cx, top - 1, p, t, rank == 0, rank == 0);
+            if (rank == 0) sparkles(g, cx, top - 1, p, t);
             String nm = F.trimToWidth(r.name(), STEP_W - 8);
-            double ny = top - 1 - 36 - (rank == 0 ? 6 : 0) - 11;
+            double ny = top - 1 - 18 * p - (rank == 0 ? 3 * p : 0) - 12;
             if (hov || rank == 0) gradientText(g, nm, cx - F.width(nm) / 2.0, ny, true);
             else g.drawText(nm, cx - F.width(nm) / 2.0, ny, TEXT, true);
         }
