@@ -230,5 +230,13 @@
         "stream": false
       }
     ]
+  },
+  "btn_press": {
+    "sounds": [
+      {
+        "name": "ezgamble:btn_press",
+        "stream": false
+      }
+    ]
   }
 }
