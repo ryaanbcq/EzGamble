@@ -116,8 +116,13 @@ public final class DebugRun {
             }
             case "balance" -> dev.ryaan.ezgamble.data.Balance.debug(dev.ryaan.ezgamble.Money.parse(n[0]), n.length > 1 ? dev.ryaan.ezgamble.Money.parse(n[1]) : -1);   // balance SIDEBAR [BAL]
             case "win" -> GambleData.setWindow(Double.parseDouble(n[0]), Double.parseDouble(n[1]), Double.parseDouble(n[2]));   // win X Y ZOOM: the menu window, applied at the next open
-            case "fairroll" -> { for (int i = 0; i < Integer.parseInt(arg); i++) { var fr = dev.ryaan.ezgamble.data.Fair.round("Roulette"); fr.result(String.valueOf((int) Math.floor(fr.next() * 37))); } }   // fairroll N: N roulette rounds on the fair seed
+            case "fairroll" -> { for (int i = 0; i < Integer.parseInt(arg); i++) {   // fairroll N: N rounds on the fair seed, the four games in turn
+                String[] gs = {"Roulette", "Coinflip", "Crash", "Mines"}; String gm = gs[i % 4];
+                var fr = dev.ryaan.ezgamble.data.Fair.round(gm); double u = fr.next();
+                fr.result(switch (gm) { case "Roulette" -> String.valueOf((int) Math.floor(u * 37)); case "Coinflip" -> u < 0.5 ? "heads" : "tails";
+                    case "Crash" -> "x" + Math.min(1000, Math.max(1, Math.floor(0.96 / (1 - u) * 100) / 100)); default -> "3 bombs 4,11,20"; }); } }
             case "skindirect" -> dev.ryaan.ezgamble.proto.Faces.forceDirect = true;
+            case "txn" -> GambleData.record(new dev.ryaan.ezgamble.data.Txn(System.currentTimeMillis(), n[0], dev.ryaan.ezgamble.Money.parse(n[1]), n[2].startsWith("-") ? -dev.ryaan.ezgamble.Money.parse(n[2].substring(1)) : dev.ryaan.ezgamble.Money.parse(n[2]), null, "debug"));   // txn GAME BET DELTA
             case "demo" -> EzGambleMod.demoBets(Integer.parseInt(arg));
             case "chat" -> { c.inGameHud.getChatHud().addMessage(Text.literal(arg)); EzGambleMod.onChat(arg); }
             case "mouse" -> { mx = (int) Double.parseDouble(n[0]); my = (int) Double.parseDouble(n[1]); dev.ryaan.ezgamble.proto.ProtoScreen.forceMx = mx; dev.ryaan.ezgamble.proto.ProtoScreen.forceMy = my; }
