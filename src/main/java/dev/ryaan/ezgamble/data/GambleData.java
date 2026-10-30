@@ -38,6 +38,7 @@ public final class GambleData {
     /** The menu window: offset from the centre (screen GUI px) and zoom, kept between openings. */
     public static double winX, winY, winZoom = 1;
     public static boolean autoUpdate = false;   // "Auto update": download new versions by itself (off = the Update button asks)
+    public static boolean crateFast = false;   // Crates "Fast": the reel spins in 1.5 s instead of 8 (Ryan: roll quickly)
     public static boolean lens = true;   // "Liquid glass": the lens on the tabs and the period selector (off = the sliding pill)   // what the mod calls the player (asked on the first opening)
     private static long dirtyAt;
 
@@ -49,6 +50,7 @@ public final class GambleData {
                 if (o.has("name")) name = o.get("name").getAsString();
                 if (o.has("mode")) mode = o.get("mode").getAsBoolean();
                 if (o.has("lens")) lens = o.get("lens").getAsBoolean();
+                if (o.has("crateFast")) crateFast = o.get("crateFast").getAsBoolean();
                 if (o.has("autoUpdate")) autoUpdate = o.get("autoUpdate").getAsBoolean();
                 if (o.has("winX")) winX = o.get("winX").getAsDouble();
                 if (o.has("winY")) winY = o.get("winY").getAsDouble();
@@ -151,6 +153,7 @@ public final class GambleData {
 
     public static void setWindow(double x, double y, double zoom) { winX = x; winY = y; winZoom = zoom; saveConfig(); }
     public static void setLens(boolean on) { lens = on; saveConfig(); }
+    public static void setCrateFast(boolean on) { crateFast = on; saveConfig(); }
     public static void setAutoUpdate(boolean on) { autoUpdate = on; saveConfig(); if (on) dev.ryaan.ezgamble.Updater.download(); }
 
     private static void newSession() {
@@ -171,6 +174,7 @@ public final class GambleData {
         if (name != null) o.addProperty("name", name);
         o.addProperty("mode", mode);
         o.addProperty("lens", lens);
+        o.addProperty("crateFast", crateFast);
         o.addProperty("autoUpdate", autoUpdate);
         o.addProperty("winX", winX); o.addProperty("winY", winY); o.addProperty("winZoom", winZoom);
         JsonObject fg = new JsonObject();

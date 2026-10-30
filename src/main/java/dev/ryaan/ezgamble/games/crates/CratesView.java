@@ -14,6 +14,7 @@ import dev.ryaan.ezgamble.proto.F;
 import dev.ryaan.ezgamble.proto.G;
 import dev.ryaan.ezgamble.proto.GlassButton;
 import dev.ryaan.ezgamble.proto.GlassField;
+import dev.ryaan.ezgamble.proto.GlassSwitch;
 import dev.ryaan.ezgamble.proto.Key;
 import dev.ryaan.ezgamble.proto.P;
 import dev.ryaan.ezgamble.proto.Widget;
@@ -81,6 +82,7 @@ public final class CratesView implements GameView {
                 s.add(new GlassButton(lx + 116, by, 56, 24, "Clear", "GHOST", CR::clearBet));
             }
             openBtn = s.add(new GlassButton(rx - 110, by, 110, 24, "Open", "PRIMARY", CR::open));
+            if (!list.isEmpty()) s.add(new GlassSwitch(rx - 110 - 8 - 28, by + 5, 28, 14, () -> GambleData.crateFast, GambleData::setCrateFast));   // "Fast": the next opens spin in 1.5 s
             if (!list.isEmpty()) {   // added last: its result sheet goes over the crates
                 if (CR.picker == null) CR.picker = new Widgets.BackerPicker(lx + 8, fy + 8, 168, CR);
                 CR.picker.place(lx + 8, fy + 8, 168);
@@ -163,6 +165,7 @@ public final class CratesView implements GameView {
         else pillsRight(g, rx, hy, new Object[][]{{"Bet", Money.format(CR.round.bet)}});
         felt(g, lx, G.ft(), rx - lx, G.fth());
         if (CR.stage.equals("bet")) renderBet(g, mx, my); else renderSpin(g);
+        if (CR.stage.equals("bet") && !CR.backers().isEmpty()) g.drawText("Fast", rx - 110 - 8 - 28 - 4 - F.width("Fast"), G.by() + 8, GambleData.crateFast ? PINK : MUTE, false);
     }
 
     private void renderBet(G g, double mx, double my) {

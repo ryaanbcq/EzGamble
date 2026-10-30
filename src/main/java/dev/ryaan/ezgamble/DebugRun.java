@@ -96,6 +96,9 @@ public final class DebugRun {
             case "typed" -> dev.ryaan.ezgamble.data.Payouts.typed(arg);   // typed pay NAME AMT: a /pay typed by hand
             case "send" -> dev.ryaan.ezgamble.data.Payouts.send(n[0], dev.ryaan.ezgamble.Money.parse(n[1]));   // send NAME AMT: the Pay button's path
             case "paystate" -> EzGambleMod.LOG.info("[ezgamble] debug: paystate {} pending={} recent={}", arg, dev.ryaan.ezgamble.data.Payouts.pending.stream().filter(p -> p.name().equals(arg)).findFirst().orElse(null), dev.ryaan.ezgamble.data.Payouts.recent.get(arg));
+            case "cratefast" -> GambleData.setCrateFast(arg.equals("on"));
+            case "crateopen" -> { var cr = dev.ryaan.ezgamble.games.crates.CrateTable.CR; cr.backer = n[0]; cr.bet = dev.ryaan.ezgamble.Money.parse(n[1]); EzGambleMod.LOG.info("[ezgamble] debug: crate open {} fast={}", cr.open(), GambleData.crateFast); }   // crateopen NAME BET
+            case "cratestage" -> EzGambleMod.LOG.info("[ezgamble] debug: crate stage {}", dev.ryaan.ezgamble.games.crates.CrateTable.CR.stage);
             case "chips" -> EzGambleMod.LOG.info("[ezgamble] debug: chips {} = {}", arg, dev.ryaan.ezgamble.data.Payouts.balance(arg));
             case "mode" -> GambleData.setMode(arg.equals("on"));
             case "lens" -> GambleData.lens = arg.equals("on");

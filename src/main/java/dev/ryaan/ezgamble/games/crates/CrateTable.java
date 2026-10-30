@@ -62,6 +62,7 @@ public final class CrateTable extends Host {
     public static long crateMaxBet(CrateType c) { return (long) Math.floor(CRATE_MAX_WIN / c.top); }
     public static final int CRATE_CELL = 40, CRATE_WIN_AT = 72;
     public static final long CRATE_SPIN_MS = 8000;   // 8 s, a long slow end (Ryan: "tourne plus longtemps")
+    public static final long CRATE_FAST_MS = 1500;   // the "Fast" switch: same reel, same odds, same ending, just quick
 
     private static final Map<String, String> ITEM_NAMES = Map.of("cooked_beef", "Steak", "tnt", "TNT", "cod", "Raw Cod", "salmon", "Raw Salmon");
     /** Readable name from the item id (Java: Item.getName()). */
@@ -88,7 +89,7 @@ public final class CrateTable extends Host {
 
     public static final class Round extends Widgets.Round {
         public CrateType type; public Prize prize; public List<Prize> strip; public long bet; public String backer;
-        public long at, landedAt; public double land; public int lastCell = -1; public long tickAt; public boolean applied;
+        public long at, landedAt, spinMs = CRATE_SPIN_MS; public double land; public int lastCell = -1; public long tickAt; public boolean applied;
     }
 
     public static final CrateTable CR = new CrateTable();
@@ -116,7 +117,7 @@ public final class CrateTable extends Host {
         // stop somewhere inside the prize's cell, never dead centre (the near miss is part of the show)
         double land = CRATE_WIN_AT * CRATE_CELL + CRATE_CELL / 2.0 + (Widgets.rand01() - 0.5) * (CRATE_CELL - 10);
         Round r = new Round();
-        r.type = type; r.prize = prize; r.strip = strip; r.bet = bet; r.backer = backer; r.at = P.now(); r.land = land;
+        r.type = type; r.prize = prize; r.strip = strip; r.bet = bet; r.backer = backer; r.at = P.now(); r.land = land; r.spinMs = GambleData.crateFast ? CRATE_FAST_MS : CRATE_SPIN_MS;
         round = r;
         Host.lastBacker = backer;
         stage = "spin";
@@ -133,7 +134,7 @@ public final class CrateTable extends Host {
     /** Reel position (px from the strip's start to the marker) at time t: cubic ease out, like a crate wheel losing speed. */
     public double pos(long t) {
         Round r = round;
-        double f = Math.min(1, (double) (t - r.at) / CRATE_SPIN_MS);
+        double f = Math.min(1, (double) (t - r.at) / r.spinMs);
         return 2 * CRATE_CELL + (r.land - 2 * CRATE_CELL) * (1 - Math.pow(1 - f, 4));
     }
 
@@ -148,7 +149,7 @@ public final class CrateTable extends Host {
             if (r.lastCell >= 0 && t - r.tickAt >= 45) { P.play("ui_tick_close", 1 + 0.15 * Widgets.rand01(), 0.35); r.tickAt = t; }   // one tick per item under the marker, 45 ms apart at most (a buzz at full speed anyway)
             r.lastCell = cell;
         }
-        if (t - r.at >= CRATE_SPIN_MS) {
+        if (t - r.at >= r.spinMs) {
             stage = "done"; r.landedAt = t; settle();
             boolean won = payoutOf(r) > r.bet;
             if (r.prize.shiny()) { P.play("cash", 1, 0.8); P.play("mc_totem", 1.2, 0.35); }
