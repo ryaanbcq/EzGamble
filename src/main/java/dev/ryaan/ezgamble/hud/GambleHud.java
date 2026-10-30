@@ -223,64 +223,148 @@ public final class GambleHud implements HudElement {
         g.pop();
     }
 
+    // ---- the rain bubble: Agendium's chat cloud in Liquid Glass (gen_rain_cloud.py). Glass body, the pot as a liquid
+    // under a moving wave, the lens on top; drops fall in for every ticket, the bubble breathes and bursts at the end.
+
+    private static final int TW = 300, TH = 293, BW = 76, BH = 74;   // texture size (Ryan's logo), box in GUI px
+    private static final double TK = TW / (double) BW;                 // texels per GUI px
+    private static final long POP_MS = 1000, INFLATE_MS = 240, FALL_MS = 340;
+    /** The level drawn (a spring toward the pot, with a little overshoot), the wave height, the jelly squash. */
+    private static double lvl, lvlV, lvlTarget, amp = 1, jelly, jellyV;
+    private static long lastFrame, popDelay;
+    private static int seenTickets;
+    /** Drops falling into the bubble: when, where, the fill level they bring. */
+    private record Drop(long at, double x, double k) {}
+    private static final java.util.ArrayList<Drop> drops = new java.util.ArrayList<>();
+    private record Splash(long at, double x, double y) {}
+    private static final java.util.ArrayList<Splash> splashes = new java.util.ArrayList<>();
+
+    private static double waveY(double x, double level, double t, double a) {
+        return level + a * Math.sin(x * 0.13 + t * 2.2) + a * 0.5 * Math.sin(x * 0.29 - t * 3.1);
+    }
+
+    /** Fill 0..1 to the surface's height in the 76 x 74 box: the bottom lobes (72) to the top one (2). */
+    private static double levelOf(double k) { return 72 - 70 * k; }
+
     /**
-     * The cloud itself in its 100 x 64 box at (0, 0): the frosted glass, the pot revealed from the bottom up to
-     * fill level k, the amounts. Shared by the HUD and the Rain screen of the menu.
+     * The bubble in its 100 x 64 box at (0, 0), filled to k. Shared by the HUD and the Rain screen of the menu (which
+     * passes the real fill, no drops). The wave runs on the clock and on the HUD's slosh.
      */
     public static void drawCloud(G g, double k, long pot, long goal, double fade) {
         int tint = alpha(0xFFFFFFFF, fade);
-        g.drawSprite("rain/empty", 0, 0, 100, 64, tint);
-        double level = 58 - 54 * k;   // from the belly (58) to the top of the highest puff (4)
-        if (k > 0.002) {
-            g.enableScissor(0, level, 100, 64);
-            g.drawSprite("rain/full", 0, 0, 100, 64, tint);
-            g.disableScissor();
+        double t = now() / 1000.0;
+        g.drawSprite("rain/back", 0, 0, BW, BH, tint);
+        if (k > 0.004) {
+            double level = levelOf(k), a = Math.min(amp, 1 + 6 * k) * (k > 0.97 ? 0.4 : 1);   // a nearly full cloud barely moves
+            for (int c = 0; c < TW; c += 2) {
+                double wy = waveY((c + 1) / TK, level, t, a);
+                int top = Math.max(0, (int) Math.round(wy * TK));
+                if (top >= TH) continue;
+                g.drawSpritePart("rain/liquid", c / TK, top / TK, c, top, 2, TH - top, TW, TH, 1 / TK, tint);
+                g.drawSpritePart("rain/surface", c / TK, top / TK, c, top, 2, Math.min(5, TH - top), TW, TH, 1 / TK, tint);
+            }
+            // bubbles rising through the liquid, never above its surface
+            for (int i = 0; i < 4; i++) {
+                double period = 2.6 + i * 0.7, ph = (t / period + i * 0.37) % 1;
+                double bx = 16 + ((i * 53) % 44) + Math.sin(t * 2 + i) * 1.5, by = 68 - ph * (68 - level);
+                if (by < level + 2 || k < 0.06) continue;
+                double r = 0.7 + 0.25 * i % 0.8;
+                smooth(g, bx - r, by - r, 2 * r, 2 * r, r, alpha(0xFFFFFFFF, fade * 0.6 * Math.sin(ph * Math.PI)));
+            }
         }
-        // labels: deep ink on the frosted glass (thick enough to stay readable over any sky or cave)
-        String amt = Money.format(pot), sub = "of " + Money.format(goal);
-        g.drawText("Rain", 50 - F.width("Rain") / 2.0, 14, alpha(0xFF5B3F96, fade), false);
-        g.push(); g.translate(50, 31); g.scale(1.5, 1.5);
-        g.drawText(amt, -F.width(amt) / 2.0, -4, alpha(0xFF2E1F4F, fade), false);
+        // the fill in the middle of the cloud, the amounts in a glass pill under it
+        String pc = Math.min(100, (int) Math.floor(100.0 * pot / Math.max(1, goal))) + "%";
+        g.push(); g.translate(38.5, 37); g.scale(1.75, 1.75);
+        g.drawText(pc, -F.width(pc) / 2.0, -4, alpha(0xFF3A2766, fade), false);
         g.pop();
-        g.drawText(sub, 50 - F.width(sub) / 2.0, 44, alpha(0xFF4A3970, fade), false);
+        String amt = Money.format(pot), sub = " of " + Money.format(goal);
+        double tw = F.width(amt) + F.width(sub), px = BW / 2.0 - tw / 2 - 6;
+        smooth(g, px, BH + 2, tw + 12, 13, 6.5, alpha(0xFFFFFFFF, fade * 0.96), alpha(0xFFD9CCF2, fade));
+        g.drawText(amt, px + 6, BH + 5, alpha(0xFF2E1F4F, fade), false);
+        g.drawText(sub, px + 6 + F.width(amt), BH + 5, alpha(0xFF7A68A8, fade), false);
     }
 
-    // ---- the rain cloud (Agendium's chat cloud: iridescent pastel glass that fills as the pot grows, bursting at the end)
-
-    private static final long POP_MS = 900, SWELL_MS = 380;
-    private static double shownK;   // the fill level drawn: eases toward the pot, so a ticket makes it rise, not jump
-    private static long shownAt, swellAt;
-    private static int seenTickets;
-
     /**
-     * Top centre of the screen while a rain collects. Two textures of the same cloud (gen_rain_cloud.py): the frosted
-     * glass, and the saturated pot revealed from the bottom up to the fill level. A new ticket gives one short swell
-     * (motion tied to the event, none in between); the end (goal, Spin now, Cancel) bursts it into drops and coins.
+     * Top centre of the screen while a rain collects. A ticket is a drop falling into the bubble: on impact the
+     * level springs up, the surface sloshes and the bubble squashes like jelly. The end (goal, Spin now, Cancel)
+     * inflates it, then it bursts into drops and coins.
      */
     static void drawRain(G g) {
         var rn = dev.ryaan.ezgamble.games.rain.RainTable.RN;
         long t = now();
-        boolean open = rn.stage.equals("open"), popping = !open && rn.popAt > 0 && t - rn.popAt < POP_MS;
-        if (!open && !popping) { shownK = 0; seenTickets = 0; return; }
-        if (open && rn.count() != seenTickets) { if (rn.count() > seenTickets) swellAt = t; seenTickets = rn.count(); }
-        double target = open ? (rn.goal > 0 ? Math.min(1, (double) rn.pot() / rn.goal) : 0) : rn.popK;
-        double dt = shownAt == 0 ? 0 : Math.min(1, (t - shownAt) / 450.0);
-        shownK += (target - shownK) * dt; shownAt = t;
-        double k = shownK;
-        double sw2 = t - swellAt < SWELL_MS ? Math.sin((t - swellAt) / (double) SWELL_MS * Math.PI) : 0;
-        double sc = 0.88 + 0.12 * easeOut(k) + 0.05 * sw2;   // grows with the pot, a small swell per ticket
-        double fade = 1, f = 0;
-        if (popping) { f = (t - rn.popAt) / (double) POP_MS; sc *= 1 + 0.45 * easeOut(Math.min(1, f * 2.5)); fade = Math.max(0, 1 - f * 2.5); }
-        g.push(); g.translate(sw() / 2, 8 + 32); g.scale(sc, sc); g.translate(-50, -32);
-        if (fade > 0) drawCloud(g, k, open ? rn.pot() : rn.popPot, rn.goal, fade);
-        if (popping) {   // drops and coins flying out of the burst, falling a little
-            for (int i = 0; i < 16; i++) {
-                double ang = i * Math.PI * 2 / 16 + 0.3, sp = 40 + (i * 37 % 23);
-                double e = easeOut(Math.min(1, f * 1.4));
-                double x = 50 + Math.cos(ang) * sp * e, y = 32 + Math.sin(ang) * sp * 0.7 * e + 30 * f * f;
-                int col = i % 3 == 0 ? 0xFFF2C14E : i % 3 == 1 ? PINK : LAV;
-                double r = i % 3 == 0 ? 2.5 : 2;
-                smooth(g, x - r, y - r, 2 * r, 2 * r, r, alpha(col, Math.max(0, 1 - f)));
+        boolean open = rn.stage.equals("open");
+        // the goal reached by a payment: its drop falls in first, then the bubble bursts
+        if (!open && rn.popAt > 0 && t - rn.popAt < 60 && popDelay == 0 && seenTickets > 0 && rn.count() > seenTickets)
+            popDelay = FALL_MS + 110L * (Math.min(rn.count() - seenTickets, 5) - 1) + 120;
+        long popAt = rn.popAt + popDelay;
+        boolean popping = !open && rn.popAt > 0 && t - rn.popAt < POP_MS + popDelay;
+        if (!open && !popping) { lvl = lvlV = lvlTarget = 0; seenTickets = 0; drops.clear(); splashes.clear(); lastFrame = 0; amp = 1; popDelay = 0; return; }
+        if (open) popDelay = 0;
+        double dt = lastFrame == 0 ? 0 : Math.min(0.05, (t - lastFrame) / 1000.0);
+        lastFrame = t;
+        double real = open ? (rn.goal > 0 ? Math.min(1, (double) rn.pot() / rn.goal) : 0) : rn.popK;
+        if (rn.count() != seenTickets && (open || popDelay > 0)) {
+            int n = rn.count() - seenTickets;
+            if (n > 0) {
+                var rnd = ThreadLocalRandom.current();
+                int shown = Math.min(n, 5);
+                for (int i = 0; i < shown; i++) drops.add(new Drop(t + i * 110L, 14 + rnd.nextDouble() * 48, i == shown - 1 ? real : lvlTarget + (real - lvlTarget) * (i + 1) / shown));
+            } else lvlTarget = real;   // a refund: no drop, the level just sinks
+            seenTickets = rn.count();
+        }
+        if (popping && drops.isEmpty()) lvlTarget = real;
+        // drops landing: the level they bring, a slosh, a squash
+        for (var it = drops.iterator(); it.hasNext(); ) {
+            Drop d = it.next();
+            if (t - d.at() < FALL_MS) continue;
+            it.remove();
+            lvlTarget = Math.max(lvlTarget, d.k());
+            amp = Math.min(4.5, amp + 2.2); jellyV += 2.4;
+            splashes.add(new Splash(t, d.x(), waveY(d.x(), levelOf(lvl), t / 1000.0, amp)));
+            play("ui_tick_close", 1.5 + ThreadLocalRandom.current().nextDouble() * 0.3, 0.35);
+        }
+        splashes.removeIf(s -> t - s.at() > 420);
+        // springs (real time: same feel at any frame rate)
+        lvlV += (lvlTarget - lvl) * 110 * dt; lvlV *= Math.exp(-11 * dt); lvl += lvlV * dt;
+        jellyV += -jelly * 260 * dt; jellyV *= Math.exp(-7 * dt); jelly += jellyV * dt;
+        amp += (1 - amp) * (1 - Math.exp(-1.6 * dt));
+        double k = Math.max(0, Math.min(1.02, lvl)), ts = t / 1000.0;
+        double breath = Math.sin(ts * 1.15) * (1 + k);
+        double sx = (1 + 0.012 * breath + 0.06 * jelly), sy = (1 - 0.010 * breath - 0.06 * jelly);
+        double sc = 0.9 + 0.1 * easeOut(k), fade = 1, f = 0;
+        if (popping && t >= popAt) {   // inflate with a wobble, then burst
+            long e = t - popAt;
+            double in = Math.min(1, e / (double) INFLATE_MS);
+            sc *= 1 + 0.16 * easeOut(in) + 0.025 * Math.sin(e / 18.0) * (1 - in);
+            if (e > INFLATE_MS) { f = (e - INFLATE_MS) / (double) (POP_MS - INFLATE_MS); sc *= 1 + 0.35 * easeOut(Math.min(1, f * 3)); fade = Math.max(0, 1 - f * 4); }
+        }
+        g.push(); g.translate(sw() / 2, 6 + 37); g.scale(sc * sx, sc * sy); g.translate(-BW / 2.0, -37);
+        if (fade > 0) drawCloud(g, k, open || t < popAt ? rn.pot() : rn.popPot, rn.goal, fade);
+        // falling drops, accelerating, and the splash rings where they land
+        for (Drop d : drops) {
+            double e = (t - d.at()) / (double) FALL_MS;
+            if (e < 0) continue;
+            double y = -16 + (waveY(d.x(), levelOf(lvl), ts, amp) + 16) * e * e;
+            g.drawSprite("rain/drop", d.x() - 4, y - 11, 8, 11, alpha(0xFFFFFFFF, Math.min(1, e * 4)));
+        }
+        if (k < 0.85) for (Splash s : splashes) {   // a nearly full cloud has no room above its surface
+            double e = (t - s.at()) / 420.0;
+            for (int i = 0; i < 4; i++) {
+                double dir = (i < 2 ? -1 : 1) * (0.5 + 0.6 * (i % 2)), x = s.x() + dir * 7 * e, y = s.y() - 7 * Math.sin(e * Math.PI) * (1 - 0.3 * (i % 2));
+                if (y < 6) continue;   // inside the glass only (a full bubble has no room above its surface)
+                smooth(g, x - 0.9, y - 0.9, 1.8, 1.8, 0.9, alpha(i % 2 == 0 ? 0xFFFFFFFF : LAV, 1 - e));
+            }
+        }
+        if (f > 0) {   // the burst: drops of the liquid flung out (tail behind them) and a few coins, then falling
+            for (int i = 0; i < 18; i++) {
+                double ang = i * Math.PI * 2 / 18 + 0.3, sp = 36 + (i * 37 % 23);
+                double e = easeOut(Math.min(1, f * 1.5));
+                double x = 38 + Math.cos(ang) * sp * e, y = 37 + Math.sin(ang) * sp * 0.75 * e + 34 * f * f;
+                double a = Math.max(0, 1 - f);
+                if (i % 3 == 0) { smooth(g, x - 1.8, y - 1.8, 3.6, 3.6, 1.8, alpha(0xFFF2C14E, a)); continue; }
+                double vx = Math.cos(ang) * sp * 0.6 * (1 - f), vy = Math.sin(ang) * sp * 0.4 * (1 - f) + 68 * f;
+                g.push(); g.translate(x, y); g.rotate(Math.atan2(vy, vx) + Math.PI / 2 * 3); double s2 = 0.55 + 0.15 * (i % 2);
+                g.scale(s2, s2); g.drawSprite("rain/drop", -4, -6, 8, 11, alpha(0xFFFFFFFF, a)); g.pop();
             }
         }
         g.pop();

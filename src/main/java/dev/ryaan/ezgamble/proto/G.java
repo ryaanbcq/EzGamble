@@ -68,6 +68,18 @@ public final class G {
         pop();
     }
 
+    /**
+     * A uw x vh texel rectangle at (u, v) of a sprite whose file is texW x texH, drawn at `scale` GUI px per texel:
+     * thin slices of a texture (the rain's liquid under its wave) land on the texel grid, not the GUI pixel grid.
+     */
+    public void drawSpritePart(String name, double x, double y, int u, int v, int uw, int vh, int texW, int texH, double scale, int argb) {
+        Identifier id = Items2.sprite(name);
+        if (id == null || uw <= 0 || vh <= 0) return;
+        push(); translate(x, y); scale(scale, scale);
+        d.drawTexture(RenderPipelines.GUI_TEXTURED, id, 0, 0, u, v, uw, vh, uw, vh, texW, texH, argb);
+        pop();
+    }
+
     /** The player's face (hat layer included), by name: tab list skin, else Mojang, default meanwhile. */
     public void drawHead(String name, double x, double y, double size) {
         var tex = Faces.get(name);
