@@ -137,7 +137,7 @@ public final class GambleScreen extends ProtoScreen {
         if (!GambleData.mode && !(tab.equals("games") && sub != null && GAME_SUBS.contains(sub)))
             add(new GlassButton(rx - 54, y0 + 58, 52, 14, "Turn on", "PRIMARY", () -> GambleData.setMode(true)));
         if (tab.equals("games") && sub == null) {
-            cardBtn = add(new Widget(lx, y0 + 80, rx - lx, 64) { @Override public void click(double mx, double my) { P.play("click"); sub = "chips"; rebuild(); } });
+            cardBtn = add(new Widget(lx, y0 + 80, rx - lx, CARD_H) { @Override public void click(double mx, double my) { P.play("click"); sub = "chips"; rebuild(); } });
             double[] gc = gamesClip();
             Widget.Clip clip = new Widget.Clip(gc[0], gc[1], gc[2], gc[3]);
             for (double[] tl : gameTilesRects()) {
@@ -380,61 +380,70 @@ public final class GambleScreen extends ProtoScreen {
             {"Provably fair", "Seeds", "game/fair"}};
     private static final String[] GAME_IDS = {"blackjack", "auction", "mines", "crates", "roulette", "crash", "coinflip", "rollers", "fair"};
 
-    public double[] gamesClip() { double top = y0 + 152; return new double[]{x0 + PAD, top, W - 2 * PAD, y0 + H - PAD - top}; }
+    /** The credit card, one line high: the 3 rows of tiles fit under it, nothing scrolls or gets cut. */
+    private static final int CARD_H = 40, TILE_GAP = 6;
 
-    /** x, y, w, h, index. */
+    public double[] gamesClip() { double top = y0 + 80 + CARD_H + TILE_GAP; return new double[]{x0 + PAD, top, W - 2 * PAD, y0 + H - PAD - top}; }
+
+    /** x, y, w, h, index: 3 per row, the rows share the height left under the card. */
     private List<double[]> gameTilesRects() {
-        double lx = x0 + PAD, rx = x0 + W - PAD, tw = (int) ((rx - lx - 12) / 3), th = 52, y = gamesClip()[1];
+        double[] gc = gamesClip();
+        int rows = (GAMES.length + 2) / 3;
+        double lx = x0 + PAD, rx = x0 + W - PAD, tw = (int) ((rx - lx - 2 * TILE_GAP) / 3), th = Math.floor((gc[3] - (rows - 1) * TILE_GAP) / rows), y = gc[1];
         List<double[]> out = new ArrayList<>();
-        for (int i = 0; i < GAMES.length; i++) out.add(new double[]{lx + (i % 3) * (tw + 6), y + Math.floor(i / 3.0) * (th + 6), tw, th, i});
+        for (int i = 0; i < GAMES.length; i++) out.add(new double[]{lx + (i % 3) * (tw + TILE_GAP), y + Math.floor(i / 3.0) * (th + TILE_GAP), tw, th, i});
         return out;
     }
 
-    /** The session credit as chips (who backed the gambler), then the game tiles. */
+    /** The session credit on one line (chips, amount, who backed it), then the game tiles. */
     private void renderGames(G g, double mx, double my) {
-        double lx = x0 + PAD, rx = x0 + W - PAD, y = y0 + 80;
-        boolean hov = mx >= lx && mx < rx && my >= y && my < y + 64;
+        double lx = x0 + PAD, rx = x0 + W - PAD, y = y0 + 80, ch = CARD_H;
+        boolean hov = mx >= lx && mx < rx && my >= y && my < y + ch;
         long t = P.now();
         cardK = cardK + ((hov ? 1 : 0) - cardK) * Math.min(1, (t - (cardT == 0 ? t : cardT)) / 90.0);
         cardT = t;
-        double ck = P.easeOut(Math.max(0, Math.min(1, cardK))), cxm = (lx + rx) / 2, cym = y + 32;
+        double ck = P.easeOut(Math.max(0, Math.min(1, cardK))), cxm = (lx + rx) / 2, cym = y + ch / 2;
         g.push();
-        double csc = cardBtn != null && cardBtn.down && hov ? 0.985 : 1 + 0.012 * ck;
+        double csc = cardBtn != null && cardBtn.down && hov ? 0.985 : 1 + 0.008 * ck;
         g.translate(cxm, cym); g.scale(csc, csc); g.translate(-cxm, -cym);
-        P.card(g, lx, y, rx - lx, 64, "accent");
-        P.hoverSheen(g, lx, y, rx - lx, 64, 7, ck);
+        P.card(g, lx, y, rx - lx, ch, "accent");
+        P.hoverSheen(g, lx, y, rx - lx, ch, 7, ck);
         List<Payouts.Row> held = Payouts.rows().stream().filter(r -> r.bal() > 0).toList();
         long total = held.stream().mapToLong(Payouts.Row::bal).sum();
+        // the chips, standing on the card's floor
         var cb = Chips.chipsFor(total);
-        int nStacks = Math.min(4, cb.stacks().size());
-        for (int i = 0; i < nStacks; i++) {
-            var stk = cb.stacks().get(i);
-            double sx = lx + 20 + i * 28;
-            double bob = Payments.cur != null && P.now() - Payments.cur.at() < 400 ? Math.round(Math.sin((P.now() - Payments.cur.at()) / 40.0)) : 0;
-            Chips.chipStack(g, sx, y + 50 + bob, 12, stk.chip(), stk.n());
-            String lbl = "×" + stk.n();
-            g.drawText(lbl, sx - (F.width(lbl) >> 1), y + 53, P.DIM, false);
-        }
-        if (nStacks == 0) Chips.chipStack(g, lx + 20, y + 50, 12, Chips.GHOST, 1);
-        double tx = lx + 20 + Math.max(1, nStacks) * 28 - 4;
-        g.drawText("Credit", tx, y + 8, P.MUTE, false);
-        g.push(); g.translate(tx, y + 20); g.scale(2, 2); P.gradientText(g, Money.format(total), 0, 0, true); g.pop();
-        int players = held.size();
+        int nStacks = Math.min(3, cb.stacks().size());
+        double bob = Payments.cur != null && P.now() - Payments.cur.at() < 400 ? Math.round(Math.sin((P.now() - Payments.cur.at()) / 40.0)) : 0;
+        for (int i = 0; i < nStacks; i++) Chips.chipStack(g, lx + 18 + i * 20, y + ch - 9 + bob, 10, cb.stacks().get(i).chip(), cb.stacks().get(i).n());
+        if (nStacks == 0) Chips.chipStack(g, lx + 18, y + ch - 9, 10, Chips.GHOST, 1);
+        // the amount
+        double tx = lx + 18 + Math.max(1, nStacks) * 20 - 2;
+        g.drawText("Credit", tx, y + 7, P.MUTE, false);
+        String amt = Money.format(total);
+        g.push(); g.translate(tx, y + 18); g.scale(2, 2); P.gradientText(g, amt, 0, 0, true); g.pop();
+        double after = tx + F.width(amt) * 2 + 14;
+        // right: who backed it (heads, the biggest first), else what to do
         String me = MinecraftClient.getInstance().getSession().getUsername();
-        g.drawText(!GambleData.mode && total == 0 ? "Counted while gambling mode is on" : total > 0 ? "From " + players + " player" + (players == 1 ? "" : "s") : "Send /pay " + me + " to back the session",
-                tx, y + 44, P.DIM, false);
-        // backers: the biggest three
-        double bx = rx - 112;
-        for (int i = 0; i < Math.min(3, held.size()); i++) {
-            Payouts.Row r = held.get(i);
-            double by = y + 8 + i * 13;
-            g.drawHead(r.name(), bx, by, 8);
-            g.drawText(F.trimToWidth(r.name(), 52), bx + 11, by, P.TEXT, false);
-            String vs = Money.format(r.bal());
-            g.drawText(vs, rx - 8 - F.width(vs), by, P.GREEN, false);
+        if (held.isEmpty()) {
+            String hint = !GambleData.mode ? "Counted while gambling mode is on" : "Send /pay " + me + " to back the session";
+            hint = F.trimToWidth(hint, rx - 10 - after);
+            g.drawText(hint, rx - 10 - F.width(hint), y + (ch - 8) / 2, P.DIM, false);
+        } else {
+            int shown = 0;
+            double hx = rx - 10;
+            String more = held.size() > 4 ? "+" + (held.size() - 4) : null;
+            if (more != null) { hx -= F.width(more); g.drawText(more, hx, y + 22, P.MUTE, false); hx -= 4; }
+            for (int i = Math.min(4, held.size()) - 1; i >= 0; i--) {   // heads right to left, the biggest backer leftmost
+                hx -= 12;
+                if (hx < after) break;
+                g.drawHead(held.get(i).name(), hx, y + 21, 10);
+                hx -= 2; shown++;
+            }
+            String from = "From " + held.size() + " player" + (held.size() == 1 ? "" : "s");
+            g.drawText(from, rx - 10 - F.width(from), y + 7, P.DIM, false);
         }
         g.pop();
-        // tiles, 3 per row, the grid scrolls
+        // tiles, 3 per row, sized to fit
         double[] gc = gamesClip();
         List<double[]> tiles = gameTilesRects();
         double gh = tiles.isEmpty() ? 0 : tiles.get(tiles.size() - 1)[1] + tiles.get(0)[3] - gc[1];
@@ -446,9 +455,17 @@ public final class GambleScreen extends ProtoScreen {
             if (ty + th < gc[1] || ty > gc[1] + gc[3]) continue;
             boolean h2 = inGrid && mx >= tx2 && mx < tx2 + tw && my >= ty && my < ty + th;
             P.smooth(g, tx2, ty, tw, th, 8, h2 ? 0x17FFFFFF : 0x0DFFFFFF, h2 ? 0x80A18CD1 : 0x14FFFFFF);
-            g.drawSprite(gm[2], tx2 + 8, ty + 10, 32, 32);
-            g.drawText(gm[0], tx2 + 46, ty + 16, P.WHITE, true);
-            if (F.width(gm[1]) <= tw - 50) g.drawText(gm[1], tx2 + 46, ty + 28, P.MUTE, false);
+            double iy = ty + Math.round((th - 32) / 2);
+            g.drawSprite(gm[2], tx2 + 8, iy, 32, 32);
+            double room = tw - 50;
+            int sp = gm[0].lastIndexOf(' ');
+            if (F.width(gm[0]) > room && sp > 0) {   // a title too long for one line ("Provably fair" ran out of the tile): two lines, no subtitle
+                g.drawText(F.trimToWidth(gm[0].substring(0, sp), room), tx2 + 46, ty + th / 2 - 10, P.WHITE, true);
+                g.drawText(F.trimToWidth(gm[0].substring(sp + 1), room), tx2 + 46, ty + th / 2 + 2, P.WHITE, true);
+            } else {
+                g.drawText(F.trimToWidth(gm[0], room), tx2 + 46, ty + th / 2 - 10, P.WHITE, true);
+                if (F.width(gm[1]) <= room) g.drawText(gm[1], tx2 + 46, ty + th / 2 + 2, P.MUTE, false);
+            }
             if (h2) g.drawText("›", tx2 + tw - 10, ty + th - 13, P.PINK, false);   // bottom right: a long title never runs into it
         }
         endList(g, "games", gh);
