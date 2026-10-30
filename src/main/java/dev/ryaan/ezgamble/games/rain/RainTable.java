@@ -41,6 +41,9 @@ public final class RainTable {
     public long popAt; public double popK; public long popPot;
     /** When the rain opened: the HUD's timer and its call every 30 s count from here. */
     public long openedAt;
+    /** Tickets the HUD has not shown yet: their amount flies from the payment card into the cloud (k = fill after it). */
+    public record Feed(String name, long amount, double k, long at) {}
+    public final java.util.ArrayDeque<Feed> feeds = new java.util.ArrayDeque<>();
 
     public static final class Round extends Widgets.Round {
         public String winner; public int ticket, total; public long pot, prize, cut;
@@ -60,7 +63,7 @@ public final class RainTable {
         if (goal < 2 * entry) return fail("Goal: 2 tickets at least");
         if (fee < 0 || fee > 50) return fail("Fee: 0 to 50%");
         tickets.clear(); order.clear(); round = null;
-        stage = "open"; openedAt = P.now();
+        stage = "open"; openedAt = P.now(); feeds.clear();
         P.play("ui_kcards_open", 1, 0.7);
         return true;
     }
@@ -71,6 +74,7 @@ public final class RainTable {
         int n = (int) Math.min(1000, amount / entry);
         tickets.merge(name, n, Integer::sum);
         for (int i = 0; i < n; i++) order.add(name);
+        feeds.add(new Feed(name, amount, goal > 0 ? Math.min(1, (double) pot() / goal) : 0, P.now()));
         EzGambleMod.LOG.info("[ezgamble] rain: {} bought {} ticket(s), pot {}", name, n, pot());
         if (pot() >= goal) spin();
         return true;
@@ -130,7 +134,7 @@ public final class RainTable {
         pop();
         var s = Payouts.session();
         if (s != null) for (var e : tickets.entrySet()) s.addWon(e.getKey(), e.getValue() * entry);
-        tickets.clear(); order.clear();
+        tickets.clear(); order.clear(); feeds.clear();
         stage = "setup";
         P.play("ui_kcards_close", 1, 0.6);
     }

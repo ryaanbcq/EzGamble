@@ -224,11 +224,11 @@ public final class GambleHud implements HudElement {
     }
 
     // ---- the rain bubble: Agendium's chat cloud in Liquid Glass (gen_rain_cloud.py). Glass body, the pot as a liquid
-    // under a moving wave, the lens on top; drops fall in for every ticket, the bubble breathes and bursts at the end.
+    // under a moving wave, the lens on top; every ticket's amount flies in from the payment card, the bubble breathes and bursts at the end.
 
     private static final int TW = 300, TH = 293, BW = 76, BH = 74;   // texture size (Ryan's logo), box in GUI px
     private static final double TK = TW / (double) BW;                 // texels per GUI px
-    private static final long POP_MS = 1000, INFLATE_MS = 240, FALL_MS = 340;
+    private static final long POP_MS = 1000, INFLATE_MS = 240, FLY_MS = 720;
     /** The level drawn (a spring toward the pot, with a little overshoot), the wave height, the jelly squash. */
     private static double lvl, lvlV, lvlTarget, amp = 1, jelly, jellyV;
     /**
@@ -275,12 +275,12 @@ public final class GambleHud implements HudElement {
     }
 
     private static long lastFrame, popDelay;
-    private static int seenTickets;
-    /** Drops falling into the bubble: when, where, the fill level they bring. */
-    private record Drop(long at, double x, double k) {}
-    private static final java.util.ArrayList<Drop> drops = new java.util.ArrayList<>();
-    private record Splash(long at, double x, double y) {}
-    private static final java.util.ArrayList<Splash> splashes = new java.util.ArrayList<>();
+    /** A ticket's "+$X" flying from the payment card into the cloud: from where, what, the fill level it brings. */
+    private record Flyer(long at, double x, double y, double scale, String text, long amount, double k) {}
+    private static final java.util.ArrayList<Flyer> flyers = new java.util.ArrayList<>();
+    /** The cloud's bounce when an amount lands in it. */
+    private static double bnc, bncV;
+    private static dev.ryaan.ezgamble.games.rain.RainTable.Round aligned;
 
     private static double waveY(double x, double level, double t, double a) {
         return level + a * Math.sin(x * 0.13 + t * 2.2) + a * 0.5 * Math.sin(x * 0.29 - t * 3.1);
@@ -316,7 +316,7 @@ public final class GambleHud implements HudElement {
 
     /**
      * The bubble in its 100 x 64 box at (0, 0), filled to k. Shared by the HUD and the Rain screen of the menu (which
-     * passes the real fill, no drops). The wave runs on the clock and on the HUD's slosh.
+     * passes the real fill, nothing flying). The wave runs on the clock and on the HUD's slosh.
      */
     public static void drawCloud(G g, double k, long pot, long goal, double fade) {
         drawCloudBody(g, k, fade);
@@ -336,52 +336,60 @@ public final class GambleHud implements HudElement {
     }
 
     /**
-     * Top centre of the screen while a rain collects. A ticket is a drop falling into the bubble: on impact the
-     * level springs up, the surface sloshes and the bubble squashes like jelly. The end (goal, Spin now, Cancel)
-     * inflates it, then it bursts into drops and coins.
+     * Top centre of the screen while a rain collects. A ticket's "+$X" leaves the payment card once counted up and
+     * arcs into the bubble: there the level springs up, the surface sloshes, the bubble bounces. The goal or Spin now
+     * hands over to RainFinale once the last amount has landed; Cancel deflates it into drops and coins.
      */
     static void drawRain(G g) {
         var rn = dev.ryaan.ezgamble.games.rain.RainTable.RN;
         long t = now();
         rn.tick();   // every frame as well: the reel's clicks follow its cells closely
         boolean open = rn.stage.equals("open");
-        // the goal reached by a payment: its drop falls in first, then the bubble bursts
-        if (!open && rn.popAt > 0 && t - rn.popAt < 60 && popDelay == 0 && seenTickets > 0 && rn.count() > seenTickets)
-            popDelay = FALL_MS + 110L * (Math.min(rn.count() - seenTickets, 5) - 1) + 120;
+        // tickets shown on the payment card: once its amount has counted up, it flies into the cloud
+        while (!rn.feeds.isEmpty()) {
+            var fd = rn.feeds.peek();
+            var pc = Payments.cur;
+            boolean card = HUD.get("pay").visible;
+            boolean onCard = card && pc != null && pc.name().equals(fd.name()) && pc.amount() == fd.amount();
+            if (onCard && t - pc.at() < 650) break;   // still counting up on the card
+            if (card && !onCard && t - fd.at() < 8000) break;   // not on the card yet (payments before it)
+            rn.feeds.poll();
+            double ks = effScale("pay"), fx, fy;
+            String text = "+" + Money.format(fd.amount());
+            if (onCard) { Rect r = wrect("pay"); fx = r.x() + ks * (30 + F.width(text) / 2.0); fy = r.y() + ks * 23; }
+            else { fx = sw() - 30; fy = 20; ks = 1; }
+            flyers.add(new Flyer(t, fx, fy, ks, text, fd.amount(), fd.k()));
+        }
+        // the goal reached: the last amounts land first, then the bubble bursts
+        if (!open && rn.popAt > 0 && (!flyers.isEmpty() || !rn.feeds.isEmpty()) && t - rn.popAt < 9000) popDelay = Math.max(popDelay, t - rn.popAt + 220);
         long popAt = rn.popAt + popDelay;
         // the goal reached (or Spin now): the finale takes the whole screen until the winner has been shown
         boolean finale = !open && rn.round != null && rn.popAt > 0 && t < RainFinale.end(rn.round);
         boolean popping = finale || !open && rn.popAt > 0 && t - rn.popAt < POP_MS + popDelay;
-        if (!open && !popping) { lvl = lvlV = lvlTarget = 0; seenTickets = 0; drops.clear(); splashes.clear(); lastFrame = 0; amp = 1; popDelay = 0; ox = oy = ovx = ovy = tilt = tiltV = 0; physicsInit = false; return; }
+        if (!open && !popping) { lvl = lvlV = lvlTarget = 0; flyers.clear(); lastFrame = 0; amp = 1; popDelay = 0; ox = oy = ovx = ovy = tilt = tiltV = bnc = bncV = 0; physicsInit = false; return; }
         if (open) popDelay = 0;
-        if (finale && t >= popAt) { tilt = 0; RainFinale.draw(g, rn, popAt, t); lastFrame = t; return; }
+        if (finale && t >= popAt) {
+            // the reel starts when the finale shows it, however long the last amounts took to land
+            if (aligned != rn.round) { aligned = rn.round; if (t < rn.round.at) rn.round.at = popAt + dev.ryaan.ezgamble.games.rain.RainTable.LEAD_MS; }
+            tilt = 0; RainFinale.draw(g, rn, popAt, t); lastFrame = t; return;
+        }
         double dt = lastFrame == 0 ? 0 : Math.min(0.05, (t - lastFrame) / 1000.0);
         lastFrame = t;
         double real = open ? (rn.goal > 0 ? Math.min(1, (double) rn.pot() / rn.goal) : 0) : rn.popK;
-        if (rn.count() != seenTickets && (open || popDelay > 0)) {
-            int n = rn.count() - seenTickets;
-            if (n > 0) {
-                var rnd = ThreadLocalRandom.current();
-                int shown = Math.min(n, 5);
-                for (int i = 0; i < shown; i++) drops.add(new Drop(t + i * 110L, 14 + rnd.nextDouble() * 48, i == shown - 1 ? real : lvlTarget + (real - lvlTarget) * (i + 1) / shown));
-            } else lvlTarget = real;   // a refund: no drop, the level just sinks
-            seenTickets = rn.count();
-        }
-        if (popping && drops.isEmpty()) lvlTarget = real;
-        // drops landing: the level they bring, a slosh, a squash
-        for (var it = drops.iterator(); it.hasNext(); ) {
-            Drop d = it.next();
-            if (t - d.at() < FALL_MS) continue;
+        if (flyers.isEmpty() && rn.feeds.isEmpty()) lvlTarget = real;   // nothing on its way: the level is the pot (a refund sinks it)
+        // amounts landing: the level they bring, a bounce, a slosh
+        for (var it = flyers.iterator(); it.hasNext(); ) {
+            Flyer fl = it.next();
+            if (t - fl.at() < FLY_MS) continue;
             it.remove();
-            lvlTarget = Math.max(lvlTarget, d.k());
-            amp = Math.min(4.5, amp + 2.2); jellyV += 2.4;
-            splashes.add(new Splash(t, d.x(), waveY(d.x(), levelOf(lvl), t / 1000.0, amp)));
-            play("ui_tick_close", 1.5 + ThreadLocalRandom.current().nextDouble() * 0.3, 0.35);
+            lvlTarget = Math.max(lvlTarget, fl.k());
+            amp = Math.min(4.5, amp + 2.4); jellyV += 2.2; bncV += 2.6;
+            play("mc_orb", 1.3 + ThreadLocalRandom.current().nextDouble() * 0.3, 0.5);
         }
-        splashes.removeIf(s -> t - s.at() > 420);
         // springs (real time: same feel at any frame rate)
         lvlV += (lvlTarget - lvl) * 110 * dt; lvlV *= Math.exp(-11 * dt); lvl += lvlV * dt;
         jellyV += -jelly * 260 * dt; jellyV *= Math.exp(-7 * dt); jelly += jellyV * dt;
+        bncV += -bnc * 240 * dt; bncV *= Math.exp(-8 * dt); bnc += bncV * dt;
         amp += (1 - amp) * (1 - Math.exp(-1.6 * dt));
         if (open) physics(dt);
         double k = Math.max(0, Math.min(1.02, lvl)), ts = t / 1000.0;
@@ -398,7 +406,7 @@ public final class GambleHud implements HudElement {
             double gs = 110 * (1 + 0.6 * p);
             g.drawSprite("rain/glow", sw() / 2 + ox - gs / 2, 43 + oy - gs / 2, gs, gs, alpha(0xFFFFD2F0, 0.45 * Math.sin(p * Math.PI)));
         }
-        sc *= 1 + call;
+        sc *= (1 + call) * (1 + 0.11 * bnc);
         if (popping && t >= popAt) {   // inflate with a wobble, then burst
             long e = t - popAt;
             double in = Math.min(1, e / (double) INFLATE_MS);
@@ -406,22 +414,11 @@ public final class GambleHud implements HudElement {
             if (e > INFLATE_MS) { f = (e - INFLATE_MS) / (double) (POP_MS - INFLATE_MS); sc *= 1 + 0.35 * easeOut(Math.min(1, f * 3)); fade = Math.max(0, 1 - f * 4); }
         }
         g.push(); g.translate(sw() / 2 + ox, 6 + 37 + oy); g.rotate(Math.max(-0.12, Math.min(0.12, ovx * 0.0012))); g.scale(sc * sx, sc * sy); g.translate(-BW / 2.0, -37);
-        if (fade > 0) drawCloud(g, k, open || t < popAt ? rn.pot() : rn.popPot, rn.goal, fade);
-        // falling drops, accelerating, and the splash rings where they land
-        for (Drop d : drops) {
-            double e = (t - d.at()) / (double) FALL_MS;
-            if (e < 0) continue;
-            double y = -16 + (waveY(d.x(), levelOf(lvl), ts, amp) + 16) * e * e;
-            g.drawSprite("rain/drop", d.x() - 4, y - 11, 8, 11, alpha(0xFFFFFFFF, Math.min(1, e * 4)));
-        }
-        if (k < 0.85) for (Splash s : splashes) {   // a nearly full cloud has no room above its surface
-            double e = (t - s.at()) / 420.0;
-            for (int i = 0; i < 4; i++) {
-                double dir = (i < 2 ? -1 : 1) * (0.5 + 0.6 * (i % 2)), x = s.x() + dir * 7 * e, y = s.y() - 7 * Math.sin(e * Math.PI) * (1 - 0.3 * (i % 2));
-                if (y < 6) continue;   // inside the glass only (a full bubble has no room above its surface)
-                smooth(g, x - 0.9, y - 0.9, 1.8, 1.8, 0.9, alpha(i % 2 == 0 ? 0xFFFFFFFF : LAV, 1 - e));
-            }
-        }
+        // the pot in the cloud grows when an amount lands, not when it leaves the card
+        long pending = 0;
+        for (Flyer fl : flyers) pending += fl.amount();
+        for (var fd : rn.feeds) pending += fd.amount();
+        if (fade > 0) drawCloud(g, k, Math.max(0, (open || t < popAt ? rn.pot() : rn.popPot) - pending), rn.goal, fade);
         if (f > 0) {   // the burst: drops of the liquid flung out (tail behind them) and a few coins, then falling
             for (int i = 0; i < 18; i++) {
                 double ang = i * Math.PI * 2 / 18 + 0.3, sp = 36 + (i * 37 % 23);
@@ -435,6 +432,23 @@ public final class GambleHud implements HudElement {
             }
         }
         g.pop();
+        // the amounts on their way: an arc from the card to the cloud, growing then shrinking into it, a faint trail
+        double cx = sw() / 2 + ox, cy = 6 + 37 + oy;
+        for (Flyer fl : flyers) {
+            for (int gh = 3; gh >= 0; gh--) {
+                double p = Math.max(0, (t - fl.at() - gh * 35) / (double) FLY_MS);
+                if (p <= 0) continue;
+                double e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;   // ease in-out
+                double mx = (fl.x() + cx) / 2, my = Math.max(fl.y(), cy) + 34;   // a swoop under the line: the card and the cloud both sit at the top
+                double x = (1 - e) * (1 - e) * fl.x() + 2 * (1 - e) * e * mx + e * e * cx;
+                double y = (1 - e) * (1 - e) * fl.y() + 2 * (1 - e) * e * my + e * e * cy;
+                double s2 = fl.scale() * (1 + 0.7 * Math.sin(Math.min(1, e * 1.4) * Math.PI)) * (1 - 0.45 * e * e);
+                double a = gh == 0 ? 1 : 0.22 / gh;
+                g.push(); g.translate(x, y); g.scale(s2, s2);
+                g.drawText(fl.text(), -F.width(fl.text()) / 2.0, -4, alpha(GREEN, a), true);
+                g.pop();
+            }
+        }
     }
 
     /** 0..1: how far the toast is out of the card. In 250 ms, stays 3.5 s, back in 250 ms. */

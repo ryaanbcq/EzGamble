@@ -162,8 +162,19 @@ public final class Updater {
 
     // ---- restart: the game closes, then the launcher that started it starts the same instance again
 
-    /** The Prism (or MultiMC, PolyMC) executable that launched this game, among its parent processes; null if none. */
+    private static volatile String launcherCache;
+    private static volatile boolean launcherLooked;
+
+    /**
+     * The Prism (or MultiMC, PolyMC) executable that launched this game, among its parent processes; null if none.
+     * Looked up once: walking the process tree asks the system each time, and the menu asks every frame.
+     */
     static String launcher() {
+        if (!launcherLooked) { launcherCache = findLauncher(); launcherLooked = true; }
+        return launcherCache;
+    }
+
+    private static String findLauncher() {
         var p = ProcessHandle.current().parent();
         for (int i = 0; i < 4 && p.isPresent(); i++, p = p.get().parent()) {
             var cmd = p.get().info().command();
