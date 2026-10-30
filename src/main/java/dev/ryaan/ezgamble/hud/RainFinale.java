@@ -104,11 +104,6 @@ final class RainFinale {
             double gs = 130 * sc;
             g.drawSprite("rain/glow", cx - gs / 2, cy - gs / 2, gs, gs, alpha(0xFFFFE8FA, 0.55 * gl));
         }
-        if (ca > 0.01) {
-            g.push(); g.translate(cx, cy); g.scale(sc, sc); g.translate(-38, -37);
-            GambleHud.drawCloudBody(g, k, ca * gf);
-            g.pop();
-        }
         double cloudHalf = 38 * big, cloudBottom = skyY + 28 * big;
 
         // ---- lightning: one at the charge, one when the winner lands
@@ -139,17 +134,22 @@ final class RainFinale {
                 g.drawSprite("rain/splash", x - sw2 / 2, ground - sw2 / 2, sw2, sw2 / 2, alpha(tint, a * (1 - f)));
             }
         }
-        // gold coins falling out of the cloud, spinning
+        // gold coins coming out of the cloud's belly (drawn behind it), spread over its width, spinning
         for (int j = 0; j < COINS; j++) {
             double t0 = RAIN0 + 200 + h(j, 13) * (RAIN1 - RAIN0 - 900), el = (e - t0) / 1000.0;
             if (el < 0) continue;
-            double x = W / 2 + (h(j, 12) - 0.5) * cloudHalf * 1.8 + Math.sin(el * 3 + j) * 5;
-            double y = cloudBottom - 6 + 18 * el + 0.5 * H * 1.1 * el * el;
+            double x = W / 2 + (h(j, 12) - 0.5) * cloudHalf * 1.5 + (h(j, 15) - 0.5) * 30 * el;
+            double y = cloudBottom - 14 * big + 22 * el + 0.5 * H * 1.0 * el * el;
             if (y > H + 10) continue;
-            double size = 7 + 6 * h(j, 14), spin = Math.cos(el * 9 + j), w = size * Math.max(0.12, Math.abs(spin));
-            g.drawSprite("rain/coin", x - w / 2, y - size / 2, w, size, alpha(spin < 0 ? 0xFFD8C8A8 : 0xFFFFFFFF, gf));
+            double in = clamp01(el / 0.18);
+            double size = (7 + 6 * h(j, 14)) * (0.6 + 0.4 * in), spin = Math.cos(el * 9 + j), w = size * Math.max(0.12, Math.abs(spin));
+            g.drawSprite("rain/coin", x - w / 2, y - size / 2, w, size, alpha(spin < 0 ? 0xFFD8C8A8 : 0xFFFFFFFF, gf * in));
         }
-
+        if (ca > 0.01) {
+            g.push(); g.translate(cx, cy); g.scale(sc, sc); g.translate(-38, -37);
+            GambleHud.drawCloudBody(g, k, ca * gf);
+            g.pop();
+        }
         // ---- the pot, counting up while it rains
         long slotStart = r.at - 250;   // the reel shows as it starts to spin (RainTable.LEAD_MS)
         double potA = clamp01((e - 1200) / 250.0) * (1 - clamp01((t - slotStart) / 300.0));

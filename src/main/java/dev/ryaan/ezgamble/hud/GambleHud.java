@@ -239,7 +239,7 @@ public final class GambleHud implements HudElement {
     private static float lastYaw, lastPitch;
     private static double lastSide, lastFwd, lastUp;
     private static boolean wasOnGround = true, physicsInit;
-    private static final double FIELD = 16;
+    private static final double FIELD = 11;
     private static long callAt = -1;
 
     private static void physics(double dt) {
@@ -253,15 +253,15 @@ public final class GambleHud implements HudElement {
         double dyaw = net.minecraft.util.math.MathHelper.wrapDegrees(yaw - lastYaw), dpitch = pitch - lastPitch;
         lastYaw = yaw; lastPitch = pitch;
         // inertia: the view turns, the bubble stays behind; the body speeds up, the bubble lags the other way
-        ovx += Math.max(-40, Math.min(40, dyaw)) * 4.5;
-        ovy += Math.max(-40, Math.min(40, dpitch)) * 3.0;
-        ovx += (side - lastSide) * 220; ovy += (up - lastUp) * 260 - (fwd - lastFwd) * 60;
+        ovx += Math.max(-40, Math.min(40, dyaw)) * 2.0;
+        ovy += Math.max(-40, Math.min(40, dpitch)) * 1.3;
+        ovx += (side - lastSide) * 100; ovy += (up - lastUp) * 120 - (fwd - lastFwd) * 30;
         lastSide = side; lastFwd = fwd; lastUp = up;
         boolean ground = p.isOnGround();
         if (ground && !wasOnGround) { jellyV += 3.2; amp = Math.min(4.5, amp + 1.8); }   // landing: squash and slosh
         wasOnGround = ground;
         // spring back to the anchor, a little bouncy
-        ovx += (-ox * 70 - ovx * 6.5) * dt; ovy += (-oy * 70 - ovy * 6.5) * dt;
+        ovx += (-ox * 120 - ovx * 10) * dt; ovy += (-oy * 120 - ovy * 10) * dt;   // heavy: stiff and well damped
         ox += ovx * dt; oy += ovy * dt;
         double r = Math.hypot(ox, oy);
         if (r > FIELD) {   // the edge of the field: back inside, bounce, squash
