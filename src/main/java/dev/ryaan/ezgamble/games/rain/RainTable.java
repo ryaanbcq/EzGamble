@@ -35,6 +35,7 @@ public final class RainTable {
     /** How long the rain stays open: at the end it draws among the tickets in (2 players at least), else refunds. */
     public long durationMs = 5 * 60_000;
     public long endsAt;
+    private long beepedSec = -1;
     /** Tickets by player, in the order of their first ticket. */
     public final Map<String, Integer> tickets = new LinkedHashMap<>();
     /** Every ticket's owner, in the order bought: the provably fair number picks one of these. */
@@ -127,6 +128,14 @@ public final class RainTable {
     }
 
     public void tick() {
+        if (stage.equals("open")) {   // the last ten seconds: a beep each second, higher and higher, louder on the last three
+            long left = endsAt - P.now(), sec = (left + 999) / 1000;
+            if (left > 0 && sec <= 10 && sec != beepedSec) {
+                beepedSec = sec;
+                P.play("mc_pling", 0.75 + (10 - sec) * 0.09, sec <= 3 ? 0.9 : 0.55);
+                if (sec <= 3) P.play("mc_hat", 1.0, 0.6);
+            }
+        }
         if (stage.equals("open") && P.now() >= endsAt) {   // time is up: draw if there is a contest, else everyone gets his tickets back
             EzGambleMod.LOG.info("[ezgamble] rain: time up, pot {}, {} player(s)", pot(), tickets.size());
             if (tickets.size() >= 2) spin(); else cancel();
