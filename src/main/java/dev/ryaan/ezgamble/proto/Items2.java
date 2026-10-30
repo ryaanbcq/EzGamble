@@ -17,7 +17,7 @@ public final class Items2 {
     private static final Map<String, String> ALIAS = Map.of("tnt_side", "tnt", "clock_00", "clock", "crossbow_standby", "crossbow",
             "compass_00", "compass", "recovery_compass_00", "recovery_compass");
     /** Sprites shipped by the mod (assets/ezgamble/textures/gui/...). */
-    private static final Set<String> OURS = Set.of("card", "game", "crate", "chip", "coin");
+    private static final Set<String> OURS = Set.of("card", "game", "crate", "chip", "coin", "rain");
 
     public static ItemStack stack(String name) {
         return ITEMS.computeIfAbsent(name, n -> {

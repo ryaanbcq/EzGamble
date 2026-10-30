@@ -159,32 +159,32 @@ public final class RainView implements GameView {
         var G = geom();
         double lx = G.lx(), rx = G.rx(), fy = G.fy();
         long pot = RN.pot();
-        String a = Money.format(pot);
-        g.push(); g.translate(lx + 8, fy); g.scale(2, 2); gradientText(g, a, 0, 0, true); g.pop();
-        g.drawText("of " + Money.format(RN.goal), lx + 8 + F.width(a) * 2 + 6, fy + 7, MUTE, false);
+        // the cloud of the HUD, filling as the tickets come in (the rain's one signature, here and on screen)
+        double k = Math.min(1, RN.goal > 0 ? (double) pot / RN.goal : 0);
+        g.push(); g.translate(lx + 6, fy - 4); dev.ryaan.ezgamble.hud.GambleHud.drawCloud(g, k, pot, RN.goal, 1); g.pop();
         int players = RN.tickets.size(), n = RN.count();
+        double lx2 = lx + 116;
         String c = n + " ticket" + (n == 1 ? "" : "s") + ", " + players + " player" + (players == 1 ? "" : "s");
-        g.drawText(c, rx - 8 - F.width(c), fy + 7, TEXT, false);
-        // progress: a glass track, the Outmind gradient up to the pot
-        double bx = lx + 8, bw = rx - lx - 16, by = fy + 22, k = Math.min(1, RN.goal > 0 ? (double) pot / RN.goal : 0);
-        smooth(g, bx, by, bw, 6, 3, 0x22FFFFFF, 0x14FFFFFF);
-        if (k > 0) smooth(g, bx, by, Math.max(6, bw * k), 6, 3, h(0xFFA18CD1, 0xFFFBC2EB), 0);
+        g.drawText(c, lx2, fy + 2, WHITE, true);
+        String left = RN.goal > pot ? Money.format(RN.goal - pot) + " to go" : "Goal reached";
+        g.drawText(left, rx - 8 - F.width(left), fy + 2, MUTE, false);
         // who is in: biggest first, his share of the tickets = his chance
         List<Map.Entry<String, Integer>> rows = new ArrayList<>(RN.tickets.entrySet());
         rows.sort((x, y) -> y.getValue() - x.getValue());
-        double ly = fy + 36, lh = G.ft() + G.fth() - 6 - ly;
+        double ly = fy + 16, lh = G.ft() + G.fth() - 6 - ly;
         if (rows.isEmpty()) {
-            g.drawText("Waiting for the first ticket.", lx + 8, ly + 6, TEXT, false);
-            g.drawText("Copy for chat, paste it, players /pay " + Money.format(RN.entry) + " to get in.", lx + 8, ly + 18, MUTE, false);
+            g.drawText("Waiting for the first ticket.", lx2, ly + 6, TEXT, false);
+            g.drawText("Copy for chat and paste it:", lx2, ly + 20, MUTE, false);
+            g.drawText("players /pay " + Money.format(RN.entry) + " to get in.", lx2, ly + 32, MUTE, false);
             return;
         }
-        double off = screen.beginList(g, "rain", lx + 4, ly, rx - lx - 8, lh, rows.size() * 15);
+        double off = screen.beginList(g, "rain", lx2 - 4, ly, rx - lx2, lh, rows.size() * 15);
         for (int i = 0; i < rows.size(); i++) {
             var e = rows.get(i);
             double y = ly + i * 15 - off;
             if (y + 15 < ly || y > ly + lh) continue;
-            g.drawHead(e.getKey(), lx + 8, y + 3, 9);
-            g.drawText(F.trimToWidth(e.getKey(), 120), lx + 21, y + 4, TEXT, false);
+            g.drawHead(e.getKey(), lx2, y + 3, 9);
+            g.drawText(F.trimToWidth(e.getKey(), 110), lx2 + 13, y + 4, TEXT, false);
             String pct = Math.round(100.0 * e.getValue() / n) + "%", tk = "×" + e.getValue();
             g.drawText(pct, rx - 12 - F.width(pct), y + 4, PINK, false);
             g.drawText(tk, rx - 12 - 34 - F.width(tk), y + 4, MUTE, false);

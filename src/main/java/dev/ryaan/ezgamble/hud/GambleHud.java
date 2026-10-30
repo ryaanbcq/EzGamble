@@ -37,6 +37,7 @@ public final class GambleHud implements HudElement {
         long t0 = System.nanoTime();
         try {
             drawToast(g, toastK());
+            drawRain(g);
             for (String id : new String[]{"session", "pay"}) if (HUD.get(id).visible) { Rect r = wrect(id); drawWidget(g, id, r.x(), r.y()); }
         } catch (Throwable e) {
             if (!logged) { logged = true; EzGambleMod.LOG.error("[ezgamble] HUD render failed (not logged again)", e); }
@@ -218,6 +219,69 @@ public final class GambleHud implements HudElement {
                 }
             }
             default -> {}
+        }
+        g.pop();
+    }
+
+    /**
+     * The cloud itself in its 100 x 64 box at (0, 0): the frosted glass, the pot revealed from the bottom up to
+     * fill level k, the amounts. Shared by the HUD and the Rain screen of the menu.
+     */
+    public static void drawCloud(G g, double k, long pot, long goal, double fade) {
+        int tint = alpha(0xFFFFFFFF, fade);
+        g.drawSprite("rain/empty", 0, 0, 100, 64, tint);
+        double level = 58 - 54 * k;   // from the belly (58) to the top of the highest puff (4)
+        if (k > 0.002) {
+            g.enableScissor(0, level, 100, 64);
+            g.drawSprite("rain/full", 0, 0, 100, 64, tint);
+            g.disableScissor();
+        }
+        // labels: deep ink on the frosted glass (thick enough to stay readable over any sky or cave)
+        String amt = Money.format(pot), sub = "of " + Money.format(goal);
+        g.drawText("Rain", 50 - F.width("Rain") / 2.0, 14, alpha(0xFF5B3F96, fade), false);
+        g.push(); g.translate(50, 31); g.scale(1.5, 1.5);
+        g.drawText(amt, -F.width(amt) / 2.0, -4, alpha(0xFF2E1F4F, fade), false);
+        g.pop();
+        g.drawText(sub, 50 - F.width(sub) / 2.0, 44, alpha(0xFF4A3970, fade), false);
+    }
+
+    // ---- the rain cloud (Agendium's chat cloud: iridescent pastel glass that fills as the pot grows, bursting at the end)
+
+    private static final long POP_MS = 900, SWELL_MS = 380;
+    private static double shownK;   // the fill level drawn: eases toward the pot, so a ticket makes it rise, not jump
+    private static long shownAt, swellAt;
+    private static int seenTickets;
+
+    /**
+     * Top centre of the screen while a rain collects. Two textures of the same cloud (gen_rain_cloud.py): the frosted
+     * glass, and the saturated pot revealed from the bottom up to the fill level. A new ticket gives one short swell
+     * (motion tied to the event, none in between); the end (goal, Spin now, Cancel) bursts it into drops and coins.
+     */
+    static void drawRain(G g) {
+        var rn = dev.ryaan.ezgamble.games.rain.RainTable.RN;
+        long t = now();
+        boolean open = rn.stage.equals("open"), popping = !open && rn.popAt > 0 && t - rn.popAt < POP_MS;
+        if (!open && !popping) { shownK = 0; seenTickets = 0; return; }
+        if (open && rn.count() != seenTickets) { if (rn.count() > seenTickets) swellAt = t; seenTickets = rn.count(); }
+        double target = open ? (rn.goal > 0 ? Math.min(1, (double) rn.pot() / rn.goal) : 0) : rn.popK;
+        double dt = shownAt == 0 ? 0 : Math.min(1, (t - shownAt) / 450.0);
+        shownK += (target - shownK) * dt; shownAt = t;
+        double k = shownK;
+        double sw2 = t - swellAt < SWELL_MS ? Math.sin((t - swellAt) / (double) SWELL_MS * Math.PI) : 0;
+        double sc = 0.88 + 0.12 * easeOut(k) + 0.05 * sw2;   // grows with the pot, a small swell per ticket
+        double fade = 1, f = 0;
+        if (popping) { f = (t - rn.popAt) / (double) POP_MS; sc *= 1 + 0.45 * easeOut(Math.min(1, f * 2.5)); fade = Math.max(0, 1 - f * 2.5); }
+        g.push(); g.translate(sw() / 2, 8 + 32); g.scale(sc, sc); g.translate(-50, -32);
+        if (fade > 0) drawCloud(g, k, open ? rn.pot() : rn.popPot, rn.goal, fade);
+        if (popping) {   // drops and coins flying out of the burst, falling a little
+            for (int i = 0; i < 16; i++) {
+                double ang = i * Math.PI * 2 / 16 + 0.3, sp = 40 + (i * 37 % 23);
+                double e = easeOut(Math.min(1, f * 1.4));
+                double x = 50 + Math.cos(ang) * sp * e, y = 32 + Math.sin(ang) * sp * 0.7 * e + 30 * f * f;
+                int col = i % 3 == 0 ? 0xFFF2C14E : i % 3 == 1 ? PINK : LAV;
+                double r = i % 3 == 0 ? 2.5 : 2;
+                smooth(g, x - r, y - r, 2 * r, 2 * r, r, alpha(col, Math.max(0, 1 - f)));
+            }
         }
         g.pop();
     }

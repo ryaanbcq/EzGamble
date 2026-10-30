@@ -58,6 +58,16 @@ public final class G {
         pop();
     }
 
+    /** The same, tinted / faded: argb multiplies the texture (0xFFFFFFFF = as is). */
+    public void drawSprite(String name, double x, double y, double w, double h, int argb) {
+        Identifier id = Items2.sprite(name);
+        if (id == null) return;
+        int iw = r(w), ih = r(h);
+        push(); translate(x, y);
+        d.drawTexture(RenderPipelines.GUI_TEXTURED, id, 0, 0, 0, 0, iw, ih, iw, ih, iw, ih, argb);
+        pop();
+    }
+
     /** The player's face (hat layer included), by name: tab list skin, else Mojang, default meanwhile. */
     public void drawHead(String name, double x, double y, double size) {
         var tex = Faces.get(name);

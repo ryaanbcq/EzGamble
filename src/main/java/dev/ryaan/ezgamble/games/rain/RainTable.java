@@ -35,6 +35,8 @@ public final class RainTable {
     /** Every ticket's owner, in the order bought: the provably fair number picks one of these. */
     public final List<String> order = new ArrayList<>();
     public Round round;
+    /** When the HUD cloud burst (goal reached, Spin now, or cancelled) and how full it was: it pops for 900 ms. */
+    public long popAt; public double popK; public long popPot;
 
     public static final class Round extends Widgets.Round {
         public String winner; public int ticket, total; public long pot, prize, cut;
@@ -42,6 +44,7 @@ public final class RainTable {
     }
 
     public int count() { return order.size(); }
+    private void pop() { popAt = P.now(); popPot = pot(); popK = goal > 0 ? Math.min(1, (double) pot() / goal) : 0; }
     public long pot() { return entry * order.size(); }
 
     public String warn; public long warnUntil;
@@ -71,6 +74,7 @@ public final class RainTable {
 
     /** The goal is reached: draw the winning ticket and start the reel. */
     void spin() {
+        pop();
         var fr = Fair.round("Rain");
         double u = fr.next();
         Round r = new Round();
@@ -119,6 +123,7 @@ public final class RainTable {
     /** Stop collecting: every ticket goes back into its owner's chips (refund them from the Chips view). */
     public void cancel() {
         if (!stage.equals("open")) return;
+        pop();
         var s = Payouts.session();
         if (s != null) for (var e : tickets.entrySet()) s.addWon(e.getKey(), e.getValue() * entry);
         tickets.clear(); order.clear();
