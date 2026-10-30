@@ -25,6 +25,15 @@ public final class Updater {
     private Updater() {}
 
     private static final String BASE = "https://raw.githubusercontent.com/ryaanbcq/EzGamble/main/update/";
+    /**
+     * latest.json through the GitHub API: at most a minute old. The raw file above sits in GitHub's cache for 5 minutes
+     * whatever the query string (checked: x-cache HIT with ?t=), so a new version took up to 15 minutes to show.
+     * The API allows 60 requests an hour per address: one every 2 minutes, plus menu openings, and the raw file when it says no.
+     */
+    private static final String API = "https://api.github.com/repos/ryaanbcq/EzGamble/contents/update/latest.json";
+    private static volatile String etag;
+    private static volatile String lastBody;
+    private static volatile long apiBlockedUntil;
     public enum State { CHECKING, UP_TO_DATE, AVAILABLE, DOWNLOADING, READY, FAILED }
 
     private static volatile State state = State.CHECKING;
@@ -43,9 +52,34 @@ public final class Updater {
 
     private static volatile long checkedAt;
 
-    /** Opening the menu: look again if the last answer is more than 10 minutes old. */
-    public static void recheck() {
-        if ((state == State.UP_TO_DATE || state == State.FAILED) && System.currentTimeMillis() - checkedAt > 600_000) check();
+    /** Opening the menu: look again if the last answer is more than 30 s old (a version published a minute ago shows). */
+    public static void recheck() { recheck(30_000); }
+
+    /** Every tick: a look every 2 minutes while the game runs, so an update shows up without opening anything. */
+    public static void tick() { recheck(120_000); }
+
+    private static void recheck(long olderThan) {
+        if ((state == State.UP_TO_DATE || state == State.FAILED || state == State.AVAILABLE) && System.currentTimeMillis() - checkedAt > olderThan) check();
+    }
+
+    /** latest.json: the API when it answers (a 304 keeps the last body), else the raw file. */
+    private static String fetchLatest() throws Exception {
+        if (System.currentTimeMillis() >= apiBlockedUntil) {
+            try {
+                var b = HttpRequest.newBuilder(URI.create(API)).timeout(Duration.ofSeconds(10))
+                        .header("Accept", "application/vnd.github.raw+json").header("User-Agent", "EzGamble/" + current());
+                if (etag != null && lastBody != null) b.header("If-None-Match", etag);
+                HttpResponse<String> r = HTTP.send(b.build(), HttpResponse.BodyHandlers.ofString());
+                if (r.statusCode() == 304 && lastBody != null) return lastBody;
+                if (r.statusCode() == 200) { etag = r.headers().firstValue("etag").orElse(null); lastBody = r.body(); return lastBody; }
+                apiBlockedUntil = System.currentTimeMillis() + 15 * 60_000;   // rate limited (403/429) or down: the raw file for a while
+                EzGambleMod.LOG.info("[ezgamble] update check: GitHub API {}, raw file for 15 min", r.statusCode());
+            } catch (Exception e) { apiBlockedUntil = System.currentTimeMillis() + 15 * 60_000; }
+        }
+        HttpResponse<String> r = HTTP.send(HttpRequest.newBuilder(URI.create(BASE + "latest.json"))
+                .timeout(Duration.ofSeconds(10)).build(), HttpResponse.BodyHandlers.ofString());
+        if (r.statusCode() != 200) throw new IllegalStateException("HTTP " + r.statusCode());
+        return r.body();
     }
 
     /** Called at startup and by recheck(), off the main thread. */
@@ -53,17 +87,15 @@ public final class Updater {
         checkedAt = System.currentTimeMillis();
         Thread t = new Thread(() -> {
             try {
-                // the query string skips GitHub's 5 min raw cache
-                HttpResponse<String> r = HTTP.send(HttpRequest.newBuilder(URI.create(BASE + "latest.json?t=" + System.currentTimeMillis()))
-                        .timeout(Duration.ofSeconds(10)).build(), HttpResponse.BodyHandlers.ofString());
-                if (r.statusCode() != 200) throw new IllegalStateException("HTTP " + r.statusCode());
-                JsonObject o = JsonParser.parseString(r.body()).getAsJsonObject();
+                JsonObject o = JsonParser.parseString(fetchLatest()).getAsJsonObject();
                 latest = o.get("version").getAsString();
                 file = o.get("file").getAsString();
                 sha256 = o.get("sha256").getAsString().toLowerCase(Locale.ROOT);
                 if (!file.matches("ezgamble-[0-9A-Za-z.+-]+\\.jar")) throw new IllegalStateException("bad file name");
+                if (state == State.DOWNLOADING || state == State.READY) return;   // a download started meanwhile: leave it alone
+                State was = state;
                 state = newer(latest, current()) ? State.AVAILABLE : State.UP_TO_DATE;
-                EzGambleMod.LOG.info("[ezgamble] update check: current {}, latest {}", current(), latest);
+                if (was != state || state == State.AVAILABLE) EzGambleMod.LOG.info("[ezgamble] update check: current {}, latest {}", current(), latest);
                 if (state == State.AVAILABLE && dev.ryaan.ezgamble.data.GambleData.autoUpdate) download();   // option "Auto update"
             } catch (Exception e) {
                 error = e.getMessage();
