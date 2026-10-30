@@ -33,7 +33,7 @@ public final class Widgets {
         if (round.paid == null) return new PayState("Pay " + F.trimToWidth(backer, 70) + " " + Money.format(amount), P.now() >= shownAt + 600, amount, false, false);
         if (Payouts.pending.stream().anyMatch(p -> p.name().equals(backer))) return new PayState("Sending...", false, 0, false, false);
         Payouts.Recent r = Payouts.recent.get(backer);
-        if (r != null && r.at() >= round.paid.at() && !r.ok()) return new PayState("Not confirmed, retry", P.now() >= r.at() + 600, round.paid.amount(), true, false);
+        if (r != null && r.at() >= round.paid.at() && !r.ok()) return new PayState((r.why() != null ? r.why() : "Not confirmed") + ", retry", P.now() >= r.at() + 600, round.paid.amount(), true, false);
         if (r != null && r.at() >= round.paid.at() && r.ok()) return new PayState("Paid " + Money.format(round.paid.amount()), false, 0, false, true);
         return new PayState("Sending...", false, 0, false, false);
     }
@@ -210,7 +210,7 @@ public final class Widgets {
             Payouts.Recent r = Payouts.recent.get(n);
             if (pend) return new St("Sending...", "ghost", true, false, false, 0);
             if (sent != null && r != null && r.at() >= sent.at())
-                return r.ok() ? new St("Refunded " + Money.format(sent.amount()), "ghost", false, true, false, P.GREEN) : new St("Not confirmed, retry", "danger", false, false, true, 0);
+                return r.ok() ? new St("Refunded " + Money.format(sent.amount()), "ghost", false, true, false, P.GREEN) : new St((r.why() != null ? r.why() : "Not confirmed") + ", retry", "danger", false, false, true, 0);
             if (open) return new St("Refund all " + Money.format(host.balance()), "primary", false, false, false, 0);
             return null;
         }

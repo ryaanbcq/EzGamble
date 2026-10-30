@@ -201,7 +201,7 @@ public final class ChipsView implements GameView {
             Payouts.Recent rec = r.recent() != null && P.now() - r.recent().at() < 4000 ? r.recent() : null;
             if (r.pend() != null) { String t = "Sending " + Money.format(r.pend().amount()) + "..."; g.drawText(t, rx - 6 - F.width(t), ry + 10, P.MUTE, false); }
             if (r.pend() == null && rec != null) {   // a short verdict over the row's left side, under the name
-                String t = rec.ok() ? "✔ Sent " + Money.format(rec.amount()) : "✖ Not confirmed";
+                String t = rec.ok() ? "✔ Sent " + Money.format(rec.amount()) : "✖ " + (rec.why() != null ? rec.why() : "Not confirmed");
                 double tw = F.width(t) + 12, tx = bx - 8 - F.width(v) - 8 - tw;
                 if (tx > lx + 26 + F.width(F.trimToWidth(r.name(), 90)) + 6) { P.capsule(g, tx, ry + 6, tw, 15, "ghost", false); g.drawText(t, tx + 6, ry + 10, rec.ok() ? P.GREEN : P.RED, false); }
             }

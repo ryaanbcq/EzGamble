@@ -94,6 +94,8 @@ public final class DebugRun {
             case "name" -> GambleData.setName(arg);
             case "paid" -> dev.ryaan.ezgamble.data.Payments.received(n[0], dev.ryaan.ezgamble.Money.parse(n[1]));
             case "typed" -> dev.ryaan.ezgamble.data.Payouts.typed(arg);   // typed pay NAME AMT: a /pay typed by hand
+            case "send" -> dev.ryaan.ezgamble.data.Payouts.send(n[0], dev.ryaan.ezgamble.Money.parse(n[1]));   // send NAME AMT: the Pay button's path
+            case "paystate" -> EzGambleMod.LOG.info("[ezgamble] debug: paystate {} pending={} recent={}", arg, dev.ryaan.ezgamble.data.Payouts.pending.stream().filter(p -> p.name().equals(arg)).findFirst().orElse(null), dev.ryaan.ezgamble.data.Payouts.recent.get(arg));
             case "chips" -> EzGambleMod.LOG.info("[ezgamble] debug: chips {} = {}", arg, dev.ryaan.ezgamble.data.Payouts.balance(arg));
             case "mode" -> GambleData.setMode(arg.equals("on"));
             case "lens" -> GambleData.lens = arg.equals("on");
