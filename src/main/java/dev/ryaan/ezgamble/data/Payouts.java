@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
 
 /**
  * Chips of a player = what he paid the gambler this session + what he won or lost at the tables (session.won) - what
- * was already sent back, never negative. A send runs "/pay <name> <amount>" (one click = one command, never on its
+ * was already sent back, never negative. A send counts at most his chips: sending more is a gift, not a debt. A send runs "/pay <name> <amount>" (one click = one command, never on its
  * own) and only counts once the server confirms "You paid <name> $X". No confirmation within 15 s = nothing deducted.
  */
 public final class Payouts {
@@ -92,7 +92,9 @@ public final class Payouts {
         pending.remove(p);
         Session s = session();
         if (s != null) {
-            s.sent.merge(p.name, p.amount, Long::sum);
+            // only what he had counts as chips sent back: anything above is a gift, never a debt that would eat his next payments
+            long counted = Math.min(p.amount, balance(p.name));
+            if (counted > 0) s.sent.merge(p.name, counted, Long::sum);
             s.sends.add(new Session.Pay(p.name, p.amount, P.now(), false));
             GambleData.touch();
         }

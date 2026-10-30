@@ -93,6 +93,8 @@ public final class DebugRun {
             case "tab", "sub", "range", "hook" -> GambleScreen.debug(cmd, arg);
             case "name" -> GambleData.setName(arg);
             case "paid" -> dev.ryaan.ezgamble.data.Payments.received(n[0], dev.ryaan.ezgamble.Money.parse(n[1]));
+            case "typed" -> dev.ryaan.ezgamble.data.Payouts.typed(arg);   // typed pay NAME AMT: a /pay typed by hand
+            case "chips" -> EzGambleMod.LOG.info("[ezgamble] debug: chips {} = {}", arg, dev.ryaan.ezgamble.data.Payouts.balance(arg));
             case "mode" -> GambleData.setMode(arg.equals("on"));
             case "lens" -> GambleData.lens = arg.equals("on");
             case "cmd" -> c.getNetworkHandler().sendChatCommand(arg);

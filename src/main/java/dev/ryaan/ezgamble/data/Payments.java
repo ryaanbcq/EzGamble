@@ -93,6 +93,10 @@ public final class Payments {
             return;
         }
         if (GambleData.mode && cs != null) {
+            // a debt left by an older version (sent back more than his chips): forgiven, this payment counts in full
+            long before = cs.credit.getOrDefault(name, 0L) + cs.won.getOrDefault(name, 0L) - cs.sent.getOrDefault(name, 0L);
+            long sentBefore = cs.sent.getOrDefault(name, 0L);
+            if (before < 0 && sentBefore > 0) cs.sent.put(name, Math.max(0, sentBefore + before));
             cs.credit.merge(name, amount, Long::sum);
             cs.payments.add(new Session.Pay(name, amount, P.now(), false));
             GambleData.touch();
