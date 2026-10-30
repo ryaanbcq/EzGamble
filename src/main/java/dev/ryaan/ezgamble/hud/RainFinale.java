@@ -87,7 +87,7 @@ final class RainFinale {
         g.drawSprite("rain/vignette", 0, 0, W, H, alpha(0xFFFFFFFF, 0.95 * v));
 
         // ---- the cloud: charge at its HUD place, then up into the sky, emptying as it rains, then gone
-        double big = Math.min(W * 0.62 / 76, H * 0.48 / 74), skyY = H * 0.2;
+        double big = Math.min(W * 0.62 / 76, H * 0.48 / 74), skyY = 37 * big * 1.15 + 6;   // its top stays on screen, dissolve swell included
         double cx = W / 2, cy = 43, sc = 1, ca = 1, k = 1;
         if (e < CHARGE) {
             double c = e / (double) CHARGE;
