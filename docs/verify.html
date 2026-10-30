@@ -112,8 +112,9 @@
       <span class="hint">Pasting it fills the fields below.</span>
       <label for="seed">Server seed</label>
       <input id="seed" placeholder="64 hex characters, revealed after the rolls" spellcheck="false">
-      <label for="hash">Seed hash shown before the rolls</label>
-      <input id="hash" placeholder="64 hex characters" spellcheck="false">
+      <label for="hash">The hash your host gave you BEFORE the rolls</label>
+      <input id="hash" placeholder="Paste the hash, or the whole line you got before playing" spellcheck="false">
+      <span class="hint">Never take it from the reveal: the point is to compare with what you saved before.</span>
       <div class="grid">
         <div><label for="client">Client seed</label><input id="client" spellcheck="false"></div>
         <div><label for="from">From</label><input id="from" value="1" inputmode="numeric"></div>
@@ -156,12 +157,15 @@ async function number(key, client, nonce, cursor) {
   return Number(v >> 4n) / 2 ** 52;
 }
 const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+$('hash').addEventListener('input', () => {   // the whole commitment line works too: keep only the hash
+  const h = $('hash').value.match(/[0-9a-f]{64}/i);
+  if (h && h[0] !== $('hash').value) $('hash').value = h[0];
+});
 $('paste').addEventListener('input', () => {
   const t = $('paste').value;
   const m = (re) => (t.match(re) || [])[1];
-  const seed = m(/seed ([0-9a-f]{64})/i), hash = m(/hash ([0-9a-f]{64})/i), client = m(/client seed ([A-Za-z0-9_-]+)/i), rounds = t.match(/rounds? (\d+)(?:-(\d+))?/i);
+  const seed = m(/seed ([0-9a-f]{64})/i), client = m(/client seed ([A-Za-z0-9_-]+)/i), rounds = t.match(/rounds? (\d+)(?:-(\d+))?/i);
   if (seed) $('seed').value = seed;
-  if (hash) $('hash').value = hash;
   if (client) $('client').value = client;
   if (rounds) { $('from').value = rounds[2] ? rounds[1] : 1; $('to').value = rounds[2] || rounds[1]; }
 });
