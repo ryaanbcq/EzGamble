@@ -41,6 +41,9 @@ public final class Snd {
         EVENTS.put("mc_trident", SoundEvents.ITEM_TRIDENT_RIPTIDE_1.value());
         EVENTS.put("mc_spear", SoundEvents.ITEM_SPEAR_LUNGE_1.value());
         EVENTS.put("mc_bell", SoundEvents.BLOCK_BELL_USE);
+        EVENTS.put("mc_thunder", SoundEvents.ENTITY_LIGHTNING_BOLT_THUNDER);
+        EVENTS.put("mc_rain", SoundEvents.WEATHER_RAIN);
+        EVENTS.put("mc_chime", SoundEvents.BLOCK_AMETHYST_BLOCK_CHIME);
     }
 
     public static SoundEvent event(String name) { return EVENTS.get(name); }

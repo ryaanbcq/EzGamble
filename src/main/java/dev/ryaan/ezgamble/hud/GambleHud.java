@@ -37,8 +37,8 @@ public final class GambleHud implements HudElement {
         long t0 = System.nanoTime();
         try {
             drawToast(g, toastK());
-            drawRain(g);
             for (String id : new String[]{"session", "pay"}) if (HUD.get(id).visible) { Rect r = wrect(id); drawWidget(g, id, r.x(), r.y()); }
+            drawRain(g);   // last: its finale covers the whole screen
         } catch (Throwable e) {
             if (!logged) { logged = true; EzGambleMod.LOG.error("[ezgamble] HUD render failed (not logged again)", e); }
         } finally {
@@ -246,11 +246,8 @@ public final class GambleHud implements HudElement {
     /** Fill 0..1 to the surface's height in the 76 x 74 box: the bottom lobes (72) to the top one (2). */
     private static double levelOf(double k) { return 72 - 70 * k; }
 
-    /**
-     * The bubble in its 100 x 64 box at (0, 0), filled to k. Shared by the HUD and the Rain screen of the menu (which
-     * passes the real fill, no drops). The wave runs on the clock and on the HUD's slosh.
-     */
-    public static void drawCloud(G g, double k, long pot, long goal, double fade) {
+    /** The cloud alone (glass, liquid under its wave, bubbles), no label: the HUD, the menu, and the finale's big sky. */
+    public static void drawCloudBody(G g, double k, double fade) {
         int tint = alpha(0xFFFFFFFF, fade);
         double t = now() / 1000.0;
         g.drawSprite("rain/back", 0, 0, BW, BH, tint);
@@ -272,6 +269,14 @@ public final class GambleHud implements HudElement {
                 smooth(g, bx - r, by - r, 2 * r, 2 * r, r, alpha(0xFFFFFFFF, fade * 0.6 * Math.sin(ph * Math.PI)));
             }
         }
+    }
+
+    /**
+     * The bubble in its 100 x 64 box at (0, 0), filled to k. Shared by the HUD and the Rain screen of the menu (which
+     * passes the real fill, no drops). The wave runs on the clock and on the HUD's slosh.
+     */
+    public static void drawCloud(G g, double k, long pot, long goal, double fade) {
+        drawCloudBody(g, k, fade);
         // the fill in the middle of the cloud, the amounts in a glass pill under it
         String pc = Math.min(100, (int) Math.floor(100.0 * pot / Math.max(1, goal))) + "%";
         g.push(); g.translate(38.5, 37); g.scale(1.75, 1.75);
@@ -297,9 +302,12 @@ public final class GambleHud implements HudElement {
         if (!open && rn.popAt > 0 && t - rn.popAt < 60 && popDelay == 0 && seenTickets > 0 && rn.count() > seenTickets)
             popDelay = FALL_MS + 110L * (Math.min(rn.count() - seenTickets, 5) - 1) + 120;
         long popAt = rn.popAt + popDelay;
-        boolean popping = !open && rn.popAt > 0 && t - rn.popAt < POP_MS + popDelay;
+        // the goal reached (or Spin now): the finale takes the whole screen until the winner has been shown
+        boolean finale = !open && rn.round != null && rn.popAt > 0 && t < RainFinale.end(rn.round);
+        boolean popping = finale || !open && rn.popAt > 0 && t - rn.popAt < POP_MS + popDelay;
         if (!open && !popping) { lvl = lvlV = lvlTarget = 0; seenTickets = 0; drops.clear(); splashes.clear(); lastFrame = 0; amp = 1; popDelay = 0; return; }
         if (open) popDelay = 0;
+        if (finale && t >= popAt) { RainFinale.draw(g, rn, popAt, t); lastFrame = t; return; }
         double dt = lastFrame == 0 ? 0 : Math.min(0.05, (t - lastFrame) / 1000.0);
         lastFrame = t;
         double real = open ? (rn.goal > 0 ? Math.min(1, (double) rn.pot() / rn.goal) : 0) : rn.popK;

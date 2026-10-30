@@ -45,6 +45,8 @@ public final class DebugRun {
 
     public static void heard(String line) { String w = waitChat; if (w != null && line.contains(w)) heard = true; }
     private static int perfUntil;
+    /** rec on|off: film frame number, -1 = not filming. */
+    private static int recFrame = -1;
 
     public static void tick(MinecraftClient client) {
         if (!ON || done) return;
@@ -55,6 +57,10 @@ public final class DebugRun {
             try { lines = Files.readAllLines(TRIGGER); } catch (Exception e) { lines = List.of("quit"); }
             waitUntil = ticks + 60;
             return;
+        }
+        if (recFrame >= 0) {   // one frame per tick, the animation clock 1/30 s further: a smooth 30 fps film however slow the capture
+            ScreenshotRecorder.saveScreenshot(client.runDirectory, String.format("ezgamble-rec-%05d.png", recFrame++), client.getFramebuffer(), 1, t -> {});
+            dev.ryaan.ezgamble.proto.P.clock += 1000 / 30;
         }
         if (perfName != null && ticks >= perfUntil) {
             double ms = renderFrames == 0 ? -1 : renderNanos / 1e6 / renderFrames;
@@ -162,6 +168,7 @@ public final class DebugRun {
             case "scroll" -> { if (c.currentScreen != null) c.currentScreen.mouseScrolled(coord(n[0], true), coord(n[1], false), 0, Double.parseDouble(n[2])); }
             case "shot" -> ScreenshotRecorder.saveScreenshot(c.runDirectory, "ezgamble-" + arg + ".png", c.getFramebuffer(), 1, t -> {});
             case "perf" -> { if (c.currentScreen instanceof dev.ryaan.ezgamble.proto.ProtoScreen) {} renderNanos = 0; renderFrames = 0; dev.ryaan.ezgamble.ui.Liquid.F.n = 0; dev.ryaan.ezgamble.ui.Liquid.F.nanos = 0; dev.ryaan.ezgamble.ui.Liquid.F.by.clear(); chartNanos = 0; dataNanos = 0; perfName = arg; perfUntil = ticks + 60; waitUntil = ticks + 62; return false; }
+            case "rec" -> { if (arg.equals("on")) { recFrame = 0; dev.ryaan.ezgamble.proto.P.clock = System.currentTimeMillis(); } else { recFrame = -1; dev.ryaan.ezgamble.proto.P.clock = -1; } }
             case "quit" -> { done = true; c.scheduleStop(); return false; }
             default -> EzGambleMod.LOG.warn("[ezgamble] debug: unknown command {}", cmd);
         }

@@ -19,7 +19,9 @@ public final class P {
     public static final int PANEL_TOP = 0xF6161022, PANEL_BOT = 0xF80C0A14, HUD_TOP = 0xDC161022, HUD_BOT = 0xE60C0A14;
     public static final int BORDER = 0x4DFBC2EB, BORDER_SOFT = 0x1AFFFFFF, FILL_SOFT = 0x0AFFFFFF, SOFT_GREY = 0xFFA79FB8;
 
-    public static long now() { return System.currentTimeMillis(); }
+    /** A frozen clock for the demo recording (DebugRun rec): every animation steps 1/30 s per captured frame. -1 = real time. */
+    public static long clock = -1;
+    public static long now() { return clock >= 0 ? clock : System.currentTimeMillis(); }
     public static double easeOut(double x) { x = Math.max(0, Math.min(1, x)); return 1 - Math.pow(1 - x, 3); }
     public static double easeIn(double x) { return x * x; }
     /** AuctionHud.pulse: 0..1 over 1.2 s. */
