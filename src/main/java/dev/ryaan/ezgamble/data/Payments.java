@@ -93,6 +93,11 @@ public final class Payments {
             GambleData.touch();
             return;
         }
+        if (dev.ryaan.ezgamble.games.rain.RainTable.RN.take(name, amount)) {   // a rain is open: the exact price (or a multiple) buys tickets
+            if (cs != null) cs.payments.add(new Session.Pay(name, amount, P.now(), true));
+            GambleData.touch();
+            return;
+        }
         if (GambleData.mode && cs != null) {
             // a debt left by an older version (sent back more than his chips): forgiven, this payment counts in full
             long before = cs.credit.getOrDefault(name, 0L) + cs.won.getOrDefault(name, 0L) - cs.sent.getOrDefault(name, 0L);

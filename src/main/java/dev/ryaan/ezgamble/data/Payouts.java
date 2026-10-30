@@ -61,9 +61,11 @@ public final class Payouts {
         Session s = session();
         if (s == null) return List.of();
         List<Row> out = new ArrayList<>();
-        for (var e : s.credit.entrySet()) {
-            String n = e.getKey();
-            long recv = e.getValue(), sent = s.sent.getOrDefault(n, 0L), won = s.won.getOrDefault(n, 0L);
+        // credit first, then whoever only won (a rain winner who never sent chips is owed his prize too)
+        var names = new java.util.LinkedHashSet<String>(s.credit.keySet());
+        names.addAll(s.won.keySet());
+        for (String n : names) {
+            long recv = s.credit.getOrDefault(n, 0L), sent = s.sent.getOrDefault(n, 0L), won = s.won.getOrDefault(n, 0L);
             Pending pend = pending.stream().filter(p -> p.name.equals(n)).findFirst().orElse(null);
             out.add(new Row(n, recv, sent, won, Math.max(0, recv + won - sent), pend, recent.get(n)));
         }

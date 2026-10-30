@@ -26,7 +26,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public final class GambleScreen extends ProtoScreen {
     public static final int W = 380, H = 300, PAD = 14;
     /** Sub-views drawn on the felt (their header replaces the Recording row). */
-    public static final List<String> GAME_SUBS = List.of("blackjack", "crates", "mines", "crash", "roulette", "coinflip");
+    public static final List<String> GAME_SUBS = List.of("blackjack", "crates", "mines", "crash", "roulette", "coinflip", "rain");
     private static final String[][] GREETINGS = {
             {"Welcome back, ", ""}, {"Feeling lucky, ", "?"}, {"The table is yours, ", ""}, {"Place your bets, ", ""},
             {"Back for more, ", "?"}, {"Let's roll, ", ""}, {"Luck looks good on you, ", ""}, {"Good to see you, ", ""}};
@@ -151,6 +151,7 @@ public final class GambleScreen extends ProtoScreen {
             String lbl = n > 0 ? "Requests " + n : "Requests";
             double bw = F.width(lbl) + 16;
             add(new GlassButton(rx - bw, y0 + 34, bw, 16, lbl, n > 0 && !"duels".equals(sub) ? "PRIMARY" : "GHOST", () -> { sub = "duels".equals(sub) ? null : "duels"; rebuild(); }));
+            if (sub == null) { double fw = F.width("Provably fair") + 16; add(new GlassButton(rx - bw - 6 - fw, y0 + 34, fw, 16, "Provably fair", "GHOST", () -> { P.play("click"); sub = "fair"; rebuild(); })); }
         }
         if (tab.equals("games") && sub != null) view(sub).init();
         if (tab.equals("hud")) dev.ryaan.ezgamble.hud.HudTab.init(this);
@@ -376,9 +377,10 @@ public final class GambleScreen extends ProtoScreen {
     private static final String[][] GAMES = {
             {"Blackjack", "Hit or stand", "game/blackjack"}, {"Auction", "Highest bid", "game/auction"}, {"Mines", "Avoid bombs", "game/mines"},
             {"Crates", "Open crates", "game/crates"}, {"Roulette", "Red, black", "game/roulette"}, {"Crash", "Cash out", "game/crash"}, {"Coinflip", "Heads, tails", "game/coinflip"},
-            {"High rollers", "Top wagers", "game/highrollers"},
-            {"Provably fair", "Seeds", "game/fair"}};
-    private static final String[] GAME_IDS = {"blackjack", "auction", "mines", "crates", "roulette", "crash", "coinflip", "rollers", "fair"};
+            {"Rain", "Win the pot", "game/rain"},
+            {"High rollers", "Top wagers", "game/highrollers"}};
+    // Provably fair left the grid for a button by Requests: 9 tiles stay 3 x 3 under the credit card, nothing scrolls
+    private static final String[] GAME_IDS = {"blackjack", "auction", "mines", "crates", "roulette", "crash", "coinflip", "rain", "rollers"};
 
     /** The credit card, one line high: the 3 rows of tiles fit under it, nothing scrolls or gets cut. */
     private static final int CARD_H = 40, TILE_GAP = 6;

@@ -99,6 +99,9 @@ public final class DebugRun {
             case "cratefast" -> GambleData.setCrateFast(arg.equals("on"));
             case "crateopen" -> { var cr = dev.ryaan.ezgamble.games.crates.CrateTable.CR; cr.backer = n[0]; cr.bet = dev.ryaan.ezgamble.Money.parse(n[1]); EzGambleMod.LOG.info("[ezgamble] debug: crate open {} fast={}", cr.open(), GambleData.crateFast); }   // crateopen NAME BET
             case "cratestage" -> EzGambleMod.LOG.info("[ezgamble] debug: crate stage {}", dev.ryaan.ezgamble.games.crates.CrateTable.CR.stage);
+            case "rain" -> { var rn = dev.ryaan.ezgamble.games.rain.RainTable.RN; rn.entry = dev.ryaan.ezgamble.Money.parse(n[0]); rn.goal = dev.ryaan.ezgamble.Money.parse(n[1]); rn.fee = Double.parseDouble(n[2]); EzGambleMod.LOG.info("[ezgamble] debug: rain start {}", rn.start()); }   // rain ENTRY GOAL FEE
+            case "raincancel" -> dev.ryaan.ezgamble.games.rain.RainTable.RN.cancel();
+            case "rainstate" -> { var rn = dev.ryaan.ezgamble.games.rain.RainTable.RN; EzGambleMod.LOG.info("[ezgamble] debug: rain {} pot {} tickets {} winner {} prize {}", rn.stage, rn.pot(), rn.tickets, rn.round == null ? null : rn.round.winner, rn.round == null ? null : rn.round.prize); }
             case "chips" -> EzGambleMod.LOG.info("[ezgamble] debug: chips {} = {}", arg, dev.ryaan.ezgamble.data.Payouts.balance(arg));
             case "mode" -> GambleData.setMode(arg.equals("on"));
             case "lens" -> GambleData.lens = arg.equals("on");
