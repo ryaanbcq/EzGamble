@@ -44,6 +44,7 @@ public final class Snd {
         EVENTS.put("mc_thunder", SoundEvents.ENTITY_LIGHTNING_BOLT_THUNDER);
         EVENTS.put("mc_rain", SoundEvents.WEATHER_RAIN);
         EVENTS.put("mc_chime", SoundEvents.BLOCK_AMETHYST_BLOCK_CHIME);
+        EVENTS.put("mc_levelup", SoundEvents.ENTITY_PLAYER_LEVELUP);
     }
 
     public static SoundEvent event(String name) { return EVENTS.get(name); }

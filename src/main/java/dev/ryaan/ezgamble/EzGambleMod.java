@@ -46,6 +46,7 @@ public final class EzGambleMod implements ClientModInitializer {
             dev.ryaan.ezgamble.data.Payments.tick();
             dev.ryaan.ezgamble.data.Payouts.tick();
             Updater.tick();   // a new version shows up within 2 minutes, menu closed
+            dev.ryaan.ezgamble.games.rain.RainTable.RN.tick();   // the reel runs (ticks, landing, prize) with the menu closed too
             dev.ryaan.ezgamble.auction.Auction.tick();
             dev.ryaan.ezgamble.duel.Duel.tick();
             dev.ryaan.ezgamble.duel.TableChat.tick();

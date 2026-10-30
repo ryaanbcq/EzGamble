@@ -15,8 +15,8 @@ import static dev.ryaan.ezgamble.proto.P.*;
  *   sky       the cloud rises and grows over the top of the screen
  *   downpour  iridescent drops on three depths over the whole screen, splashing at the bottom, gold coins spinning
  *             down among them; the cloud empties as it rains, the pot counts up in the middle
- *   draw      the players' heads run through, slowing down, in step with the menu's reel (same strip, same clock),
- *             and stop on the winner: a second flash, a fountain of coins, a rainbow drawn behind the name
+ *   draw      the players' heads run through, slowing down, in step with the menu's reel (same strip, same clock:
+ *             it starts spinning as it shows), and stop on the winner: a second flash, a wave of light, a fountain of coins
  * Times are from `start` (the burst, after the last drop has landed) except the draw, tied to the round's own clock.
  */
 final class RainFinale {
@@ -151,7 +151,7 @@ final class RainFinale {
         }
 
         // ---- the pot, counting up while it rains
-        long slotStart = Math.max(start + 3700, land - 2300);
+        long slotStart = r.at - 250;   // the reel shows as it starts to spin (RainTable.LEAD_MS)
         double potA = clamp01((e - 1200) / 250.0) * (1 - clamp01((t - slotStart) / 300.0));
         if (potA > 0) {
             double c = easeOut(clamp01((e - 1200) / 1500.0));
@@ -193,12 +193,9 @@ final class RainFinale {
                 name = r.winner;
                 double p = clamp01(sinceLand / 420.0);
                 pop = 1 + 0.45 * Math.sin(p * Math.PI) * (1 - p) + 0.0;
-                // the rainbow, drawn left to right behind the winner
-                double rw = Math.min(W * 0.9, H * 1.4), rh = rw / 2, rx = W / 2 - rw / 2, ry = hy + 26 - rh;
-                double sweep = smoothstep(sinceLand / 900.0);
-                g.enableScissor(rx, ry, rx + rw * sweep, ry + rh);
-                g.drawSprite("rain/rainbow", rx, ry, rw, rh, alpha(0xFFFFFFFF, 0.9 * gf));
-                g.disableScissor();
+                // a wave of light out of the winner
+                double wv = easeOut(clamp01(sinceLand / 900.0)), ws = 60 + 380 * wv;
+                g.drawSprite("rain/glow", W / 2 - ws / 2, hy - ws / 2, ws, ws, alpha(0xFFFFD2F0, 0.6 * (1 - wv) * gf));
                 double gs = 120;
                 g.drawSprite("rain/glow", W / 2 - gs / 2, hy - gs / 2, gs, gs, alpha(0xFFFFF0FA, 0.5 * gf * (1 - 0.5 * p)));
                 // a fountain of coins out of the winner

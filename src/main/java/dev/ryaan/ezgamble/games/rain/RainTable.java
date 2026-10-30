@@ -26,6 +26,8 @@ public final class RainTable {
     public static final RainTable RN = new RainTable();
     public static final int CELL = 40, WIN_AT = 60;
     public static final long SPIN_MS = 6000;
+    /** The reel waits for the HUD's downpour (RainFinale) to end before it spins: on screen it starts when it shows. */
+    public static final long LEAD_MS = 4400;
 
     public String stage = "setup";   // setup, open (collecting), spin, done
     public long entry = 1_000_000, goal = 50_000_000;
@@ -37,6 +39,8 @@ public final class RainTable {
     public Round round;
     /** When the HUD cloud burst (goal reached, Spin now, or cancelled) and how full it was: it pops for 900 ms. */
     public long popAt; public double popK; public long popPot;
+    /** When the rain opened: the HUD's timer and its call every 30 s count from here. */
+    public long openedAt;
 
     public static final class Round extends Widgets.Round {
         public String winner; public int ticket, total; public long pot, prize, cut;
@@ -56,7 +60,7 @@ public final class RainTable {
         if (goal < 2 * entry) return fail("Goal: 2 tickets at least");
         if (fee < 0 || fee > 50) return fail("Fee: 0 to 50%");
         tickets.clear(); order.clear(); round = null;
-        stage = "open";
+        stage = "open"; openedAt = P.now();
         P.play("ui_kcards_open", 1, 0.7);
         return true;
     }
@@ -84,14 +88,14 @@ public final class RainTable {
         r.strip = new ArrayList<>();
         for (int i = 0; i < WIN_AT + 6; i++) r.strip.add(i == WIN_AT ? r.winner : order.get((int) Math.floor(Widgets.rand01() * order.size())));   // every ticket as likely as it really is
         r.land = WIN_AT * CELL + CELL / 2.0 + (Widgets.rand01() - 0.5) * (CELL - 10);
-        r.at = P.now();
+        r.at = P.now() + LEAD_MS;   // the winner is drawn now, the reel only shows it after the downpour
         round = r;
         stage = "spin";
         P.play("mc_bell", 1.2, 0.5);
     }
 
     public double pos(long t) {
-        double f = Math.min(1, (double) (t - round.at) / SPIN_MS);
+        double f = Math.max(0, Math.min(1, (double) (t - round.at) / SPIN_MS));
         return 2 * CELL + (round.land - 2 * CELL) * (1 - Math.pow(1 - f, 4));
     }
 
@@ -101,12 +105,12 @@ public final class RainTable {
         long t = P.now();
         int cell = (int) Math.floor(pos(t) / CELL);
         if (cell != r.lastCell) {
-            if (r.lastCell >= 0 && t - r.tickAt >= 45) { P.play("ui_tick_close", 1 + 0.15 * Widgets.rand01(), 0.35); r.tickAt = t; }
+            if (r.lastCell >= 0 && t - r.tickAt >= 45) { P.play("ui_tick_close", 1 + 0.15 * Widgets.rand01(), 0.5); r.tickAt = t; }
             r.lastCell = cell;
         }
         if (t - r.at >= SPIN_MS) {
             stage = "done"; r.landedAt = t; settle();
-            P.play("cash", 1, 0.8); P.play("mc_totem", 1.2, 0.35);
+            P.play("cash", 1, 0.9); P.play("mc_totem", 1.2, 0.45); P.play("mc_levelup", 1, 0.8);
         }
     }
 

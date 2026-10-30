@@ -231,6 +231,49 @@ public final class GambleHud implements HudElement {
     private static final long POP_MS = 1000, INFLATE_MS = 240, FALL_MS = 340;
     /** The level drawn (a spring toward the pot, with a little overshoot), the wave height, the jelly squash. */
     private static double lvl, lvlV, lvlTarget, amp = 1, jelly, jellyV;
+    /**
+     * The bubble hangs in a small magnetic field: turning the head or moving pushes it the other way (inertia), a
+     * spring brings it back with a few wobbles, the edge of the field bounces it with a squash. The liquid tilts.
+     */
+    private static double ox, oy, ovx, ovy, tilt, tiltV;
+    private static float lastYaw, lastPitch;
+    private static double lastSide, lastFwd, lastUp;
+    private static boolean wasOnGround = true, physicsInit;
+    private static final double FIELD = 16;
+    private static long callAt = -1;
+
+    private static void physics(double dt) {
+        var p = MinecraftClient.getInstance().player;
+        if (p == null || dt <= 0) return;
+        float yaw = p.getYaw(), pitch = p.getPitch();
+        var v = p.getVelocity();
+        double ry = Math.toRadians(yaw);
+        double side = v.x * Math.cos(ry) + v.z * Math.sin(ry), fwd = -v.x * Math.sin(ry) + v.z * Math.cos(ry), up = v.y;
+        if (!physicsInit) { lastYaw = yaw; lastPitch = pitch; lastSide = side; lastFwd = fwd; lastUp = up; physicsInit = true; }
+        double dyaw = net.minecraft.util.math.MathHelper.wrapDegrees(yaw - lastYaw), dpitch = pitch - lastPitch;
+        lastYaw = yaw; lastPitch = pitch;
+        // inertia: the view turns, the bubble stays behind; the body speeds up, the bubble lags the other way
+        ovx += Math.max(-40, Math.min(40, dyaw)) * 4.5;
+        ovy += Math.max(-40, Math.min(40, dpitch)) * 3.0;
+        ovx += (side - lastSide) * 220; ovy += (up - lastUp) * 260 - (fwd - lastFwd) * 60;
+        lastSide = side; lastFwd = fwd; lastUp = up;
+        boolean ground = p.isOnGround();
+        if (ground && !wasOnGround) { jellyV += 3.2; amp = Math.min(4.5, amp + 1.8); }   // landing: squash and slosh
+        wasOnGround = ground;
+        // spring back to the anchor, a little bouncy
+        ovx += (-ox * 70 - ovx * 6.5) * dt; ovy += (-oy * 70 - ovy * 6.5) * dt;
+        ox += ovx * dt; oy += ovy * dt;
+        double r = Math.hypot(ox, oy);
+        if (r > FIELD) {   // the edge of the field: back inside, bounce, squash
+            double nx = ox / r, ny = oy / r, vn = ovx * nx + ovy * ny;
+            ox = nx * FIELD; oy = ny * FIELD;
+            if (vn > 0) { ovx -= 1.6 * vn * nx; ovy -= 1.6 * vn * ny; jellyV += Math.min(3, vn / 60); amp = Math.min(4.5, amp + vn / 120); }
+        }
+        // the liquid leans against the motion, then settles
+        tiltV += (-ovx * 0.0016 - tilt * 60 - tiltV * 5) * dt; tilt += tiltV * dt;
+        tilt = Math.max(-0.25, Math.min(0.25, tilt));
+    }
+
     private static long lastFrame, popDelay;
     private static int seenTickets;
     /** Drops falling into the bubble: when, where, the fill level they bring. */
@@ -254,7 +297,7 @@ public final class GambleHud implements HudElement {
         if (k > 0.004) {
             double level = levelOf(k), a = Math.min(amp, 1 + 6 * k) * (k > 0.97 ? 0.4 : 1);   // a nearly full cloud barely moves
             for (int c = 0; c < TW; c += 2) {
-                double wy = waveY((c + 1) / TK, level, t, a);
+                double wy = waveY((c + 1) / TK, level, t, a) + tilt * ((c + 1) / TK - BW / 2.0);
                 int top = Math.max(0, (int) Math.round(wy * TK));
                 if (top >= TH) continue;
                 g.drawSpritePart("rain/liquid", c / TK, top / TK, c, top, 2, TH - top, TW, TH, 1 / TK, tint);
@@ -277,16 +320,19 @@ public final class GambleHud implements HudElement {
      */
     public static void drawCloud(G g, double k, long pot, long goal, double fade) {
         drawCloudBody(g, k, fade);
-        // the fill in the middle of the cloud, the amounts in a glass pill under it
-        String pc = Math.min(100, (int) Math.floor(100.0 * pot / Math.max(1, goal))) + "%";
-        g.push(); g.translate(38.5, 37); g.scale(1.75, 1.75);
-        g.drawText(pc, -F.width(pc) / 2.0, -4, alpha(0xFF3A2766, fade), false);
+        // in the middle: how long the rain has been open, the pot under it; the goal in a glass pill below the cloud
+        long secs = Math.max(0, (now() - dev.ryaan.ezgamble.games.rain.RainTable.RN.openedAt) / 1000);
+        String timer = secs >= 3600 ? String.format("%d:%02d:%02d", secs / 3600, secs / 60 % 60, secs % 60) : String.format("%d:%02d", secs / 60, secs % 60);
+        g.push(); g.translate(38.5, 31); g.scale(1.75, 1.75);
+        g.drawText(timer, -F.width(timer) / 2.0, -4, alpha(0xFF3A2766, fade), false);
         g.pop();
-        String amt = Money.format(pot), sub = " of " + Money.format(goal);
-        double tw = F.width(amt) + F.width(sub), px = BW / 2.0 - tw / 2 - 6;
+        String amt = Money.format(pot);
+        g.drawText(amt, 38.5 - F.width(amt) / 2.0, 42, alpha(0xFF4A3970, fade), false);
+        String lab = "Goal ", gl = Money.format(goal);
+        double tw = F.width(lab) + F.width(gl), px = BW / 2.0 - tw / 2 - 6;
         smooth(g, px, BH + 2, tw + 12, 13, 6.5, alpha(0xFFFFFFFF, fade * 0.96), alpha(0xFFD9CCF2, fade));
-        g.drawText(amt, px + 6, BH + 5, alpha(0xFF2E1F4F, fade), false);
-        g.drawText(sub, px + 6 + F.width(amt), BH + 5, alpha(0xFF7A68A8, fade), false);
+        g.drawText(lab, px + 6, BH + 5, alpha(0xFF7A68A8, fade), false);
+        g.drawText(gl, px + 6 + F.width(lab), BH + 5, alpha(0xFF2E1F4F, fade), false);
     }
 
     /**
@@ -297,6 +343,7 @@ public final class GambleHud implements HudElement {
     static void drawRain(G g) {
         var rn = dev.ryaan.ezgamble.games.rain.RainTable.RN;
         long t = now();
+        rn.tick();   // every frame as well: the reel's clicks follow its cells closely
         boolean open = rn.stage.equals("open");
         // the goal reached by a payment: its drop falls in first, then the bubble bursts
         if (!open && rn.popAt > 0 && t - rn.popAt < 60 && popDelay == 0 && seenTickets > 0 && rn.count() > seenTickets)
@@ -305,9 +352,9 @@ public final class GambleHud implements HudElement {
         // the goal reached (or Spin now): the finale takes the whole screen until the winner has been shown
         boolean finale = !open && rn.round != null && rn.popAt > 0 && t < RainFinale.end(rn.round);
         boolean popping = finale || !open && rn.popAt > 0 && t - rn.popAt < POP_MS + popDelay;
-        if (!open && !popping) { lvl = lvlV = lvlTarget = 0; seenTickets = 0; drops.clear(); splashes.clear(); lastFrame = 0; amp = 1; popDelay = 0; return; }
+        if (!open && !popping) { lvl = lvlV = lvlTarget = 0; seenTickets = 0; drops.clear(); splashes.clear(); lastFrame = 0; amp = 1; popDelay = 0; ox = oy = ovx = ovy = tilt = tiltV = 0; physicsInit = false; return; }
         if (open) popDelay = 0;
-        if (finale && t >= popAt) { RainFinale.draw(g, rn, popAt, t); lastFrame = t; return; }
+        if (finale && t >= popAt) { tilt = 0; RainFinale.draw(g, rn, popAt, t); lastFrame = t; return; }
         double dt = lastFrame == 0 ? 0 : Math.min(0.05, (t - lastFrame) / 1000.0);
         lastFrame = t;
         double real = open ? (rn.goal > 0 ? Math.min(1, (double) rn.pot() / rn.goal) : 0) : rn.popK;
@@ -336,17 +383,29 @@ public final class GambleHud implements HudElement {
         lvlV += (lvlTarget - lvl) * 110 * dt; lvlV *= Math.exp(-11 * dt); lvl += lvlV * dt;
         jellyV += -jelly * 260 * dt; jellyV *= Math.exp(-7 * dt); jelly += jellyV * dt;
         amp += (1 - amp) * (1 - Math.exp(-1.6 * dt));
+        if (open) physics(dt);
         double k = Math.max(0, Math.min(1.02, lvl)), ts = t / 1000.0;
         double breath = Math.sin(ts * 1.15) * (1 + k);
         double sx = (1 + 0.012 * breath + 0.06 * jelly), sy = (1 - 0.010 * breath - 0.06 * jelly);
         double sc = 0.9 + 0.1 * easeOut(k), fade = 1, f = 0;
+        // every 30 s the bubble swells quickly on itself and settles: a call to the players around
+        long since = open ? t - rn.openedAt : 0, ph = since % 30_000;
+        double call = 0;
+        if (since >= 30_000 && ph < 900) {
+            double p = ph / 900.0;
+            call = p < 0.28 ? 0.24 * easeOut(p / 0.28) : 0.24 * Math.cos((p - 0.28) * 14) * Math.exp(-(p - 0.28) * 6);
+            if (ph < 60 && callAt != since - ph) { callAt = since - ph; amp = Math.min(4.5, amp + 2); jellyV += 1.5; }
+            double gs = 110 * (1 + 0.6 * p);
+            g.drawSprite("rain/glow", sw() / 2 + ox - gs / 2, 43 + oy - gs / 2, gs, gs, alpha(0xFFFFD2F0, 0.45 * Math.sin(p * Math.PI)));
+        }
+        sc *= 1 + call;
         if (popping && t >= popAt) {   // inflate with a wobble, then burst
             long e = t - popAt;
             double in = Math.min(1, e / (double) INFLATE_MS);
             sc *= 1 + 0.16 * easeOut(in) + 0.025 * Math.sin(e / 18.0) * (1 - in);
             if (e > INFLATE_MS) { f = (e - INFLATE_MS) / (double) (POP_MS - INFLATE_MS); sc *= 1 + 0.35 * easeOut(Math.min(1, f * 3)); fade = Math.max(0, 1 - f * 4); }
         }
-        g.push(); g.translate(sw() / 2, 6 + 37); g.scale(sc * sx, sc * sy); g.translate(-BW / 2.0, -37);
+        g.push(); g.translate(sw() / 2 + ox, 6 + 37 + oy); g.rotate(Math.max(-0.12, Math.min(0.12, ovx * 0.0012))); g.scale(sc * sx, sc * sy); g.translate(-BW / 2.0, -37);
         if (fade > 0) drawCloud(g, k, open || t < popAt ? rn.pot() : rn.popPot, rn.goal, fade);
         // falling drops, accelerating, and the splash rings where they land
         for (Drop d : drops) {
