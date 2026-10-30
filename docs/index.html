@@ -231,16 +231,16 @@ function chibi(im, cx, feet, p, t, hop, seed) {
   if (!im.complete || !im.naturalWidth) return;
   let by = Math.floor((t + seed) / 500) % 2 ? p : 0;
   if (hop) { const c = (t + seed) % 1600; if (c < 240) by = -Math.round(Math.sin(c / 240 * Math.PI) * 4) * p; }
-  g.fillStyle = 'rgba(0,0,0,.28)'; g.fillRect(cx - 6 * p, feet - p * .5, 12 * p, p);
-  const x = cx - 7 * p, top = feet - 18 * p + by, lg = feet - 4 * p + Math.min(0, by), body = top + 8 * p;
+  g.fillStyle = 'rgba(0,0,0,.28)'; g.fillRect(cx - 7 * p, feet - p * .5, 14 * p, p);
+  const x = cx - 8 * p, top = feet - 28 * p + by, lg = feet - 10 * p + Math.min(0, by), body = top + 8 * p;   // head 8, body 10, legs 10 texels
   const legacy = im.naturalHeight < 64;   // an old 64x32 skin: no left limbs, no body overlays; the right limbs stand in (Minecraft mirrors them)
   const S = (u, v, uw, vh, dx, dy, w, h) => { if (v + vh > im.naturalHeight) return; g.drawImage(im, u, v, uw, vh, Math.round(dx), Math.round(dy), Math.round(w), Math.round(h)); };
-  S(4, 20, 4, 12, x + 3 * p, lg, 4 * p, 4 * p); S(4, 36, 4, 12, x + 3 * p, lg, 4 * p, 4 * p);
-  S(legacy ? 4 : 20, legacy ? 20 : 52, 4, 12, x + 7 * p, lg, 4 * p, 4 * p); S(4, 52, 4, 12, x + 7 * p, lg, 4 * p, 4 * p);
-  S(20, 20, 8, 12, x + 3 * p, body, 8 * p, 6 * p); S(20, 36, 8, 12, x + 3 * p, body, 8 * p, 6 * p);
-  S(44, 20, 4, 12, x, body, 3 * p, 6 * p); S(44, 36, 4, 12, x, body, 3 * p, 6 * p);
-  S(legacy ? 44 : 36, legacy ? 20 : 52, 4, 12, x + 11 * p, body, 3 * p, 6 * p); S(52, 52, 4, 12, x + 11 * p, body, 3 * p, 6 * p);
-  S(8, 8, 8, 8, x + 3 * p, top, 8 * p, 8 * p); if (!legacy) S(40, 8, 8, 8, x + 3 * p, top, 8 * p, 8 * p);   // old skins often paint the hat layer solid black; Minecraft drops it
+  S(4, 20, 4, 12, x + 4 * p, lg, 4 * p, 10 * p); S(4, 36, 4, 12, x + 4 * p, lg, 4 * p, 10 * p);
+  S(legacy ? 4 : 20, legacy ? 20 : 52, 4, 12, x + 8 * p, lg, 4 * p, 10 * p); S(4, 52, 4, 12, x + 8 * p, lg, 4 * p, 10 * p);
+  S(20, 20, 8, 12, x + 4 * p, body, 8 * p, 10 * p); S(20, 36, 8, 12, x + 4 * p, body, 8 * p, 10 * p);
+  S(44, 20, 4, 12, x, body, 4 * p, 10 * p); S(44, 36, 4, 12, x, body, 4 * p, 10 * p);
+  S(legacy ? 44 : 36, legacy ? 20 : 52, 4, 12, x + 12 * p, body, 4 * p, 10 * p); S(52, 52, 4, 12, x + 12 * p, body, 4 * p, 10 * p);
+  S(8, 8, 8, 8, x + 4 * p, top, 8 * p, 8 * p); if (!legacy) S(40, 8, 8, 8, x + 4 * p, top, 8 * p, 8 * p);   // old skins often paint the hat layer solid black; Minecraft drops it
   return top;
 }
 function crown(cx, top, p, drop) {
@@ -250,7 +250,7 @@ function crown(cx, top, p, drop) {
   g.fillStyle = '#e0475b'; g.fillRect(c0 + 3 * p, cy + p, 2 * p, p);
 }
 function sparkles(cx, feet, p, t) {
-  [[-11, 15], [10, 18], [-9, 5], [12, 8], [6, 21]].forEach(([dx, dy], i) => {
+  [[-12, 24], [11, 28], [-10, 8], [13, 13], [7, 32]].forEach(([dx, dy], i) => {
     const f = Math.floor(t / 110 + i * 5) % 16; if (f > 4) return;
     const x = cx + dx * p, y = feet - dy * p, q = p * .75, col = i % 2 ? '#fff4c8' : '#f2c14e';
     g.fillStyle = col; g.fillRect(x, y, q, q);
@@ -265,7 +265,7 @@ function draw(now) {
     const grow = ease((t - [500, 250, 0][rank]) / 700), sh = STEP_H[rank] * grow, top = base - sh;
     if (sh < 1) return;
     // halo
-    const k = rank === 0 ? 1 : .55, hy = top - 10 * p, gr = g.createRadialGradient(cx, hy, 0, cx, hy, 15 * p);
+    const k = rank === 0 ? 1 : .55, hy = top - 14 * p, gr = g.createRadialGradient(cx, hy, 0, cx, hy, 15 * p);
     gr.addColorStop(0, m + Math.round(40 * k).toString(16).padStart(2, '0')); gr.addColorStop(1, m + '00');
     g.fillStyle = gr; g.fillRect(cx - 16 * p, hy - 16 * p, 32 * p, 32 * p);
     // the step, tinted glass with a medal lip
@@ -281,7 +281,7 @@ function draw(now) {
     if (land <= 0) return;
     g.globalAlpha = clamp(land * 2);
     const head = chibi(skins[rank], cx, feet, p, t, rank === 0 && land >= 1, rank * 137);
-    g.font = '18px Monocraft'; g.fillStyle = rank === 0 ? '#fbc2eb' : '#f1ecfa'; g.fillText(name, cx, feet - 18 * p - (rank === 0 ? 3 * p : 0) - 12);
+    g.font = '18px Monocraft'; g.fillStyle = rank === 0 ? '#fbc2eb' : '#f1ecfa'; g.fillText(name, cx, feet - 28 * p - (rank === 0 ? 3 * p : 0) - 12);
     if (rank === 0 && head != null) { const cd = (1 - ease((t - 1700) / 420)) * 90; if (t > 1500) crown(cx, head, p, cd); if (t > 2100) sparkles(cx, feet, p, t); }
     g.globalAlpha = 1;
   });

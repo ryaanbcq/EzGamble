@@ -30,7 +30,7 @@ public final class RollersView implements GameView {
 
     /** With nobody listed under it the podium fills the page (chibis at 3 px per texel), else 2 px. */
     private static boolean list(int n) { return n > 3; }
-    private double base(int n) { return s.y0 + (list(n) ? 218 : 272); }
+    private double base(int n) { return s.y0 + (list(n) ? 232 : 272); }
     private static int[] stepH(int n) { return list(n) ? STEP_LIST : STEP_TALL; }
     private static double px(int n) { return list(n) ? 2 : 3; }
     private Widget.Clip listClip() { double top = base(4) + 6; return new Widget.Clip(s.x0 + GambleScreen.PAD, top, GambleScreen.W - 2 * GambleScreen.PAD, s.y0 + GambleScreen.H - GambleScreen.PAD - top); }
@@ -51,7 +51,7 @@ public final class RollersView implements GameView {
             String name = rows.get(rank).name();
             int n = rows.size();
             double sh = stepH(n)[rank], top = base(n) - sh;
-            s.add(Widgets.area(stepX(col), top - 22 * px(n), STEP_W, sh + 22 * px(n), () -> open(name)));
+            s.add(Widgets.area(stepX(col), top - (CHIBI_H + 4) * px(n), STEP_W, sh + (CHIBI_H + 4) * px(n), () -> open(name)));
         }
         Widget.Clip clip = listClip();
         for (int i = 3; i < rows.size(); i++) {
@@ -94,10 +94,10 @@ public final class RollersView implements GameView {
             int rank = ORDER[col], m = MEDAL[rank];
             double sx = stepX(col), sh = stepH(n)[rank], top = base - sh, cx = sx + STEP_W / 2;
             boolean has = rank < n;
-            boolean hov = has && mx >= sx && mx < sx + STEP_W && my >= top - 22 * p && my < base;
+            boolean hov = has && mx >= sx && mx < sx + STEP_W && my >= top - (CHIBI_H + 4) * p && my < base;
             if (has) {   // a soft halo of stacked ovals behind whoever stands there, the winner's the brightest
-                double k = rank == 0 ? 1 : 0.55, hy = top - 1 - 10 * p;
-                for (int r : new int[]{15, 11, 7}) smooth(g, cx - r * p, hy - r * p * 0.9, 2 * r * p, 1.8 * r * p, r * p * 0.9, alpha(m, 0.06 * k));
+                double k = rank == 0 ? 1 : 0.55, hy = top - 1 - CHIBI_H / 2.0 * p;
+                for (int r : new int[]{15, 11, 7}) smooth(g, cx - r * p, hy - r * p * 1.2, 2 * r * p, 2.4 * r * p, r * p * 0.9, alpha(m, 0.06 * k));
                 smooth(g, cx - 8 * p, top - 2, 16 * p, 4, 2, alpha(m, 0.35 * k));
             }
             // the step: glass tinted with its medal, a lip of the medal along the top
@@ -124,7 +124,7 @@ public final class RollersView implements GameView {
             chibi(g, r.name(), cx, top - 1, p, t, rank == 0, rank == 0);
             if (rank == 0) sparkles(g, cx, top - 1, p, t);
             String nm = F.trimToWidth(r.name(), STEP_W - 8);
-            double ny = top - 1 - 18 * p - (rank == 0 ? 3 * p : 0) - 12;
+            double ny = top - 1 - CHIBI_H * p - (rank == 0 ? 3 * p : 0) - 12;
             if (hov || rank == 0) gradientText(g, nm, cx - F.width(nm) / 2.0, ny, true);
             else g.drawText(nm, cx - F.width(nm) / 2.0, ny, TEXT, true);
         }
