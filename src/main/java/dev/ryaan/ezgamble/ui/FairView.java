@@ -90,7 +90,7 @@ public final class FairView implements GameView {
             g.drawText("Reveal to change it", lx + 14 + F.width(Fair.client()), y + 101, DIM, false);
         }
         String cap = flash && (copied.equals("reveal") || copied.equals("last")) ? "Copied, paste it in chat. A new seed has started."
-                : "Reveal between rounds: copies the seed, then starts a new one.";
+                : Fair.lastSpent() != null ? "Reveal between rounds." : "Reveal between rounds: copies the seed, then starts a new one.";   // short when "Copy last reveal" sits on the same line
         g.drawText(cap, lx + 2, y + 128 + 3, flash && !copied.equals("hash") ? GREEN : DIM, false);
         // the rounds of this seed, newest first
         List<Fair.Draw> ds = Fair.draws();
