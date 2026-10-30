@@ -25,7 +25,7 @@ public final class RainView implements GameView {
     private final GambleScreen screen;
     private String uiKey = "";
     private GlassButton mainBtn, payBtn;
-    private GlassField entryF, goalF, feeF;
+    private GlassField entryF, goalF, feeF, timeF;
 
     public RainView(GambleScreen s) { this.screen = s; }
 
@@ -37,16 +37,18 @@ public final class RainView implements GameView {
         var s = screen;
         var G = geom();
         double lx = G.lx(), rx = G.rx(), hy = G.hy(), fy = G.fy(), by = G.by();
-        uiKey = uiState(); mainBtn = null; payBtn = null; entryF = goalF = feeF = null;
+        uiKey = uiState(); mainBtn = null; payBtn = null; entryF = goalF = feeF = timeF = null;
         s.add(new GlassButton(lx, hy, 18, 16, "‹", "GHOST", s::back));
         switch (RN.stage) {
             case "setup" -> {
-                double fx = lx + 8, w3 = (int) ((rx - lx - 16 - 12) / 3), y = fy + 52;
-                entryF = field(fx, y, w3, Money.format(RN.entry), "1M");
-                goalF = field(fx + w3 + 6, y, w3, Money.format(RN.goal), "50M");
-                feeF = field(fx + 2 * (w3 + 6), y, w3, trim(RN.fee), "5");
-                entryF.focused = false; goalF.focused = false; feeF.focused = false;
-                mainBtn = s.add(new GlassButton(rx - 110, by, 110, 24, "Start rain", "PRIMARY", () -> { read(); RN.start(); }));
+                double fx = lx + 8, w4 = (int) ((rx - lx - 16 - 18) / 4), y = fy + 52;
+                entryF = field(fx, y, w4, Money.format(RN.entry), "1M");
+                goalF = field(fx + w4 + 6, y, w4, Money.format(RN.goal), "50M");
+                feeF = field(fx + 2 * (w4 + 6), y, w4, trim(RN.fee), "5");
+                timeF = field(fx + 3 * (w4 + 6), y, w4, RainTable.durationText(RN.durationMs), "5m");
+                timeF.allowed = "[0-9hHmMsS]";
+                entryF.focused = false; goalF.focused = false; feeF.focused = false; timeF.focused = false;
+                mainBtn = s.add(new GlassButton(rx - 110, by, 110, 24, "Start rain", "PRIMARY", this::startRain));
             }
             case "open" -> {
                 s.add(new GlassButton(lx, by, 104, 24, "Copy for chat", "GHOST", () -> copy(RN.count() == 0 ? RN.announceText() : RN.progressText())));
@@ -73,11 +75,18 @@ public final class RainView implements GameView {
 
     private static String trim(double v) { return v == Math.rint(v) ? String.valueOf((long) v) : String.valueOf(v); }
 
-    /** The three fields into the table (on every key and before starting). */
+    /** Start, then close the menu: the cloud makes its entrance on the HUD, where the rain lives. */
+    private void startRain() {
+        read();
+        if (RN.start()) net.minecraft.client.MinecraftClient.getInstance().setScreen(null);
+    }
+
+    /** The four fields into the table (on every key and before starting). */
     private void read() {
         if (entryF != null) RN.entry = Math.max(0, Money.parse(entryF.value));
         if (goalF != null) RN.goal = Math.max(0, Money.parse(goalF.value));
         if (feeF != null) try { RN.fee = Double.parseDouble(feeF.value.replace(',', '.')); } catch (NumberFormatException e) { RN.fee = -1; }
+        if (timeF != null) RN.durationMs = RainTable.parseDuration(timeF.value);
     }
 
     private void syncPay() {
@@ -102,11 +111,11 @@ public final class RainView implements GameView {
 
     @Override
     public boolean key(Key e) {
-        for (GlassField f : new GlassField[]{entryF, goalF, feeF}) {
+        for (GlassField f : new GlassField[]{entryF, goalF, feeF, timeF}) {
             if (f == null || !f.focused) continue;
-            if (e.is("Enter")) { f.focused = false; read(); RN.start(); }
+            if (e.is("Enter")) { f.focused = false; startRain(); }
             else if (e.is("Escape")) f.focused = false;
-            else if (e.is("Tab")) { f.focused = false; GlassField nx = f == entryF ? goalF : f == goalF ? feeF : entryF; nx.focused = true; nx.typedAt = P.now(); }
+            else if (e.is("Tab")) { f.focused = false; GlassField nx = f == entryF ? goalF : f == goalF ? feeF : f == feeF ? timeF : entryF; nx.focused = true; nx.typedAt = P.now(); }
             else { f.type(e); read(); }
             return true;
         }
@@ -115,7 +124,7 @@ public final class RainView implements GameView {
 
     @Override
     public void clicked(Widget hit) {
-        for (GlassField f : new GlassField[]{entryF, goalF, feeF}) if (f != null && hit != f) f.focused = false;
+        for (GlassField f : new GlassField[]{entryF, goalF, feeF, timeF}) if (f != null && hit != f) f.focused = false;
         read();
     }
 
@@ -141,9 +150,9 @@ public final class RainView implements GameView {
         g.drawSprite("game/rain", lx + 8, fy, 32, 32);
         g.drawText("Make it rain", lx + 46, fy + 6, WHITE, true);
         g.drawText("Players /pay the ticket price, one ticket wins the whole pot.", lx + 46, fy + 18, MUTE, false);
-        double w3 = (int) ((rx - lx - 16 - 12) / 3), y = fy + 52;
-        String[] lab = {"Ticket price", "Goal", "Your fee %"};
-        for (int i = 0; i < 3; i++) g.drawText(lab[i], lx + 8 + i * (w3 + 6) + 2, y - 11, MUTE, false);
+        double w4 = (int) ((rx - lx - 16 - 18) / 4), y = fy + 52;
+        String[] lab = {"Ticket price", "Goal", "Your fee %", "Ends in"};
+        for (int i = 0; i < 4; i++) g.drawText(lab[i], lx + 8 + i * (w4 + 6) + 2, y - 11, MUTE, false);
         // what these numbers give
         long tickets = RN.entry > 0 ? (RN.goal + RN.entry - 1) / RN.entry : 0, pot = tickets * RN.entry, cut = Math.round(pot * Math.max(0, RN.fee) / 100.0);
         if (tickets >= 2 && RN.fee >= 0 && RN.fee <= 50) {
@@ -151,7 +160,8 @@ public final class RainView implements GameView {
             g.drawText(a, lx + 8, y + 34, TEXT, false);
             g.drawText(b, lx + 8, y + 46, MUTE, false);
         }
-        g.drawText("Every /pay of the exact price (or a multiple) is a ticket, not chips.", lx + 8, y + 70, DIM, false);
+        g.drawText("Every /pay of the exact price (or a multiple) is a ticket, not chips.", lx + 8, y + 58, DIM, false);
+        g.drawText("Time up: the tickets are drawn (2 players at least), else refunded.", lx + 8, y + 70, DIM, false);
         g.drawText("Copy the announcement once it starts: nothing is sent for you.", lx + 8, y + 82, DIM, false);
     }
 

@@ -240,7 +240,8 @@ public final class GambleHud implements HudElement {
     private static double lastSide, lastFwd, lastUp;
     private static boolean wasOnGround = true, physicsInit;
     private static final double FIELD = 11;
-    private static long callAt = -1;
+    private static long callAt = -1, introFor = -1;
+    private static final long INTRO_MS = 1500;
 
     private static void physics(double dt) {
         var p = MinecraftClient.getInstance().player;
@@ -320,11 +321,13 @@ public final class GambleHud implements HudElement {
      */
     public static void drawCloud(G g, double k, long pot, long goal, double fade) {
         drawCloudBody(g, k, fade);
-        // in the middle: how long the rain has been open, the pot under it; the goal in a glass pill below the cloud
-        long secs = Math.max(0, (now() - dev.ryaan.ezgamble.games.rain.RainTable.RN.openedAt) / 1000);
+        // in the middle: the time left before the rain ends, the pot under it; the goal in a glass pill below the cloud
+        long left = Math.max(0, dev.ryaan.ezgamble.games.rain.RainTable.RN.endsAt - now()), secs = (left + 999) / 1000;
         String timer = secs >= 3600 ? String.format("%d:%02d:%02d", secs / 3600, secs / 60 % 60, secs % 60) : String.format("%d:%02d", secs / 60, secs % 60);
-        g.push(); g.translate(38.5, 31); g.scale(1.75, 1.75);
-        g.drawText(timer, -F.width(timer) / 2.0, -4, alpha(0xFF3A2766, fade), false);
+        boolean hurry = secs <= 10 && left > 0;   // the last ten seconds: pink, and a beat on every second
+        double beat = hurry ? 1 + 0.22 * Math.max(0, 1 - (1000 - left % 1000) / 260.0) : 1;
+        g.push(); g.translate(38.5, 31); g.scale(1.75 * beat, 1.75 * beat);
+        g.drawText(timer, -F.width(timer) / 2.0, -4, alpha(hurry ? 0xFFD6336F : 0xFF3A2766, fade), false);
         g.pop();
         String amt = Money.format(pot);
         g.drawText(amt, 38.5 - F.width(amt) / 2.0, 42, alpha(0xFF4A3970, fade), false);
@@ -407,6 +410,27 @@ public final class GambleHud implements HudElement {
             g.drawSprite("rain/glow", sw() / 2 + ox - gs / 2, 43 + oy - gs / 2, gs, gs, alpha(0xFFFFD2F0, 0.45 * Math.sin(p * Math.PI)));
         }
         sc *= (1 + call) * (1 + 0.11 * bnc);
+        // the entrance, when the rain starts (the menu closes on it): sparkles gather, the cloud pops out of them
+        // with an overshoot, a ring of light spreads
+        long intro = open ? t - rn.openedAt : INTRO_MS;
+        if (intro < INTRO_MS) {
+            double cx0 = sw() / 2 + ox, cy0 = 43 + oy;
+            if (intro < 520) {
+                double p = intro / 520.0;
+                for (int i = 0; i < 14; i++) {
+                    double ang = i * Math.PI * 2 / 14 + p * 2.2, rad = 70 * (1 - easeOut(p)) + 4;
+                    double r = 1.2 + (i % 3) * 0.5;
+                    smooth(g, cx0 + Math.cos(ang) * rad - r, cy0 + Math.sin(ang) * rad * 0.7 - r, 2 * r, 2 * r, r, alpha(i % 2 == 0 ? 0xFFFFFFFF : PINK, 0.3 + 0.7 * p));
+                }
+                sc = 0;
+            } else {
+                double p = (intro - 520) / (double) (INTRO_MS - 520);
+                sc *= 1 - Math.exp(-p * 6) * Math.cos(p * 13);   // springs out of nothing, overshoots, settles
+                double gs = 50 + 260 * easeOut(p);
+                g.drawSprite("rain/glow", cx0 - gs / 2, cy0 - gs / 2, gs, gs, alpha(0xFFFFD2F0, 0.6 * (1 - p)));
+            }
+            if (introFor != rn.openedAt && intro >= 520) { introFor = rn.openedAt; play("mc_chime", 1.0, 0.9); play("mc_chime", 1.5, 0.7); jellyV += 2; }
+        }
         if (popping && t >= popAt) {   // inflate with a wobble, then burst
             long e = t - popAt;
             double in = Math.min(1, e / (double) INFLATE_MS);

@@ -32,6 +32,9 @@ public final class RainTable {
     public String stage = "setup";   // setup, open (collecting), spin, done
     public long entry = 1_000_000, goal = 50_000_000;
     public double fee = 5;   // percent kept by the host
+    /** How long the rain stays open: at the end it draws among the tickets in (2 players at least), else refunds. */
+    public long durationMs = 5 * 60_000;
+    public long endsAt;
     /** Tickets by player, in the order of their first ticket. */
     public final Map<String, Integer> tickets = new LinkedHashMap<>();
     /** Every ticket's owner, in the order bought: the provably fair number picks one of these. */
@@ -55,6 +58,25 @@ public final class RainTable {
     public long pot() { return entry * order.size(); }
 
     public String warn; public long warnUntil;
+
+    /** "5m", "30s", "1h", "1h30", "90" (minutes): -1 if unreadable. */
+    public static long parseDuration(String v) {
+        var m = java.util.regex.Pattern.compile("^\\s*(\\d+)\\s*([hHmMsS]?)\\s*(\\d*)\\s*$").matcher(v);
+        if (!m.matches()) return -1;
+        long n = Long.parseLong(m.group(1));
+        String u = m.group(2).toLowerCase(java.util.Locale.ROOT);
+        long ms = switch (u) { case "h" -> n * 3_600_000; case "s" -> n * 1000; default -> n * 60_000; };
+        if (!m.group(3).isEmpty()) ms += Long.parseLong(m.group(3)) * (u.equals("h") ? 60_000 : u.equals("m") ? 1000 : 0);
+        return ms;
+    }
+
+    public static String durationText(long ms) {
+        long s = ms / 1000;
+        if (s % 3600 == 0) return s / 3600 + "h";
+        if (s >= 3600) return s / 3600 + "h" + (s % 3600) / 60;
+        if (s % 60 == 0) return s / 60 + "m";
+        return s >= 60 ? s / 60 + "m" + s % 60 + "s" : s + "s";
+    }
     private boolean fail(String w) { warn = w; warnUntil = P.now() + 2200; P.play("fail", 1, 0.5); return false; }
 
     public boolean start() {
@@ -62,8 +84,9 @@ public final class RainTable {
         if (entry <= 0) return fail("Set a ticket price");
         if (goal < 2 * entry) return fail("Goal: 2 tickets at least");
         if (fee < 0 || fee > 50) return fail("Fee: 0 to 50%");
+        if (durationMs < 30_000 || durationMs > 2 * 3_600_000) return fail("Time: 30s to 2h");
         tickets.clear(); order.clear(); round = null;
-        stage = "open"; openedAt = P.now(); feeds.clear();
+        stage = "open"; openedAt = P.now(); endsAt = openedAt + durationMs; feeds.clear();
         P.play("ui_kcards_open", 1, 0.7);
         return true;
     }
@@ -81,7 +104,7 @@ public final class RainTable {
     }
 
     /** The goal is reached: draw the winning ticket and start the reel. */
-    void spin() {
+    public void spin() {
         pop();
         var fr = Fair.round("Rain");
         double u = fr.next();
@@ -104,6 +127,11 @@ public final class RainTable {
     }
 
     public void tick() {
+        if (stage.equals("open") && P.now() >= endsAt) {   // time is up: draw if there is a contest, else everyone gets his tickets back
+            EzGambleMod.LOG.info("[ezgamble] rain: time up, pot {}, {} player(s)", pot(), tickets.size());
+            if (tickets.size() >= 2) spin(); else cancel();
+            return;
+        }
         Round r = round;
         if (r == null || !stage.equals("spin")) return;
         long t = P.now();
@@ -156,7 +184,7 @@ public final class RainTable {
 
     public String announceText() {
         return "Rain is on! /pay " + me() + " " + Money.format(entry) + " per ticket, goal " + Money.format(goal)
-                + ". One ticket takes the whole pot (" + feeText() + "% fee). More tickets, more chances.";
+                + ", ends in " + durationText(durationMs) + ". One ticket takes the whole pot (" + feeText() + "% fee). More tickets, more chances.";
     }
 
     public String progressText() {

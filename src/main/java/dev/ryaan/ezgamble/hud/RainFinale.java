@@ -173,21 +173,33 @@ final class RainFinale {
             String name;
             double pop = 1;
             if (sinceLand < 0) {
-                // the menu's reel, on screen: heads sliding by under a marker, slowing down
+                // the menu's reel, on screen: a glass capsule, heads in rounded frames sliding by and swelling as
+                // they cross the lit window in the middle, fading at the ends
+                double tw = Math.min(W * 0.62, 420), th = 50, tx = W / 2 - tw / 2, ty = hy - th / 2;
+                smooth(g, tx, ty, tw, th, th / 2, alpha(0xFF1E1236, 0.62 * sa), alpha(0x66FFFFFF, sa));
+                double gw = 46;
+                g.drawSprite("rain/glow", W / 2 - 50, hy - 50, 100, 100, alpha(0xFFFFB8E4, 0.35 * sa));
+                smooth(g, W / 2 - gw / 2, ty + 3, gw, th - 6, 10, alpha(0x33FFFFFF, sa), alpha(0xCCFFC6EC, sa));
                 double pos = rn.pos(t);
-                int first = (int) Math.floor((pos - W / 2) / RainTable.CELL) - 1, last = (int) Math.ceil((pos + W / 2) / RainTable.CELL) + 1;
+                int first = (int) Math.floor((pos - tw / 2) / RainTable.CELL) - 1, last = (int) Math.ceil((pos + tw / 2) / RainTable.CELL) + 1;
+                g.enableScissor(tx + 6, ty, tx + tw - 6, ty + th);
                 for (int c = Math.max(0, first); c <= Math.min(r.strip.size() - 1, last); c++) {
-                    double x = W / 2 + (c * RainTable.CELL + RainTable.CELL / 2.0 - pos) * 1.15;
-                    double edge = clamp01(1 - Math.abs(x - W / 2) / (W * 0.42));
-                    if (edge <= 0) continue;
-                    double hs = 26 + 6 * edge;
-                    g.drawHead(r.strip.get(c), x - hs / 2, hy - hs / 2, hs);
-                    g.fill(x - hs / 2, hy - hs / 2, x + hs / 2, hy + hs / 2, alpha(0xFF1A0C2E, (1 - edge) * 0.8));
+                    double x = W / 2 + (c * RainTable.CELL + RainTable.CELL / 2.0 - pos);
+                    double dist = Math.abs(x - W / 2) / (tw / 2);
+                    if (dist >= 1) continue;
+                    double near = Math.max(0, 1 - Math.abs(x - W / 2) / RainTable.CELL);   // 1 in the window
+                    double hs = 24 + 10 * near, a = sa * (1 - smoothstep((dist - 0.55) / 0.45));
+                    smooth(g, x - hs / 2 - 2, hy - hs / 2 - 2, hs + 4, hs + 4, 5, alpha(0xFFFFFFFF, a * (0.55 + 0.45 * near)));
+                    g.push(); g.translate(x - hs / 2, hy - hs / 2); g.scale(hs / 32, hs / 32);
+                    g.drawHead(r.strip.get(c), 0, 0, 32);
+                    g.pop();
+                    if (a < 1) g.fill(x - hs / 2, hy - hs / 2, x + hs / 2, hy + hs / 2, alpha(0xFF1E1236, 1 - a));
                 }
-                // the marker: a glowing pink line through the middle
-                g.drawSprite("rain/glow", W / 2 - 30, hy - 40, 60, 80, alpha(0xFFFFB8E4, 0.45 * sa));
-                g.fill(W / 2 - 0.5, hy - 26, W / 2 + 0.5, hy + 26, alpha(0xFFFFC6EC, sa));
-                centred(g, "Drawing the winner", W / 2, hy - 44, 1.5, alpha(0xFFF4EEFF, sa));
+                g.disableScissor();
+                // the marker: two small pink notches above and below the window
+                g.fill(W / 2 - 3, ty - 4, W / 2 + 3, ty - 1, alpha(0xFFFFC6EC, sa));
+                g.fill(W / 2 - 3, ty + th + 1, W / 2 + 3, ty + th + 4, alpha(0xFFFFC6EC, sa));
+                centred(g, "Drawing the winner", W / 2, ty - 22, 1.5, alpha(0xFFF4EEFF, sa));
                 name = null;
             } else {
                 name = r.winner;
