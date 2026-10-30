@@ -55,6 +55,7 @@ public final class GambleScreen extends ProtoScreen {
 
     public GambleScreen() {
         super("EzGamble");
+        viewX = GambleData.winX; viewY = GambleData.winY; viewZ = GambleData.winZoom;
         Updater.recheck();
         P.play("open", 0.8);
     }
@@ -102,7 +103,9 @@ public final class GambleScreen extends ProtoScreen {
 
     @Override
     protected void init2() {
+        if (viewZ > maxZoom() + 1e-6 || viewZ < minZoom() - 1e-6) { viewZ = snapZoom(viewZ); SW = width / viewZ; SH = height / viewZ; }   // a smaller screen than last time
         x0 = (int) ((SW - W) / 2); y0 = (int) ((SH - H) / 2);
+        clampWindow();
         double lx = x0 + PAD, rx = x0 + W - PAD;
         builtMode = GambleData.mode;
         if (welcome) {
@@ -122,7 +125,7 @@ public final class GambleScreen extends ProtoScreen {
         GlassSegmented tabs = seg("tabs", new String[][]{{"dashboard", "Dashboard"}, {"transactions", "History"}, {"games", "Games"}, {"hud", "HUD"}}, () -> tab, id -> {
             leaveSub();
             sub = null;
-            if (!id.equals(tab)) { if (id.equals("dashboard")) greeting = pickGreeting(); titleAt = P.now(); }
+            if (!id.equals(tab)) { if (id.equals("dashboard")) greeting = pickGreeting(); if (id.equals("dashboard") || tab.equals("dashboard")) titleAt = P.now(); }   // the title animates only when its text changes (greeting <-> EZ GAMBLE)
             tab = id; chartAt = P.now(); rebuild();
         });
         tabs.place(lx, y0 + 33);
@@ -196,10 +199,11 @@ public final class GambleScreen extends ProtoScreen {
         double p = pop();
         if (client != null && client.world != null) {
             g.d.applyBlur();
-            g.fill(0, 0, SW, SH, ((int) (0x55 * p) << 24) | 0x0A0710);
+            g.fill(vx(0), vy(0), vx(width), vy(height), ((int) (0x55 * p) << 24) | 0x0A0710);   // the whole screen, wherever the window is
         }
         beginPop(g, p);
         P.glass(g, x0, y0, W, H, 12, 0.84, 1);
+        renderGrip(g, mx, my);
         renderTitle(g);
         String lbl = "Gambling mode";
         if (!welcome) g.drawText(lbl, x0 + W - PAD - 28 - 6 - F.width(lbl), y0 + PAD, GambleData.mode ? P.TEXT : P.MUTE, false);
@@ -370,8 +374,9 @@ public final class GambleScreen extends ProtoScreen {
     private static final String[][] GAMES = {
             {"Blackjack", "Hit or stand", "game/blackjack"}, {"Auction", "Highest bid", "game/auction"}, {"Mines", "Avoid bombs", "game/mines"},
             {"Crates", "Open crates", "game/crates"}, {"Roulette", "Red, black", "game/roulette"}, {"Crash", "Cash out", "game/crash"}, {"Coinflip", "Heads, tails", "game/coinflip"},
-            {"High rollers", "Top wagers", "game/highrollers"}};
-    private static final String[] GAME_IDS = {"blackjack", "auction", "mines", "crates", "roulette", "crash", "coinflip", "rollers"};
+            {"High rollers", "Top wagers", "game/highrollers"},
+            {"Provably fair", "Seeds", "game/fair"}};
+    private static final String[] GAME_IDS = {"blackjack", "auction", "mines", "crates", "roulette", "crash", "coinflip", "rollers", "fair"};
 
     public double[] gamesClip() { double top = y0 + 152; return new double[]{x0 + PAD, top, W - 2 * PAD, y0 + H - PAD - top}; }
 
@@ -442,7 +447,7 @@ public final class GambleScreen extends ProtoScreen {
             g.drawSprite(gm[2], tx2 + 8, ty + 10, 32, 32);
             g.drawText(gm[0], tx2 + 46, ty + 16, P.WHITE, true);
             if (F.width(gm[1]) <= tw - 50) g.drawText(gm[1], tx2 + 46, ty + 28, P.MUTE, false);
-            if (h2) g.drawText("›", tx2 + tw - 10, ty + 22, P.PINK, false);
+            if (h2) g.drawText("›", tx2 + tw - 10, ty + th - 13, P.PINK, false);   // bottom right: a long title never runs into it
         }
         endList(g, "games", gh);
     }
@@ -491,6 +496,86 @@ public final class GambleScreen extends ProtoScreen {
         }
         if (tab.equals("games") && sub != null && view(sub).key(e)) return;
         if (e.is("Escape") || e.is("k")) close();
+    }
+
+    // ---- the window: drag the top bar to move it, the bottom-right corner to resize it, double-click the bar to reset
+
+    private static final double GRIP = 12;
+    private boolean moving, resizing;
+    private double grabX, grabY, anchorL, anchorT;
+
+    private boolean overGrip(double mx, double my) { return mx >= x0 + W - GRIP && mx < x0 + W && my >= y0 + H - GRIP && my < y0 + H; }
+    private boolean overBar(double mx, double my) { return mx >= x0 && mx < x0 + W && my >= y0 && my < y0 + 28; }
+
+    /** Zoom bounds: real pixels never under 1 per GUI px, and the window never bigger than the screen. */
+    private double minZoom() { return Math.max(0.5, 1 / client.getWindow().getScaleFactor()); }
+    private double maxZoom() { return Math.max(1, Math.min(width / (double) W, height / (double) H)); }
+
+    /** At rest the zoom snaps to whole real pixels per GUI px (crisp text): steps of 1 / GUI scale. */
+    private double snapZoom(double z) {
+        double sf = client.getWindow().getScaleFactor(), n = Math.round(z * sf) / sf;
+        return Math.max(minZoom(), Math.min(maxZoom(), n > maxZoom() ? Math.floor(maxZoom() * sf) / sf : n));
+    }
+
+    /** Keeps the top bar on the screen: at least 60 px of it visible sideways, never above the top or under the bottom. */
+    private void clampWindow() {
+        double z = viewZ, left = (width - W * z) / 2 + viewX, top = (height - H * z) / 2 + viewY;
+        double nl = Math.max(60 - W * z, Math.min(width - 60, left)), nt = Math.max(0, Math.min(height - 28 * z, top));
+        viewX += nl - left; viewY += nt - top;
+    }
+
+    private void renderGrip(G g, double mx, double my) {
+        if (welcome) return;
+        boolean h = overGrip(mx, my) || resizing;
+        int c = h ? 0xB0FBC2EB : 0x30FFFFFF;
+        double x = x0 + W - 4, y = y0 + H - 4;
+        for (int i = 0; i < 3; i++) for (int j = 0; j <= i; j++) g.fill(x - (i - j) * 3 - 1, y - j * 3 - 1, x - (i - j) * 3, y - j * 3, c);   // three dots on a diagonal, like a resize corner
+    }
+
+    @Override
+    public boolean mouseClicked(net.minecraft.client.gui.Click click, boolean doubled) {
+        double mx = vx(click.x()), my = vy(click.y());
+        if (!welcome && !closing && click.button() == 0 && overGrip(mx, my)) {
+            resizing = true;
+            anchorL = (width - W * viewZ) / 2 + viewX; anchorT = (height - H * viewZ) / 2 + viewY;   // the top-left corner stays put
+            grabX = anchorL + W * viewZ - click.x();
+            return true;
+        }
+        if (super.mouseClicked(click, doubled)) return true;
+        if (!closing && click.button() == 0 && overBar(mx, my)) {
+            if (doubled) { viewX = viewY = 0; viewZ = 1; relayout(); GambleData.setWindow(0, 0, 1); P.play("click"); return true; }
+            moving = true; grabX = click.x() - viewX; grabY = click.y() - viewY;
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean mouseDragged(net.minecraft.client.gui.Click click, double dx, double dy) {
+        if (moving) { viewX = click.x() - grabX; viewY = click.y() - grabY; clampWindow(); return true; }
+        if (resizing) {
+            double z = Math.max(minZoom(), Math.min(maxZoom(), (click.x() + grabX - anchorL) / W));
+            setZoom(z);
+            return true;
+        }
+        return super.mouseDragged(click, dx, dy);
+    }
+
+    @Override
+    public boolean mouseReleased(net.minecraft.client.gui.Click click) {
+        if (moving || resizing) {
+            if (resizing) setZoom(snapZoom(viewZ));
+            moving = resizing = false;
+            GambleData.setWindow(viewX, viewY, viewZ);
+            return true;
+        }
+        return super.mouseReleased(click);
+    }
+
+    private void setZoom(double z) {
+        viewZ = z;
+        viewX = anchorL - (width - W * z) / 2; viewY = anchorT - (height - H * z) / 2;
+        relayout();
     }
 
     @Override

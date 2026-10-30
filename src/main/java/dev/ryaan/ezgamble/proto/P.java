@@ -27,6 +27,8 @@ public final class P {
 
     public static int lerp(int a, int b, double t) { return Glass.lerp(a, b, (float) t); }
     /** Colour with this alpha (replaces it, like the prototype). */
+    /** Zoom of the screen being drawn (the movable menu), 1 elsewhere: crisp surfaces render at scale x zoom. */
+    public static double zoom = 1;
     public static int alpha(int c, double a) { return (c & 0xFFFFFF) | ((int) Math.round(255 * Math.max(0, Math.min(1, a))) << 24); }
     public static int shade(int c, double k) {
         return (c & 0xFF000000) | ((int) Math.round(((c >>> 16) & 255) * k) << 16) | ((int) Math.round(((c >>> 8) & 255) * k) << 8) | (int) Math.round((c & 255) * k);

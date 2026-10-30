@@ -35,6 +35,8 @@ public final class GambleData {
     public static String name;
     /** Players removed from the player database (normalised name -> when): what they did up to then is ignored. */
     public static final java.util.Map<String, Long> forgotten = new java.util.LinkedHashMap<>();
+    /** The menu window: offset from the centre (screen GUI px) and zoom, kept between openings. */
+    public static double winX, winY, winZoom = 1;
     public static boolean autoUpdate = false;   // "Auto update": download new versions by itself (off = the Update button asks)
     public static boolean lens = true;   // "Liquid glass": the lens on the tabs and the period selector (off = the sliding pill)   // what the mod calls the player (asked on the first opening)
     private static long dirtyAt;
@@ -48,6 +50,9 @@ public final class GambleData {
                 if (o.has("mode")) mode = o.get("mode").getAsBoolean();
                 if (o.has("lens")) lens = o.get("lens").getAsBoolean();
                 if (o.has("autoUpdate")) autoUpdate = o.get("autoUpdate").getAsBoolean();
+                if (o.has("winX")) winX = o.get("winX").getAsDouble();
+                if (o.has("winY")) winY = o.get("winY").getAsDouble();
+                if (o.has("winZoom")) winZoom = o.get("winZoom").getAsDouble();
                 if (o.has("forgotten")) for (var e : o.getAsJsonObject("forgotten").entrySet()) forgotten.put(e.getKey(), e.getValue().getAsLong());
             }
             if (Files.isDirectory(SESSIONS)) try (var files = Files.list(SESSIONS)) {
@@ -144,6 +149,7 @@ public final class GambleData {
     /** Events at or before this time no longer count for the player (0 = none removed). */
     public static long cutoff(String player) { return forgotten.getOrDefault(Payouts.norm(player), 0L); }
 
+    public static void setWindow(double x, double y, double zoom) { winX = x; winY = y; winZoom = zoom; saveConfig(); }
     public static void setLens(boolean on) { lens = on; saveConfig(); }
     public static void setAutoUpdate(boolean on) { autoUpdate = on; saveConfig(); if (on) dev.ryaan.ezgamble.Updater.download(); }
 
@@ -166,6 +172,7 @@ public final class GambleData {
         o.addProperty("mode", mode);
         o.addProperty("lens", lens);
         o.addProperty("autoUpdate", autoUpdate);
+        o.addProperty("winX", winX); o.addProperty("winY", winY); o.addProperty("winZoom", winZoom);
         JsonObject fg = new JsonObject();
         forgotten.forEach(fg::addProperty);
         o.add("forgotten", fg);

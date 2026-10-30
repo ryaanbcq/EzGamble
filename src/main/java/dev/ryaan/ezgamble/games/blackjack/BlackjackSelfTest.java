@@ -34,6 +34,7 @@ public final class BlackjackSelfTest {
 
     public static List<String> run() {
         List<String> out = new ArrayList<>();
+        boolean wasFair = Shoe.fair; Shoe.fair = false;   // test shoes never touch the provably fair seed
         BlackjackGame.Value v = BlackjackGame.handValue(cs("A", "K")); if (!(v.total() == 21 && v.soft())) out.add("A K = soft 21");
         v = BlackjackGame.handValue(cs("A", "A", "9")); if (!(v.total() == 21 && v.soft())) out.add("A A 9 = soft 21");
         v = BlackjackGame.handValue(cs("10", "6", "A")); if (!(v.total() == 17 && !v.soft())) out.add("10 6 A = hard 17");
@@ -72,6 +73,7 @@ public final class BlackjackSelfTest {
         sh.cards.subList(70, sh.cards.size()).clear();
         gm = new BlackjackGame(sh); gm.deal(100);
         if (!(gm.reshuffled && sh.remaining() == 312 - 4)) out.add("reshuffled under 25 %");
+        Shoe.fair = wasFair;
         return out;
     }
 

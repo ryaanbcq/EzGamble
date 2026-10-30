@@ -27,7 +27,7 @@ public final class Vec {
 
     /** Draws sprite `key` (w x h GUI px, painted once by painter) at (x, y). pad = extra margin around for shadows. */
     public static void draw(G g, String key, double x, double y, double w, double h, double pad, Consumer<Graphics2D> painter) {
-        float k = (float) MinecraftClient.getInstance().getWindow().getScaleFactor();
+        float k = (float) (MinecraftClient.getInstance().getWindow().getScaleFactor() * P.zoom);
         int iw = (int) Math.ceil((w + 2 * pad) * k), ih = (int) Math.ceil((h + 2 * pad) * k);
         if (iw <= 0 || ih <= 0) return;
         String full = key + "@" + k + "/" + iw + "x" + ih;

@@ -104,6 +104,19 @@ public final class DebugRun {
                 int k = n.length > 2 ? Integer.parseInt(n[2]) : 1; long amt = dev.ryaan.ezgamble.Money.parse(n[1]);
                 for (int i = 0; i < k; i++) GambleData.record(new dev.ryaan.ezgamble.data.Txn(System.currentTimeMillis() + i, "Blackjack", amt, i % 2 == 0 ? amt : -amt, n[0], "debug " + n[0] + " " + i));
             }
+            case "board" -> {   // log the sidebar scoreboard, line by line, as the client shows it
+                var sb = c.world.getScoreboard();
+                var obj = sb.getObjectiveForSlot(net.minecraft.scoreboard.ScoreboardDisplaySlot.SIDEBAR);
+                if (obj == null) EzGambleMod.LOG.info("[ezgamble] debug: board none");
+                else for (var e : sb.getScoreboardEntries(obj)) {
+                    var team = sb.getScoreHolderTeam(e.owner());
+                    Text name = e.display() != null ? e.display() : net.minecraft.scoreboard.Team.decorateName(team, Text.literal(e.owner()));
+                    EzGambleMod.LOG.info("[ezgamble] debug: board line '{}'", name.getString());
+                }
+            }
+            case "balance" -> dev.ryaan.ezgamble.data.Balance.debug(dev.ryaan.ezgamble.Money.parse(n[0]), n.length > 1 ? dev.ryaan.ezgamble.Money.parse(n[1]) : -1);   // balance SIDEBAR [BAL]
+            case "win" -> GambleData.setWindow(Double.parseDouble(n[0]), Double.parseDouble(n[1]), Double.parseDouble(n[2]));   // win X Y ZOOM: the menu window, applied at the next open
+            case "fairroll" -> { for (int i = 0; i < Integer.parseInt(arg); i++) { var fr = dev.ryaan.ezgamble.data.Fair.round("Roulette"); fr.result(String.valueOf((int) Math.floor(fr.next() * 37))); } }   // fairroll N: N roulette rounds on the fair seed
             case "demo" -> EzGambleMod.demoBets(Integer.parseInt(arg));
             case "chat" -> { c.inGameHud.getChatHud().addMessage(Text.literal(arg)); EzGambleMod.onChat(arg); }
             case "mouse" -> { mx = (int) Double.parseDouble(n[0]); my = (int) Double.parseDouble(n[1]); dev.ryaan.ezgamble.proto.ProtoScreen.forceMx = mx; dev.ryaan.ezgamble.proto.ProtoScreen.forceMy = my; }
@@ -141,7 +154,8 @@ public final class DebugRun {
     private static double coord(String s, boolean isX) {
         if (!s.startsWith("@")) return Double.parseDouble(s);
         dev.ryaan.ezgamble.ui.GambleScreen g = dev.ryaan.ezgamble.ui.GambleScreen.current();
-        double base = g == null ? 0 : isX ? g.x0 : g.y0;
-        return base + Double.parseDouble(s.substring(1));
+        if (g == null) return Double.parseDouble(s.substring(1));
+        double v = (isX ? g.x0 : g.y0) + Double.parseDouble(s.substring(1));   // a point of the menu, then where it is on the screen (moved, zoomed)
+        return v * g.viewZ + (isX ? g.viewX : g.viewY);
     }
 }

@@ -68,10 +68,12 @@ public final class MinesTable extends Host {   // the player, the chips and the 
         settle();
         int[] idx = new int[MINES_N];
         for (int i = 0; i < MINES_N; i++) idx[i] = i;
-        for (int i = MINES_N - 1; i > 0; i--) { int j = (int) Math.floor(Widgets.rand01() * (i + 1)); int tmp = idx[i]; idx[i] = idx[j]; idx[j] = tmp; }
+        var fr = dev.ryaan.ezgamble.data.Fair.round("Mines");   // the bombs are the first `mines` tiles of a Fisher-Yates shuffle
+        for (int i = MINES_N - 1; i > 0; i--) { int j = (int) Math.floor(fr.next() * (i + 1)); int tmp = idx[i]; idx[i] = idx[j]; idx[j] = tmp; }
         Round r = new Round();
         r.bet = bet; r.backer = backer; r.mines = mines; r.at = P.now();
         for (int i = 0; i < mines; i++) r.bombs.add(idx[i]);
+        fr.result(mines + " bombs " + new java.util.TreeSet<>(r.bombs).stream().map(b -> String.valueOf(b + 1)).collect(java.util.stream.Collectors.joining(",")));
         round = r;
         Host.lastBacker = backer;
         stage = "play";

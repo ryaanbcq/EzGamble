@@ -75,10 +75,13 @@ public final class CrateTable extends Host {
         return sb.toString();
     }
 
-    public static Prize drawPrize(List<Prize> prizes) {
+    public static Prize drawPrize(List<Prize> prizes) { return drawPrize(prizes, Widgets.rand01()); }
+
+    /** The prize for a number in [0, 1): walks the chances in order (the provably fair draw passes its number). */
+    public static Prize drawPrize(List<Prize> prizes, double u) {
         double sum = 0;
         for (Prize p : prizes) sum += p.chance;
-        double r = Widgets.rand01() * sum;
+        double r = u * sum;
         for (Prize p : prizes) { r -= p.chance; if (r < 0) return p; }
         return prizes.get(prizes.size() - 1);
     }
@@ -105,7 +108,9 @@ public final class CrateTable extends Host {
         if (bet > crateMaxBet(type())) return fail("Max bet " + Money.format(crateMaxBet(type())));
         settle();
         CrateType type = type();
-        Prize prize = drawPrize(type.prizes);
+        var fr = dev.ryaan.ezgamble.data.Fair.round("Crates");
+        Prize prize = drawPrize(type.prizes, fr.next());
+        fr.result("x" + prize.mult() + " " + prize.item());
         List<Prize> strip = new ArrayList<>();
         for (int i = 0; i < CRATE_WIN_AT + 6; i++) strip.add(i == CRATE_WIN_AT ? prize : drawPrize(type.prizes));   // the reel shows the TRUE odds: no fake near miss
         // stop somewhere inside the prize's cell, never dead centre (the near miss is part of the show)

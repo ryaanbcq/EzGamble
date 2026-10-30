@@ -37,14 +37,26 @@ public final class BlackjackGame extends Widgets.Round {
         /** Test hook: a rigged shoe never reports itself low. */
         boolean never;
 
-        public Shoe(int decks) { this.decks = decks; shuffle(); }
+        public Shoe(int decks) { this.decks = decks; shuffle(false); }   // a placeholder order: the first deal reshuffles under the fair seed
 
-        public void shuffle() {
+        /** The seed hash the shoe was shuffled under: revealing that seed would show the cards left, so a new seed reshuffles. */
+        public String fairHash;
+        /** Off for the self test's shoes (no fair.json, no log). */
+        public static boolean fair = true;
+
+        public void shuffle() { shuffle(fair); }
+
+        private void shuffle(boolean useFair) {
             List<Card> c = new ArrayList<>();
             for (int d = 0; d < decks; d++) for (String s : SUITS) for (String r : RANKS) c.add(new Card(r, s, ++cardSeq));
-            for (int i = c.size() - 1; i > 0; i--) { int j = RNG.nextInt(i + 1); Card t = c.get(i); c.set(i, c.get(j)); c.set(j, t); }   // Fisher-Yates
+            // Fisher-Yates; provably fair: one round per shuffle, the cards are dealt from the END of the shuffled list
+            var fr = useFair ? dev.ryaan.ezgamble.data.Fair.round("Blackjack shoe") : null;
+            for (int i = c.size() - 1; i > 0; i--) { int j = fr != null ? (int) Math.floor(fr.next() * (i + 1)) : RNG.nextInt(i + 1); Card t = c.get(i); c.set(i, c.get(j)); c.set(j, t); }
+            if (fr != null) { fr.result(decks + " decks shuffled"); fairHash = dev.ryaan.ezgamble.data.Fair.hash(); }
             cards.clear(); cards.addAll(c);
         }
+
+        public boolean staleSeed() { return fair && !never && (fairHash == null || !fairHash.equals(dev.ryaan.ezgamble.data.Fair.hash())); }
 
         public int remaining() { return cards.size(); }
         public boolean low() { return !never && cards.size() < decks * 52 * 0.25; }
@@ -92,7 +104,7 @@ public final class BlackjackGame extends Widgets.Round {
     public BlackjackGame(Shoe shoe) { this.shoe = shoe; }
 
     public void deal(long bet) {
-        reshuffled = shoe.low();
+        reshuffled = shoe.low() || shoe.staleSeed();
         if (reshuffled) shoe.shuffle();
         hands = new ArrayList<>(); hands.add(new Hand(bet, false));
         dealer = new ArrayList<>(); active = 0; phase = "player"; results = null; log.clear();

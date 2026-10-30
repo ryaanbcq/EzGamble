@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EzGamble Verify</title>
+<style>
+  :root { --bg: #17111f; --card: #221a2e; --line: #3a2e4d; --text: #ece6f7; --mute: #a99bc2; --lav: #a18cd1; --pink: #fbc2eb; --green: #4be07a; --red: #ff5c5c; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { margin: 0 0 4px; font-size: 26px; background: linear-gradient(90deg, var(--lav), var(--pink)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  p.lead { margin: 0 0 24px; color: var(--mute); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+  label { display: block; font-size: 13px; color: var(--mute); margin: 10px 0 4px; }
+  input { width: 100%; padding: 9px 11px; border-radius: 9px; border: 1px solid var(--line); background: #140f1b; color: var(--text); font: 14px ui-monospace, Menlo, monospace; }
+  .row { display: grid; grid-template-columns: 1fr 120px 120px; gap: 10px; }
+  @media (max-width: 600px) { .row { grid-template-columns: 1fr; } }
+  button { margin-top: 14px; padding: 10px 18px; border: 0; border-radius: 10px; background: linear-gradient(90deg, var(--lav), var(--pink)); color: #1b1325; font-weight: 700; font-size: 14px; cursor: pointer; }
+  .check { font-weight: 700; }
+  .ok { color: var(--green); } .bad { color: var(--red); }
+  table { width: 100%; border-collapse: collapse; font: 13px ui-monospace, Menlo, monospace; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--mute); font-weight: 600; }
+  .scroll { overflow-x: auto; }
+  details { margin-top: 4px; color: var(--mute); }
+  code { font-family: ui-monospace, Menlo, monospace; color: var(--pink); }
+  ul { padding-left: 20px; color: var(--mute); }
+</style>
+</head>
+<body>
+<main>
+  <h1>EzGamble provably fair</h1>
+  <p class="lead">Paste the reveal your host gave you in chat. This page recomputes every round in your browser, nothing is sent anywhere.</p>
+
+  <div class="card">
+    <label for="paste">Reveal line (optional: fills the fields below)</label>
+    <input id="paste" placeholder="Provably fair reveal: seed ... (hash ...), client seed ..., rounds 1-12.">
+    <label for="seed">Server seed (revealed)</label>
+    <input id="seed" placeholder="64 hex characters">
+    <label for="hash">Seed hash you were shown before the rolls</label>
+    <input id="hash" placeholder="64 hex characters">
+    <div class="row">
+      <div><label for="client">Client seed</label><input id="client"></div>
+      <div><label for="from">From round</label><input id="from" value="1" inputmode="numeric"></div>
+      <div><label for="to">To round</label><input id="to" value="10" inputmode="numeric"></div>
+    </div>
+    <label for="mines">Bombs in your Mines rounds</label>
+    <input id="mines" value="3" inputmode="numeric" style="max-width:120px">
+    <button id="go">Verify</button>
+  </div>
+
+  <div class="card" id="out" hidden>
+    <div id="hashcheck" class="check"></div>
+    <div class="scroll"><table id="table"></table></div>
+  </div>
+
+  <div class="card">
+    <strong>How it works</strong>
+    <ul>
+      <li>Before the rolls, your host shows <code>SHA-256(server seed)</code>. A different seed would give a different hash, so it can't be swapped afterwards.</li>
+      <li>Each round uses one number per draw: <code>HMAC-SHA256(key = server seed, message = "client seed:round:draw")</code>, first 52 bits divided by 2<sup>52</sup>, a number in [0, 1).</li>
+      <li>Roulette: <code>floor(n0 × 37)</code>. Coinflip: heads if <code>n0 &lt; 0.5</code>. Crash: <code>floor(96 / (1 - n0)) / 100</code>, at least x1, at most x1000.</li>
+      <li>Mines: a Fisher-Yates shuffle of the 25 tiles (draw k picks among the first 25 - k tiles), the bombs are the first tiles of the shuffle. Tiles are numbered 1 to 25, left to right, top to bottom.</li>
+      <li>Crates: <code>n0 × (sum of the chances)</code> walks the prize table in order. Blackjack: one round shuffles the whole shoe the same way, cards are dealt from the end.</li>
+    </ul>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const enc = new TextEncoder();
+const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+async function sha256(s) { return hex(await crypto.subtle.digest('SHA-256', enc.encode(s))); }
+async function keyOf(seed) { return crypto.subtle.importKey('raw', enc.encode(seed), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']); }
+/** Same maths as the mod (data/Fair.number): the first 7 bytes, 52 bits, over 2^52. */
+async function number(key, client, nonce, cursor) {
+  const h = new Uint8Array(await crypto.subtle.sign('HMAC', key, enc.encode(client + ':' + nonce + ':' + cursor)));
+  let v = 0n;
+  for (let i = 0; i < 7; i++) v = (v << 8n) | BigInt(h[i]);
+  return Number(v >> 4n) / 2 ** 52;
+}
+$('paste').addEventListener('input', () => {
+  const t = $('paste').value;
+  const m = (re) => (t.match(re) || [])[1];
+  const seed = m(/seed ([0-9a-f]{64})/i), hash = m(/hash ([0-9a-f]{64})/i), client = m(/client seed ([A-Za-z0-9_-]+)/i), rounds = t.match(/rounds? (\d+)(?:-(\d+))?/i);
+  if (seed) $('seed').value = seed;
+  if (hash) $('hash').value = hash;
+  if (client) $('client').value = client;
+  if (rounds) { $('from').value = rounds[2] ? rounds[1] : 1; $('to').value = rounds[2] || rounds[1]; }
+});
+$('go').addEventListener('click', async () => {
+  const seed = $('seed').value.trim(), want = $('hash').value.trim().toLowerCase(), client = $('client').value.trim();
+  const from = Math.max(1, parseInt($('from').value) || 1), to = Math.min(from + 499, Math.max(from, parseInt($('to').value) || from));
+  const bombs = Math.min(24, Math.max(1, parseInt($('mines').value) || 3));
+  $('out').hidden = false;
+  const got = await sha256(seed);
+  $('hashcheck').innerHTML = !want ? 'Hash of this seed: <code>' + got + '</code>'
+    : got === want ? '<span class="ok">✔ The seed matches the hash you were shown.</span>'
+    : '<span class="bad">✖ This seed does NOT match the hash you were shown.</span>';
+  const key = await keyOf(seed), rows = [];
+  for (let n = from; n <= to; n++) {
+    const n0 = await number(key, client, n, 0);
+    const crash = Math.min(1000, Math.max(1, Math.floor(((1 - 0.04) / (1 - n0)) * 100) / 100));
+    const idx = [...Array(25).keys()];
+    for (let i = 24, c = 0; i > 0; i--, c++) { const j = Math.floor((await number(key, client, n, c)) * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; }
+    const mines = idx.slice(0, bombs).map((b) => b + 1).sort((a, b) => a - b).join(',');
+    rows.push(`<tr><td>#${n}</td><td>${n0.toFixed(6)}</td><td>${Math.floor(n0 * 37)}</td><td>${n0 < 0.5 ? 'heads' : 'tails'}</td><td>x${crash}</td><td>${mines}</td></tr>`);
+  }
+  $('table').innerHTML = '<tr><th>Round</th><th>n0</th><th>Roulette</th><th>Coinflip</th><th>Crash</th><th>Mines (' + bombs + ')</th></tr>' + rows.join('');
+});
+</script>
+</body>
+</html>

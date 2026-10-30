@@ -44,7 +44,7 @@ public final class Liquid {
         };
     }
 
-    private static float k() { return (float) MinecraftClient.getInstance().getWindow().getScaleFactor(); }
+    private static float k() { return (float) (MinecraftClient.getInstance().getWindow().getScaleFactor() * dev.ryaan.ezgamble.proto.P.zoom); }
 
     // ------------------------------------------------------------------ primitives (real pixels)
 

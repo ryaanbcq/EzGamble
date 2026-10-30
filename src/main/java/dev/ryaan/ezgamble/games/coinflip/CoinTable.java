@@ -42,7 +42,9 @@ public final class CoinTable extends Host {
         if (bet > balance()) return fail("Not enough chips");
         if (bet * CF_PAY > CF_MAX_WIN) return fail("Max bet " + Money.format((long) Math.floor(CF_MAX_WIN / CF_PAY)));
         settle();
-        String result = Widgets.rand01() < 0.5 ? "heads" : "tails";
+        var fr = dev.ryaan.ezgamble.data.Fair.round("Coinflip");
+        String result = fr.next() < 0.5 ? "heads" : "tails";
+        fr.result(result);
         // the coin starts heads up and turns a whole number of half turns, 5 or 6, so it lands on the drawn side. Not more: at
         // 9-10 half turns it moved almost half a turn between two frames at 30 FPS and looked frozen and jumpy (wagon-wheel effect)
         Rnd r = new Rnd();

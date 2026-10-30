@@ -151,7 +151,9 @@ public final class RouletteTable extends Host {
         if (total <= 0) return fail("Click a cell to bet");
         if (total > balance()) return fail("Not enough chips");
         settle();
-        int n = (int) Math.floor(Widgets.rand01() * 37), idx = LAPS * 37 + indexOf(n);
+        var fr = dev.ryaan.ezgamble.data.Fair.round("Roulette");   // provably fair: the number (the landing jitter stays cosmetic)
+        int n = (int) Math.floor(fr.next() * 37), idx = LAPS * 37 + indexOf(n);
+        fr.result(String.valueOf(n));
         double land = idx * CELL + CELL / 2.0 + (Widgets.rand01() - 0.5) * (CELL - 8);
         round = new Spin(n, new LinkedHashMap<>(bets), total, backer, P.now(), land);
         lastBets = new LinkedHashMap<>(bets); bets.clear(); order.clear();

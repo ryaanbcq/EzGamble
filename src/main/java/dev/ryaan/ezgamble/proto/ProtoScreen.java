@@ -21,6 +21,10 @@ public abstract class ProtoScreen extends Screen {
     public final List<Widget> children = new ArrayList<>();
     public Widget focusedDrag;
     public double SW, SH;
+    /** View transform, screen = virtual * viewZ + view(X|Y): the window can be moved and zoomed (GambleScreen). */
+    public double viewX, viewY, viewZ = 1;
+    public double vx(double sx) { return (sx - viewX) / viewZ; }
+    public double vy(double sy) { return (sy - viewY) / viewZ; }
     /** Forced pointer for smoke tests. */
     public static int forceMx = -1, forceMy = -1;
     private int errors;
@@ -34,7 +38,12 @@ public abstract class ProtoScreen extends Screen {
     protected abstract void init2();
 
     @Override
-    protected final void init() { SW = width; SH = height; children.clear(); init2(); }
+    protected final void init() { relayout(); }
+
+    /** The virtual screen follows the zoom: widgets are laid out again in it. */
+    public void relayout() { SW = width / viewZ; SH = height / viewZ; children.clear(); init2(); }
+
+    private void view(G g) { P.zoom = viewZ; g.push(); g.translate(viewX, viewY); g.scale(viewZ, viewZ); }
 
     /** Background layer (before render), and the content. */
     protected void renderBg(G g, double mx, double my) {}
@@ -48,25 +57,25 @@ public abstract class ProtoScreen extends Screen {
         }
     }
 
-    private double mx(int m) { return forceMx >= 0 ? forceMx : m; }
-    private double my(int m) { return forceMy >= 0 ? forceMy : m; }
+    private double mx(int m) { return vx(forceMx >= 0 ? forceMx : m); }
+    private double my(int m) { return vy(forceMy >= 0 ? forceMy : m); }
 
     @Override
     public void renderBackground(DrawContext d, int mouseX, int mouseY, float delta) {
         G g = new G(d);
-        try { renderBg(g, mx(mouseX), my(mouseY)); }
+        try { view(g); renderBg(g, mx(mouseX), my(mouseY)); }
         catch (Exception e) { fail(e); }
-        finally { g.closeAll(); }
+        finally { g.closeAll(); P.zoom = 1; }
     }
 
     @Override
     public void render(DrawContext d, int mouseX, int mouseY, float delta) {
         G g = new G(d);
         long t0 = System.nanoTime();
-        try { renderFg(g, mx(mouseX), my(mouseY)); }
+        try { view(g); renderFg(g, mx(mouseX), my(mouseY)); }
         catch (Exception e) { fail(e); }
         finally {
-            g.closeAll();
+            g.closeAll(); P.zoom = 1;
             // GambleScreen counts itself (its frame ends inside renderFg); the other screens are counted here
             if (dev.ryaan.ezgamble.DebugRun.ON && !(this instanceof dev.ryaan.ezgamble.ui.GambleScreen)) { dev.ryaan.ezgamble.DebugRun.renderNanos += System.nanoTime() - t0; dev.ryaan.ezgamble.DebugRun.renderFrames++; }
         }
@@ -87,14 +96,14 @@ public abstract class ProtoScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(Click click, boolean doubled) { return mouseDown(click.x(), click.y(), click.button()); }
+    public boolean mouseClicked(Click click, boolean doubled) { return mouseDown(vx(click.x()), vy(click.y()), click.button()); }
 
     @Override
-    public boolean mouseDragged(Click click, double dx, double dy) { if (focusedDrag != null) focusedDrag.drag(click.x(), click.y()); return true; }
+    public boolean mouseDragged(Click click, double dx, double dy) { if (focusedDrag != null) focusedDrag.drag(vx(click.x()), vy(click.y())); return true; }
 
     @Override
     public boolean mouseReleased(Click click) {
-        if (focusedDrag != null) { focusedDrag.down = false; focusedDrag.release(click.x(), click.y()); }
+        if (focusedDrag != null) { focusedDrag.down = false; focusedDrag.release(vx(click.x()), vy(click.y())); }
         focusedDrag = null;
         return true;
     }
@@ -103,7 +112,7 @@ public abstract class ProtoScreen extends Screen {
     public boolean mouseScrolled2(double mx, double my, double dy, double dx) { return false; }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double h, double v) { return mouseScrolled2(mouseX, mouseY, -v * 20, -h * 20); }
+    public boolean mouseScrolled(double mouseX, double mouseY, double h, double v) { return mouseScrolled2(vx(mouseX), vy(mouseY), -v * 20 / viewZ, -h * 20 / viewZ); }
 
     /** Keys, prototype style. Default: Escape closes. */
     public void key(Key e) { if (e.is("Escape")) close(); }

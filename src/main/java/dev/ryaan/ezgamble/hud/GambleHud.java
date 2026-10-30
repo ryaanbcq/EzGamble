@@ -32,6 +32,7 @@ public final class GambleHud implements HudElement {
     public void render(DrawContext d, RenderTickCounter t) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.options.hudHidden || mc.currentScreen instanceof HudEditorScreen) return;   // F1, or the editor draws its own copy
+        if (!GambleData.mode) return;   // gambling mode off: no HUD at all
         G g = new G(d);
         long t0 = System.nanoTime();
         try {
@@ -108,10 +109,20 @@ public final class GambleHud implements HudElement {
                 g.drawText("Session", 7, 6, MUTE, true);
                 Session cur = GambleData.current();
                 if (cur != null) right(g, W, clock(t - cur.start), 6, WHITE); else right(g, W, "OFF", 6, RED);
-                // big profit, x2 like the menu, shrunk only if the full format does not fit
-                String big = money(st.profit(), c, true);
-                double sc = Math.min(2, (W - 14.0) / F.width(big));
-                g.push(); g.translate(7, 17 + (16 - 8 * sc) / 2); g.scale(sc, sc); valueText(g, big, 0, 0, c, st.profit(), true); g.pop();
+                // big: your balance (sidebar / last /bal), the session's profit small on its right; before the balance is
+                // known, the profit alone as before. x2 like the menu, shrunk only if the full format does not fit
+                long bal = dev.ryaan.ezgamble.data.Balance.value();
+                if (bal >= 0) {
+                    String pr = money(st.profit(), c, true), big = money(bal, c, false);
+                    int pw = F.width(pr);
+                    double sc = Math.min(2, (W - 14.0 - pw - 6) / F.width(big));
+                    g.push(); g.translate(7, 17 + (16 - 8 * sc) / 2); g.scale(sc, sc); valueText(g, big, 0, 0, c, bal, false); g.pop();
+                    if (c.autoSignColor) right(g, W, pr, 21, st.profit() >= 0 ? GREEN : RED); else valueText(g, pr, W - 7 - pw, 21, c, st.profit(), false);
+                } else {
+                    String big = money(st.profit(), c, true);
+                    double sc = Math.min(2, (W - 14.0) / F.width(big));
+                    g.push(); g.translate(7, 17 + (16 - 8 * sc) / 2); g.scale(sc, sc); valueText(g, big, 0, 0, c, st.profit(), true); g.pop();
+                }
                 HudConfig.Rows r = HUD.session.rows;
                 int yy = 37;
                 if (!(r.curve || r.winrate || r.total)) break;

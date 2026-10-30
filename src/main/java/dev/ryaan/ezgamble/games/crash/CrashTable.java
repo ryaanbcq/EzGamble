@@ -60,7 +60,9 @@ public final class CrashTable extends Host {
         if (bet <= 0) return fail("Place a bet");
         if (bet > balance()) return fail("Not enough chips");
         settle();
-        double c = (1 - CRASH_EDGE) / (1 - Widgets.rand01()), crash = Math.min(CRASH_MAX_X, Math.max(1, Math.floor(c * 100) / 100));
+        var fr = dev.ryaan.ezgamble.data.Fair.round("Crash");
+        double c = (1 - CRASH_EDGE) / (1 - fr.next()), crash = Math.min(CRASH_MAX_X, Math.max(1, Math.floor(c * 100) / 100));
+        fr.result("x" + crash);
         Rnd r = new Rnd();
         r.bet = bet; r.backer = backer; r.auto = auto; r.crash = crash; r.at = P.now(); r.launch = P.now() + CRASH_WAIT_MS; r.crashMs = crashMsOf(crash);
         round = r;

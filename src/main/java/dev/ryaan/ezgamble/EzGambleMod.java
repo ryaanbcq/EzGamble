@@ -42,6 +42,7 @@ public final class EzGambleMod implements ClientModInitializer {
                 "key.ezgamble.mode", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_G, CATEGORY));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             GambleData.tick();
+            dev.ryaan.ezgamble.data.Balance.tick(client);
             dev.ryaan.ezgamble.data.Payments.tick();
             dev.ryaan.ezgamble.data.Payouts.tick();
             dev.ryaan.ezgamble.auction.Auction.tick();
@@ -82,6 +83,7 @@ public final class EzGambleMod implements ClientModInitializer {
     public static void onChat(String line) {
         if (DebugRun.ON) DebugRun.heard(line);
         try {
+            dev.ryaan.ezgamble.data.Balance.onChat(line);
             if (dev.ryaan.ezgamble.data.Payouts.onChat(line)) return;
             if (dev.ryaan.ezgamble.data.Payments.onChat(line)) return;
             boolean duel = dev.ryaan.ezgamble.duel.Duel.onChat(line);   // a challenge counts even while a game is open (it waits for the menu to close)

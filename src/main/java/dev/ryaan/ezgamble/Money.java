@@ -14,7 +14,7 @@ public final class Money {
         if (s.isEmpty()) return -1;
         double mult = 1;
         char last = s.charAt(s.length() - 1);
-        if (last == 'k') mult = 1e3; else if (last == 'm') mult = 1e6; else if (last == 'b') mult = 1e9;
+        if (last == 'k') mult = 1e3; else if (last == 'm') mult = 1e6; else if (last == 'b') mult = 1e9; else if (last == 't') mult = 1e12;
         if (mult != 1) s = s.substring(0, s.length() - 1);
         try {
             double v = Double.parseDouble(s);
