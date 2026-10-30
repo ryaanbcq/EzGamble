@@ -89,6 +89,8 @@ public final class DebugRun {
             case "waitchat" -> { heard = false; waitChat = arg; waitUntil = ticks + 2400; return false; }
             case "wait" -> { waitUntil = ticks + Integer.parseInt(arg); return false; }
             case "open" -> c.setScreen(new GambleScreen());
+            case "updready" -> Updater.debugReady();
+            case "restartinfo" -> EzGambleMod.LOG.info("[ezgamble] debug restart: launcher {} instance {}", Updater.launcher(), Updater.instance());
             case "close" -> c.setScreen(null);
             case "tab", "sub", "range", "hook" -> GambleScreen.debug(cmd, arg);
             case "name" -> GambleData.setName(arg);

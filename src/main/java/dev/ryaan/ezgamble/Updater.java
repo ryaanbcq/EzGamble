@@ -160,6 +160,65 @@ public final class Updater {
         }));
     }
 
+    // ---- restart: the game closes, then the launcher that started it starts the same instance again
+
+    /** The Prism (or MultiMC, PolyMC) executable that launched this game, among its parent processes; null if none. */
+    static String launcher() {
+        var p = ProcessHandle.current().parent();
+        for (int i = 0; i < 4 && p.isPresent(); i++, p = p.get().parent()) {
+            var cmd = p.get().info().command();
+            if (cmd.isPresent()) {
+                String f = Path.of(cmd.get()).getFileName().toString().toLowerCase(Locale.ROOT);
+                if (f.startsWith("prismlauncher") || f.startsWith("multimc") || f.startsWith("polymc")) return cmd.get();
+            }
+        }
+        return null;
+    }
+
+    /** The launcher's instance id: the folder holding the game folder (instances/<id>/minecraft). */
+    static String instance() {
+        Path game = FabricLoader.getInstance().getGameDir().toAbsolutePath().normalize();
+        Path inst = game.getParent();
+        if (inst == null || inst.getParent() == null || !inst.getParent().getFileName().toString().equalsIgnoreCase("instances")) return null;
+        return inst.getFileName().toString();
+    }
+
+    /** Debug: pretend an update is downloaded (the Restart button shows). */
+    public static void debugReady() { latest = "9.9.9"; state = State.READY; }
+
+    public static boolean canRestart() { return launcher() != null && instance() != null; }
+
+    /**
+     * Close the game and have the launcher start it again, back on the server it was on. A small process outlives
+     * the game: it waits for it to exit (the old jar is gone by then, the new one loads), then calls the launcher.
+     */
+    public static boolean restart(String server) {
+        String exe = launcher(), id = instance();
+        if (exe == null || id == null) return false;
+        long pid = ProcessHandle.current().pid();
+        boolean windows = System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
+        java.util.List<String> cmd;
+        if (windows) {
+            String args = "'--launch','" + id.replace("'", "''") + "'" + (server != null ? ",'--server','" + server.replace("'", "''") + "'" : "");
+            cmd = java.util.List.of("powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command",
+                    "Wait-Process -Id " + pid + " -ErrorAction SilentlyContinue; Start-Sleep 2; Start-Process -FilePath '" + exe.replace("'", "''") + "' -ArgumentList " + args);
+        } else {
+            String q = "'" + exe.replace("'", "'\\''") + "' --launch '" + id.replace("'", "'\\''") + "'"
+                    + (server != null ? " --server '" + server.replace("'", "'\\''") + "'" : "");
+            cmd = java.util.List.of("/bin/sh", "-c", "while kill -0 " + pid + " 2>/dev/null; do sleep 0.5; done; sleep 2; " + q + " >/dev/null 2>&1 &");
+        }
+        try {
+            new ProcessBuilder(cmd).redirectOutput(ProcessBuilder.Redirect.DISCARD).redirectError(ProcessBuilder.Redirect.DISCARD).start();
+        } catch (Exception e) {
+            EzGambleMod.LOG.warn("[ezgamble] restart failed: {}", e.toString());
+            return false;
+        }
+        EzGambleMod.LOG.info("[ezgamble] restarting: {} --launch {}{}", exe, id, server != null ? " --server " + server : "");
+        var mc = net.minecraft.client.MinecraftClient.getInstance();
+        mc.execute(mc::scheduleStop);
+        return true;
+    }
+
     /** "0.1.10" > "0.1.9"; anything after a '-' or '+' is ignored. */
     static boolean newer(String a, String b) {
         String[] x = a.split("[-+]")[0].split("\\."), y = b.split("[-+]")[0].split("\\.");

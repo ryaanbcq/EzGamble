@@ -45,6 +45,13 @@ public final class GambleScreen extends ProtoScreen {
     private GlassField nameField;
     private boolean builtMode = GambleData.mode;
     private Updater.State shownUpdate = Updater.state();
+    private long restartArmedUntil;
+    private boolean shownArmed;
+
+    private static String currentServer() {
+        var e = MinecraftClient.getInstance().getCurrentServerEntry();
+        return e != null && !MinecraftClient.getInstance().isInSingleplayer() ? e.address : null;
+    }
     private String lastSub;
     /** The list under the pointer for the wheel (beginList). */
     public double[] listHit; public String listHitId;
@@ -123,6 +130,15 @@ public final class GambleScreen extends ProtoScreen {
             String label = "Update " + Updater.latest();
             double w = F.width(label) + 16, lw = F.width("Gambling mode");
             add(new GlassButton(rx - 28 - 6 - lw - 8 - w, y0 + PAD - 4, w, 16, label, "PRIMARY", () -> { Updater.download(); rebuild(); }));
+        } else if (Updater.state() == Updater.State.READY && Updater.canRestart()) {
+            // two clicks: the first one only asks, a stray click never closes the game
+            boolean armed = P.now() < restartArmedUntil;
+            String label = armed ? "Click again" : "Restart " + Updater.latest();
+            double w = F.width(label) + 16, lw = F.width("Gambling mode");
+            add(new GlassButton(rx - 28 - 6 - lw - 8 - w, y0 + PAD - 4, w, 16, label, "PRIMARY", () -> {
+                if (P.now() < restartArmedUntil) { restartArmedUntil = 0; Updater.restart(currentServer()); return; }
+                restartArmedUntil = P.now() + 3000; rebuild();
+            }));
         }
         GlassSegmented tabs = seg("tabs", new String[][]{{"dashboard", "Dashboard"}, {"transactions", "History"}, {"games", "Games"}, {"hud", "HUD"}}, () -> tab, id -> {
             leaveSub();
@@ -190,6 +206,7 @@ public final class GambleScreen extends ProtoScreen {
         if (tab.equals("games") && sub != null) { view(sub).tick(); }
         if (builtMode != GambleData.mode) rebuild();
         if (Updater.state() != shownUpdate) { shownUpdate = Updater.state(); rebuild(); }
+        if (shownArmed != P.now() < restartArmedUntil) { shownArmed = !shownArmed; rebuild(); }   // back to "Restart" after 3 s
         if (duelVer != dev.ryaan.ezgamble.duel.Duel.ver()) { duelVer = dev.ryaan.ezgamble.duel.Duel.ver(); if (tab.equals("games") && (sub == null || sub.equals("duels"))) rebuild(); }
     }
     private int duelVer = -1;
@@ -276,7 +293,7 @@ public final class GambleScreen extends ProtoScreen {
     private void renderUpdateStatus(G g) {
         String t = switch (Updater.state()) {
             case DOWNLOADING -> "Downloading " + Updater.latest() + "...";
-            case READY -> "Restart Minecraft to finish the update";
+            case READY -> Updater.canRestart() ? "Update ready: Restart, then click again" : "Restart Minecraft to finish the update";
             default -> "";
         };
         if (!t.isEmpty()) g.drawText(t, x0 + (W - F.width(t)) / 2.0, y0 + H + 6, Updater.state() == Updater.State.READY ? P.GREEN : P.MUTE, true);
