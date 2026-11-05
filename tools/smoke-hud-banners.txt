@@ -1,0 +1,22 @@
+# HUD banners smoke test: the top-centre column. Five pieces of news fire within a second (a tier-up, a lobby join, a badge,
+# the race start, the jackpot counter) and hud.Banners shows them one at a time at y 8 while the event banner and the
+# jackpot pill share the persistent row at y 30. Run: ./tools/smoke.sh tools/smoke-hud-banners.txt ; expect 4 screenshots
+# ezgamble-hud-banners-{5,60,130,200}.png (the toast queue advancing: one toast per shot, never two, the row under it)
+# and no "step failed" line.
+mode on
+demo 20
+paid Alpha 50M
+wager Alpha 1M 4
+chat Alpha whispers to you: join blackjack 5M
+wagerwin Alpha 1M 5
+event race 5 1M
+jackpotset 12M
+wait 5
+shot hud-banners-5
+wait 55
+shot hud-banners-60
+wait 70
+shot hud-banners-130
+wait 70
+shot hud-banners-200
+quit

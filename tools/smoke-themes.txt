@@ -1,8 +1,12 @@
-# Themes smoke test: every preset on the dashboard, the games grid and the HUD tab (theme row with the swatches).
-# Run: ./tools/smoke.sh tools/smoke-themes.txt ; expect 19 screenshots: ezgamble-theme-<id>-{dash,games,hud}.png for the six themes plus ezgamble-theme-click-lavender.png,
-# and no "step failed" line. The config keeps the last theme applied (mono): the last block puts Lavender back.
+# Themes smoke test: every preset on the dashboard, the games grid and the HUD tab (theme row with the swatches), and under
+# Emerald the sub-views that carried stale lavender literals (chips with its VIP legend, lobby, books, jackpot) plus a felt.
+# Run: ./tools/smoke.sh tools/smoke-themes.txt ; expect 24 screenshots: ezgamble-theme-<id>-{dash,games,hud}.png for the six themes,
+# ezgamble-theme-emerald-{chips,lobby,books,jackpot,felt}.png and ezgamble-theme-click-lavender.png, and no "step failed" line. The config keeps the last theme applied (mono): the last block puts Lavender back.
 mode on
 demo 20
+paid Alpha 50M
+chat Alpha whispers to you: join blackjack 5M
+wager Alpha 1M 4
 open
 wait 20
 theme lavender
@@ -16,6 +20,22 @@ tab hud
 wait 5
 shot theme-lavender-hud
 theme emerald
+sub chips
+wait 5
+shot theme-emerald-chips
+sub lobby
+wait 5
+shot theme-emerald-lobby
+sub books
+bookstab hours
+wait 5
+shot theme-emerald-books
+sub jackpot
+wait 5
+shot theme-emerald-jackpot
+sub blackjack
+wait 5
+shot theme-emerald-felt
 tab dashboard
 wait 5
 shot theme-emerald-dash

@@ -80,7 +80,7 @@ public final class HudEditorScreen extends ProtoScreen {
         toolbar.add(new Ctl(resetBtn, 0, 4)); add(resetBtn); x += 50;
         GlassButton ex = new GlassButton(x, 0, 50, 16, "Export", "GHOST", HudEditorScreen::export);
         toolbar.add(new Ctl(ex, 0, 4)); add(ex); x += 54;
-        GlassButton done = new GlassButton(x, 0, 52, 16, "DONE", "PRIMARY", this::close);
+        GlassButton done = new GlassButton(x, 0, 52, 16, "Done", "PRIMARY", this::close);
         toolbar.add(new Ctl(done, 0, 4)); add(done);
         buildInspector();
     }
@@ -147,7 +147,7 @@ public final class HudEditorScreen extends ProtoScreen {
         int IH = ih(), M = 8, E = 4;
         Rect r = wrect(sel);
         TB t = toolbarRect();
-        double maxY = SH - IH - E;
+        double maxY = Math.min(SH - IH - E, t.y() - M - IH);   // the clamped fallback ends above the toolbar too, else it hides the last rows
         double cy = clampY(r.y() + r.h() / 2.0 - IH / 2.0, maxY, E), cx = clampX(r.x() + r.w() / 2.0 - IW / 2.0, E);
         Map<String, Pt> place = Map.of("right", new Pt(r.x() + r.w() + M, cy), "left", new Pt(r.x() - M - IW, cy),
                 "below", new Pt(cx, r.y() + r.h() + M), "above", new Pt(cx, r.y() - M - IH));
@@ -391,8 +391,9 @@ public final class HudEditorScreen extends ProtoScreen {
     public void key(Key e) {
         if (e.is("Escape")) { if (sel != null) select(null); else close(); return; }
         if (sel == null) return;
-        Style c = HUD.get(sel);
-        Rect r = wrect(sel);
+        String id = "last".equals(sel) ? "session" : sel;   // the toast hangs under its card: the arrows move the card (mouseDown's rule)
+        Style c = HUD.get(id);
+        Rect r = wrect(id);
         int st = e.shift() ? 10 : 1;
         int[] mv = switch (e.key()) {
             case "ArrowLeft" -> new int[]{-st, 0};
