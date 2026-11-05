@@ -22,7 +22,7 @@ public final class LobbyPill extends Widget {
         if (game != null) s.add(new LobbyPill(s, game));
     }
 
-    private LobbyPill(GambleScreen s, String game) { super(0, s.y0 + 34, 0, 15); this.s = s; this.game = game; }
+    private LobbyPill(GambleScreen s, String game) { super(0, s.y0 + 34, 0, 16); this.s = s; this.game = game; }   // 16 px like the buttons of that row
 
     @Override
     public void render(G g, double mx, double my) {
@@ -36,13 +36,14 @@ public final class LobbyPill extends Widget {
         else if (d != null) { label = "Next"; head = d.name(); rest = " " + Money.format(Lobby.amountOf(d)) + (n > 1 ? " +" + (n - 1) : ""); vc = P.WHITE; gem = true; }
         else { label = "Next"; head = n + " short of chips"; vc = P.RED; }   // everyone in line for this game is short
         int bw = gem ? VipBadge.w(d.name()) : 0;
-        // the room right of the tabs segmented (Dashboard / History / Games / HUD, 190 px from lx) on the same row, 6 px apart
-        int room = GambleScreen.W - 2 * GambleScreen.PAD - 196;
+        // the room right of the tabs segmented (Dashboard / History / Games / HUD) on the same row, 6 px apart: measured, not assumed
+        int room = (int) (s.x0 + GambleScreen.W - GambleScreen.PAD - s.tabsRight() - 6);
         String value = F.trimToWidth(head, room - P.pillW(label, rest) - bw) + rest;
         w = P.pillW(label, value) + bw;
         x = s.x0 + GambleScreen.W - GambleScreen.PAD - w;
         boolean hot = d != null && err == null, hover = hot && over(mx, my);
-        P.smooth(g, x, y, w, 15, 7.5, hover ? 0x3AA18CD1 : hot ? 0x22A18CD1 : 0x10FFFFFF, hover ? 0x90FBC2EB : hot ? 0x50A18CD1 : 0);
+        // the theme's lavender and pink (Themes.apply rewrites P.LAV / P.PINK): on Emerald the pill stayed purple beside green tabs
+        P.smooth(g, x, y, w, 16, 8, hover ? P.alpha(P.LAV, 0.23) : hot ? P.alpha(P.LAV, 0.13) : 0x10FFFFFF, hover ? P.alpha(P.PINK, 0.56) : hot ? P.alpha(P.LAV, 0.31) : 0);
         double tx = x + 7;
         if (!label.isEmpty()) { g.drawText(label, tx, y + 4, P.MUTE, false); tx += F.width(label) + 4; }
         if (bw > 0) { VipBadge.draw(g, d.name(), tx, y + 4); tx += bw; }

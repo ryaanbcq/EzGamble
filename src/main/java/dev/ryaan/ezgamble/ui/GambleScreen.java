@@ -47,6 +47,14 @@ public final class GambleScreen extends ProtoScreen {
     private Updater.State shownUpdate = Updater.state();
     private long restartArmedUntil;
     private boolean shownArmed;
+    /** The Update / Restart button of the title row (null when none): the greeting stops short of it. */
+    private GlassButton updateBtn;
+    // The dashboard and the history never walk GambleData.all() per frame: their lists and stats are rebuilt when the
+    // key changes (range or filter, the last transaction, the session count, and a 5 s clock for the sliding windows).
+    private String dashKey, histKey;
+    private List<Txn> dashList, histList;
+    private long[] dashDeltas;
+    private Stats dashStats, histStats;
 
     private static String currentServer() {
         var e = MinecraftClient.getInstance().getCurrentServerEntry();
@@ -117,6 +125,7 @@ public final class GambleScreen extends ProtoScreen {
         clampWindow();
         double lx = x0 + PAD, rx = x0 + W - PAD;
         builtMode = GambleData.mode;
+        updateBtn = null;
         if (welcome) {
             double fw = 150, fx = x0 + (W - fw) / 2;
             if (nameField == null) nameField = new GlassField(0, 0, fw, 22, MinecraftClient.getInstance().getSession().getUsername(), "Your name");
@@ -129,13 +138,13 @@ public final class GambleScreen extends ProtoScreen {
         if (Updater.state() == Updater.State.AVAILABLE) {
             String label = "Update " + Updater.latest();
             double w = F.width(label) + 16, lw = F.width("Gambling mode");
-            add(new GlassButton(rx - 28 - 6 - lw - 8 - w, y0 + PAD - 4, w, 16, label, "PRIMARY", () -> { Updater.download(); rebuild(); }));
+            updateBtn = add(new GlassButton(rx - 28 - 6 - lw - 8 - w, y0 + PAD - 4, w, 16, label, "PRIMARY", () -> { Updater.download(); rebuild(); }));
         } else if (Updater.state() == Updater.State.READY && Updater.canRestart()) {
             // two clicks: the first one only asks, a stray click never closes the game
             boolean armed = P.now() < restartArmedUntil;
             String label = armed ? "Click again" : "Restart " + Updater.latest();
             double w = F.width(label) + 16, lw = F.width("Gambling mode");
-            add(new GlassButton(rx - 28 - 6 - lw - 8 - w, y0 + PAD - 4, w, 16, label, "PRIMARY", () -> {
+            updateBtn = add(new GlassButton(rx - 28 - 6 - lw - 8 - w, y0 + PAD - 4, w, 16, label, "PRIMARY", () -> {
                 if (P.now() < restartArmedUntil) { restartArmedUntil = 0; Updater.restart(currentServer()); return; }
                 restartArmedUntil = P.now() + 3000; rebuild();
             }));
@@ -160,30 +169,39 @@ public final class GambleScreen extends ProtoScreen {
                     () -> dev.ryaan.ezgamble.recap.RecapScreen.openLast(MinecraftClient.getInstance())));
         }
         if (tab.equals("games") && sub == null) {
-            cardBtn = add(new Widget(lx, y0 + 80, rx - lx, CARD_H) { @Override public void click(double mx, double my) { P.play("click"); sub = "chips"; rebuild(); } });
+            cardBtn = add(new Widget(lx, y0 + 80, rx - lx, CARD_H) { @Override public void click(double mx, double my) { P.play("open", 1.2, 0.5); sub = "chips"; rebuild(); } });
             double[] gc = gamesClip();
             Widget.Clip clip = new Widget.Clip(gc[0], gc[1], gc[2], gc[3]);
             for (double[] tl : gameTilesRects()) {
                 String s = GAME_IDS[(int) tl[4]];
-                Widget w = add(new Widget(tl[0], tl[1], tl[2], tl[3]) { @Override public void click(double mx, double my) { P.play("click"); sub = s; rebuild(); } });
+                Widget w = add(new Widget(tl[0], tl[1], tl[2], tl[3]) { @Override public void click(double mx, double my) { P.play("open", 1.2, 0.5); sub = s; rebuild(); } });
                 w.list = new Widget.ListPos("games", tl[1]); w.clip = clip;
             }
         }
         if (tab.equals("games") && (sub == null || sub.equals("duels"))) {
             int n = dev.ryaan.ezgamble.duel.Duel.pendingCount();
             String lbl = n > 0 ? "Requests " + n : "Requests";
-            double bw = F.width(lbl) + 16;
-            add(new GlassButton(rx - bw, y0 + 34, bw, 16, lbl, n > 0 && !"duels".equals(sub) ? "PRIMARY" : "GHOST", () -> { sub = "duels".equals(sub) ? null : "duels"; rebuild(); }));
-            // Fair and Lobby (the waiting line, lobby.Lobby, lit while somebody waits) left of Requests, all three right of the tabs:
-            // when the row is short the gaps shrink to 4, then the lobby count goes, then Fair steps aside until there is room again
+            double bw = F.width(lbl) + 12;
+            add(new GlassButton(rx - bw, y0 + 34, bw, 16, lbl, n > 0 && !"duels".equals(sub) ? "PRIMARY" : "GHOST", () -> {
+                boolean open = !"duels".equals(sub);
+                if (open) P.play("open", 1.2, 0.5);
+                sub = open ? "duels" : null; rebuild();
+            }));
+            // Fair and Lobby (the waiting line, lobby.Lobby, lit while somebody waits) left of Requests: one right-aligned group,
+            // 12 px of padding each, 4 px gaps, never a pixel over the tabs. When the row is short the lobby count goes first,
+            // then Fair steps aside (and the count comes back if it fits again)
             if (sub == null) {
-                int ln = dev.ryaan.ezgamble.lobby.Lobby.size(); double fw = F.width("Fair") + 16, edge = lx + tabs.w, gap = 6;
-                String ll = ln > 0 ? "Lobby " + ln : "Lobby"; double lw2 = F.width(ll) + 12;
-                if (rx - bw - gap - fw - gap - lw2 < edge + gap) gap = 4;
-                if (rx - bw - gap - fw - gap - lw2 < edge + gap) { ll = "Lobby"; lw2 = F.width(ll) + 12; }
-                boolean fair = rx - bw - gap - fw - gap - lw2 >= edge + gap;
-                if (fair) add(new GlassButton(rx - bw - gap - fw, y0 + 34, fw, 16, "Fair", "GHOST", () -> { P.play("click"); sub = "fair"; rebuild(); }));
-                add(new GlassButton(fair ? rx - bw - gap - fw - gap - lw2 : rx - bw - gap - lw2, y0 + 34, lw2, 16, ll, ln > 0 ? "PRIMARY" : "GHOST", () -> { P.play("click"); sub = "lobby"; rebuild(); }));
+                int ln = dev.ryaan.ezgamble.lobby.Lobby.size(); double edge = lx + tabs.w + 4;
+                String ll = ln > 0 ? "Lobby " + ln : "Lobby";
+                double fw = F.width("Fair") + 12, lw2 = F.width(ll) + 12;
+                boolean fair = true;
+                if (rx - (bw + 4 + fw + 4 + lw2) < edge) { ll = "Lobby"; lw2 = F.width(ll) + 12; }
+                if (rx - (bw + 4 + fw + 4 + lw2) < edge) { fair = false; ll = ln > 0 ? "Lobby " + ln : "Lobby"; lw2 = F.width(ll) + 12; }
+                if (!fair && rx - (bw + 4 + lw2) < edge) { ll = "Lobby"; lw2 = F.width(ll) + 12; }
+                double x = rx - bw - 4;
+                if (fair) { x -= fw; add(new GlassButton(x, y0 + 34, fw, 16, "Fair", "GHOST", () -> { P.play("open", 1.2, 0.5); sub = "fair"; rebuild(); })); x -= 4; }
+                x -= lw2;
+                add(new GlassButton(x, y0 + 34, lw2, 16, ll, ln > 0 ? "PRIMARY" : "GHOST", () -> { P.play("open", 1.2, 0.5); sub = "lobby"; rebuild(); }));
             }
         }
         if (tab.equals("games") && sub != null && GAME_SUBS.contains(sub)) dev.ryaan.ezgamble.lobby.LobbyPill.add(this);   // "Next in line" pill, top right of the felt header
@@ -203,11 +221,14 @@ public final class GambleScreen extends ProtoScreen {
         add(s);
     }
 
+    /** Right edge of the main tabs on their row (y0+33, 16 px): what shares the row (LobbyPill, Requests / Fair / Lobby) starts after it. */
+    public double tabsRight() { return x0 + PAD + segs.get("tabs").w; }
+
     /** Leaving the current game sub-view: settle it (‹, tab change, close). */
     public void leaveSub() { if (sub != null && tab.equals("games")) view(sub).leave(); }
 
     /** ‹ from a sub-view. */
-    public void back() { leaveSub(); sub = null; rebuild(); }
+    public void back() { leaveSub(); sub = null; P.play("close", 1.2, 0.5); rebuild(); }
 
     public void submitName() {
         String n = nameField.value.trim();
@@ -255,11 +276,17 @@ public final class GambleScreen extends ProtoScreen {
     private void renderTitle(G g) {
         double x = x0 + PAD, f = P.easeOut((P.now() - titleAt) / 260.0), y = y0 + PAD + Math.round((1 - f) * 4), a = Math.max(0.02, f);
         if (GambleData.name != null && !welcome && tab.equals("dashboard")) {
-            String pre = greeting[0], suf = greeting[1], name = GambleData.name;
-            g.drawText(pre, x, y, P.alpha(P.WHITE, a), true);
-            P.gradientText(g, name, x + F.width(pre), y, true, a);
-            if (!suf.isEmpty()) g.drawText(suf, x + F.width(pre) + F.width(name), y, P.alpha(P.WHITE, a), true);
-            return;
+            String pre = greeting[0], suf = greeting[1];
+            // the greeting stops 8 px short of whatever sits right of it: the Update / Restart button, the house dot or "Gambling mode"
+            // ("Luck looks good on you, " plus a 16-char name ran under the button); a name trimmed under 3 chars is no greeting: EZ GAMBLE
+            double lim = (updateBtn != null ? updateBtn.x : houseDot() != null ? houseDot()[0] : x0 + W - PAD - 28 - 6 - F.width("Gambling mode")) - 8;
+            String name = F.trimToWidth(GambleData.name, lim - x - F.width(pre) - F.width(suf));
+            if (name.length() >= 3) {
+                g.drawText(pre, x, y, P.alpha(P.WHITE, a), true);
+                P.gradientText(g, name, x + F.width(pre), y, true, a);
+                if (!suf.isEmpty()) g.drawText(suf, x + F.width(pre) + F.width(name), y, P.alpha(P.WHITE, a), true);
+                return;
+            }
         }
         P.gradientText(g, "EZ GAMBLE", x, y, true, a);
         g.drawText("by ZKR5", x + F.width("EZ GAMBLE") + 8, y + 1, P.alpha(P.MUTE, a), false);
@@ -288,9 +315,9 @@ public final class GambleScreen extends ProtoScreen {
             view(sub).render(g, mx, my);
             renderChildren(g, mx, my);
             renderHouseTip(g, mx, my);
+            renderUpdateStatus(g);
             g.pop();
             dev.ryaan.ezgamble.duel.TableChat.render(g, this, pop());
-            renderUpdateStatus(g);
             dev.ryaan.ezgamble.jackpot.JackpotFinale.drawOver(g, this);   // a jackpot hit on a felt: its finale over the menu too
             if (DebugRun.ON) { DebugRun.renderNanos += System.nanoTime() - t0; DebugRun.renderFrames++; }
             return;
@@ -309,8 +336,8 @@ public final class GambleScreen extends ProtoScreen {
             }
         }
         renderHouseTip(g, mx, my);
-        g.pop();
         renderUpdateStatus(g);
+        g.pop();
         dev.ryaan.ezgamble.jackpot.JackpotFinale.drawOver(g, this);   // the jackpot finale over everything, menu included (7 s after a hit)
         if (DebugRun.ON) { DebugRun.renderNanos += System.nanoTime() - t0; DebugRun.renderFrames++; }
     }
@@ -321,7 +348,8 @@ public final class GambleScreen extends ProtoScreen {
             case READY -> Updater.canRestart() ? "Update ready: Restart, then click again" : "Restart Minecraft to finish the update";
             default -> "";
         };
-        if (!t.isEmpty()) g.drawText(t, x0 + (W - F.width(t)) / 2.0, y0 + H + 6, Updater.state() == Updater.State.READY ? P.GREEN : P.MUTE, true);
+        // in the panel's bottom pad (y0+289..297), free on every tab: under the panel it fell off the screen at max zoom on 16:9
+        if (!t.isEmpty()) g.drawText(t, x0 + (W - F.width(t)) / 2.0, y0 + H - 11, Updater.state() == Updater.State.READY ? P.GREEN : P.MUTE, true);
     }
 
     /** y0+56..74: recording line, or the red OFF banner. */
@@ -341,8 +369,18 @@ public final class GambleScreen extends ProtoScreen {
 
     private void renderDashboard(G g, double mx, double my) {
         double lx = x0 + PAD, rx = x0 + W - PAD;
-        List<Txn> list = GambleData.inRange(range);
-        Stats st = Stats.of(list);
+        // the range's list, its stats and the chart's deltas are rebuilt only when something changed (inRange copies every
+        // transaction ever); the sliding windows also refresh every 5 s so a bet ages out of "1h" on its own
+        String k = range + ":" + GambleData.lastTxAt + ":" + GambleData.sessions.size() + ":" + (range.equals("1h") || range.equals("24h") ? P.now() / 5000 : 0);
+        if (!k.equals(dashKey)) {
+            dashKey = k;
+            dashList = GambleData.inRange(range);
+            dashStats = Stats.of(dashList);
+            dashDeltas = new long[dashList.size()];
+            for (int i = 0; i < dashDeltas.length; i++) dashDeltas[i] = dashList.get(i).delta();
+        }
+        List<Txn> list = dashList;
+        Stats st = dashStats;
         double half = (int) ((rx - lx) / 2), third = (int) ((rx - lx) / 3);
         double y = y0 + 80;
         P.card(g, lx, y, rx - lx, 46, "accent");
@@ -351,7 +389,7 @@ public final class GambleScreen extends ProtoScreen {
         g.drawText(Money.signed(st.profit()), 0, 0, st.profit() >= 0 ? P.GREEN : P.RED, true);
         g.pop();
         double q = (int) ((rx - lx - half) / 2);
-        P.tile(g, lx + half + 8, y + 8, "Volume", Money.format(st.volume()), P.WHITE);
+        P.tile(g, lx + half + 8, y + 8, "Wagered", Money.format(st.volume()), P.WHITE);   // "Wagered" everywhere for volume (profile, High rollers, Books)
         P.tile(g, lx + half + 8 + q, y + 8, "Transactions", String.valueOf(st.n()), P.WHITE);
         y += 50;
         P.card(g, lx, y, rx - lx, 34, "soft");
@@ -364,9 +402,8 @@ public final class GambleScreen extends ProtoScreen {
         P.card(g, lx, cy, rx - lx, ch, "chart");
         if (list.isEmpty()) { g.drawText("No transaction yet.", lx + 8, cy + (int) (ch / 2) - 4, P.DIM, false); return; }
         float reveal = (float) P.easeOut((P.now() - chartAt) / 600.0);
-        long[] deltas = new long[list.size()];
-        for (int i = 0; i < deltas.length; i++) deltas[i] = list.get(i).delta();
-        ProfitChart.Result r = ProfitChart.draw(g.d, deltas, (int) lx, (int) cy, (int) (rx - lx), (int) ch, (int) mx, (int) my, false, 0, true, reveal);
+        // the same array instance every frame: the chart's cache keys on it
+        ProfitChart.Result r = ProfitChart.draw(g.d, dashDeltas, (int) lx, (int) cy, (int) (rx - lx), (int) ch, (int) mx, (int) my, false, 0, true, reveal);
         if (r.hover() > 0) {
             Txn t = list.get(r.hover() - 1);
             ProfitChart.tooltip(g.d, t.game(), Money.signed(t.delta()), t.delta() >= 0 ? P.GREEN : P.RED, r.px()[r.hover()], (int) cy, (int) lx, (int) rx,
@@ -388,7 +425,12 @@ public final class GambleScreen extends ProtoScreen {
         for (Object[] p : pills) pw += P.pillW((String) p[0], (String) p[1]) + 4;
         g.drawText("House", lx + 12, y + 4, P.MUTE, false);
         double wx = lx + 12 + F.width("House") + 5;
-        g.drawText(F.trimToWidth(dev.ryaan.ezgamble.house.House.word(st), rx - pw - 6 - wx), wx, y + 4, col, false);   // the word never runs under the pills
+        // the word never runs under the pills: with three pills "Under-covered" has about 58 px and read "Under-cov", so the two
+        // long words have a short form first (the hover tip on the house dot keeps the long one)
+        double room = rx - pw - 6 - wx;
+        String word = dev.ryaan.ezgamble.house.House.word(st);
+        if (F.width(word) > room) word = switch (st) { case UNDER -> "Under"; case UNKNOWN -> "Unknown"; default -> word; };
+        g.drawText(F.trimToWidth(word, room), wx, y + 4, col, false);
         P.pillsRight(g, rx, y, pills);
     }
 
@@ -418,7 +460,7 @@ public final class GambleScreen extends ProtoScreen {
         var st = dev.ryaan.ezgamble.house.House.state();
         String t = "House: " + dev.ryaan.ezgamble.house.House.word(st) + ", cover " + dev.ryaan.ezgamble.house.House.coverText();
         double tw = F.width(t) + 12, tx = Math.min(d[0] + 3 - tw / 2, x0 + W - PAD - tw), ty = d[1] + 11;
-        P.smooth(g, tx, ty, tw, 15, 7.5, P.v(0xF0291C42, 0xF01C1230), 0x40FFFFFF);
+        P.smooth(g, tx, ty, tw, 15, 7.5, P.v(P.alpha(P.lerp(P.PANEL_TOP, P.WHITE, 0.05), 0.94), P.alpha(P.PANEL_BOT, 0.94)), 0x40FFFFFF);   // the theme's panel, a shade lighter
         g.drawText(t, tx + 6, ty + 4, dev.ryaan.ezgamble.house.House.color(st), false);
     }
 
@@ -434,7 +476,10 @@ public final class GambleScreen extends ProtoScreen {
 
     private void renderTransactions(G g) {
         double lx = x0 + PAD, rx = x0 + W - PAD;
-        List<Txn> rows = filtered();
+        // filtered() copies every transaction ever: once per change of filter / last bet / session, not per frame
+        String k = filter + ":" + GambleData.lastTxAt + ":" + GambleData.sessions.size();
+        if (!k.equals(histKey)) { histKey = k; histList = filtered(); histStats = Stats.of(histList); }
+        List<Txn> rows = histList;
         double top = y0 + 80, lh = y0 + H - PAD - 18 - top;
         String id = "hist-" + filter;
         if (rows.isEmpty()) g.drawText("No transaction yet.", lx, top + 4, P.DIM, false);
@@ -446,13 +491,14 @@ public final class GambleScreen extends ProtoScreen {
             P.card(g, lx, y, rx - lx, 27, "row");
             Icons.drawGameIcon(g, t.game(), lx + 4, y + 5, 16);
             g.drawText(t.game(), lx + 26, y + 4, P.WHITE, false);
+            String d = P.DATE_S(t.t());
             if (t.player() != null) {
                 double px = lx + 26 + F.width(t.game()) + 8;
                 g.drawHead(t.player(), px, y + 4, 8);
                 int bw = dev.ryaan.ezgamble.vip.VipBadge.w(t.player()); dev.ryaan.ezgamble.vip.VipBadge.draw(g, t.player(), px + 11, y + 4);
-                g.drawText(F.trimToWidth(t.player(), 70 - bw), px + 11 + bw, y + 4, P.MUTE, false);
+                double nx = px + 11 + bw, nmax = rx - 6 - F.width(d) - 8 - nx;   // the name takes the room left to the date, not a fixed 70 px
+                g.drawText(F.trimToWidth(t.player(), nmax), nx, y + 4, P.MUTE, false);
             }
-            String d = P.DATE_S(t.t());
             g.drawText(d, rx - 6 - F.width(d), y + 4, P.DIM, false);
             if (t.bet() != null && t.bet() > 0) g.drawText("Bet " + Money.format(t.bet()), lx + 26, y + 15, P.MUTE, false);   // a Jackpot hit has bet 0: no "Bet $0" line
             String right = Money.signed(t.delta());
@@ -460,7 +506,7 @@ public final class GambleScreen extends ProtoScreen {
             y += 30;
         }
         endList(g, id, rows.size() * 30 - 3);
-        Stats st = Stats.of(rows);
+        Stats st = histStats;
         double fy = y0 + H - PAD - 10;
         P.pill(g, lx, fy - 4, "Wins", String.valueOf(st.wins()), P.GREEN);
         P.pill(g, lx + P.pillW("Wins", String.valueOf(st.wins())) + 4, fy - 4, "Losses", String.valueOf(st.losses()), P.RED);
@@ -473,7 +519,7 @@ public final class GambleScreen extends ProtoScreen {
             {"Crates", "Open crates", "game/crates"}, {"Roulette", "Red, black", "game/roulette"}, {"Crash", "Cash out", "game/crash"}, {"Coinflip", "Heads, tails", "game/coinflip"},
             {"Rain", "Win the pot", "game/rain"},
             {"High rollers", "Top wagers", "game/highrollers"},
-            {"Events", "Timed events", "fill:events"},
+            {"Events", "Races, XP", "fill:events"},
             {"Books", "Analytics", "fill:books"},
             {"Jackpot", "Hit the pot", "fill:jackpot"}};
     // Provably fair left the grid for a button by Requests. The tiles keep the height of a 3-row grid under the credit card;
@@ -565,6 +611,7 @@ public final class GambleScreen extends ProtoScreen {
                 g.drawText(F.trimToWidth(gm[0].substring(sp + 1), room), tx2 + 46, ty + th / 2 + 2, P.WHITE, true);
             } else {
                 g.drawText(F.trimToWidth(gm[0], room), tx2 + 46, ty + th / 2 - 10, P.WHITE, true);
+                // 63 px budget at tw = 113: check every new subtitle against it ("Timed events" was 64 and silently dropped)
                 if (F.width(gm[1]) <= room) g.drawText(gm[1], tx2 + 46, ty + th / 2 + 2, P.MUTE, false);
             }
             if (h2) g.drawText("›", tx2 + tw - 10, ty + th - 13, P.PINK, false);   // bottom right: a long title never runs into it
