@@ -222,8 +222,8 @@ public final class Vip {
 
     private static void celebrate(String name, Tier tier) {
         lastTierUp = new TierUp(name, tier, P.now());
-        // the HUD's toast column (hud.Banners): the gem, "X reached " and the tier in its colour, 3 s
-        dev.ryaan.ezgamble.hud.Banners.show(new dev.ryaan.ezgamble.hud.Banners.Toast((g, x, y) -> VipBadge.draw(g, tier, x, y - 1),
+        // the HUD's toast column (hud.Banners): the gem, "X reached " and the tier in its colour, 3 s (the gem takes the text's y: it lifts its sprite itself)
+        dev.ryaan.ezgamble.hud.Banners.show(new dev.ryaan.ezgamble.hud.Banners.Toast((g, x, y) -> VipBadge.draw(g, tier, x, y),
                 java.util.List.of(dev.ryaan.ezgamble.hud.Banners.seg(name + " reached ", P.WHITE), dev.ryaan.ezgamble.hud.Banners.seg(tier.name(), tier.color())),
                 tier.color(), 3000, null));
         P.play("mc_levelup", 1, 0.8);

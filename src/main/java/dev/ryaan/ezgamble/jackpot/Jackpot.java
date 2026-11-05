@@ -76,7 +76,7 @@ public final class Jackpot {
     /** Client tick: jackpot.json 2 s after its last change. */
     public static void tick() { if (dirtyAt != 0 && System.currentTimeMillis() - dirtyAt > 2000) { dirtyAt = 0; write(); } }
 
-    /** Whatever waits goes to disk now (GambleData.setMode off: a session end never leaves the pot unsaved). */
+    /** Whatever waits goes to disk now (GambleData.setMode off, the host's settings, the JVM shutdown hook: a session end or a quit never leaves the pot unsaved). */
     public static void flush() { if (dirtyAt != 0) { dirtyAt = 0; write(); } }
 
     private static void write() {
@@ -117,9 +117,10 @@ public final class Jackpot {
 
     // ---- the host's settings
 
-    public static void setSeed(long v) { if (v <= 0) return; st().seed = v; if (st.pot < v) st.pot = v; save(); }   // the pot never shows less than what it restarts at
-    public static void setSlice(double s) { st().slice = s; save(); }
-    public static void setEnabled(boolean on) { st().enabled = on; save(); }
+    // the host's own clicks go to disk at once (like Fair.setClient); only the per-bet slice and the pot stay debounced
+    public static void setSeed(long v) { if (v <= 0) return; st().seed = v; if (st.pot < v) st.pot = v; save(); flush(); }   // the pot never shows less than what it restarts at
+    public static void setSlice(double s) { st().slice = s; save(); flush(); }
+    public static void setEnabled(boolean on) { st().enabled = on; save(); flush(); }
     /** Debug: the pot itself. */
     public static void setPot(long v) { st().pot = Math.max(0, v); save(); }
 

@@ -165,9 +165,12 @@ public final class GambleData {
         }
     }
 
+    /** Whatever waits goes to disk now (the JVM shutdown hook: the game closed with the mode on). */
+    public static void flush() { if (dirtyAt != 0) { dirtyAt = 0; Session s = last(); if (s != null) save(s); } }
+
     public static void setName(String n) { name = n; saveConfig(); }
     /** Removes a player from the player database: everything up to now is ignored; a later payment brings him back fresh. */
-    public static void forget(String player) { forgotten.put(Payouts.norm(player), System.currentTimeMillis()); ver++; saveConfig(); dev.ryaan.ezgamble.vip.Vip.forget(player); }
+    public static void forget(String player) { forgotten.put(Payouts.norm(player), System.currentTimeMillis()); ver++; saveConfig(); dev.ryaan.ezgamble.vip.Vip.forget(player); dev.ryaan.ezgamble.achievements.Achievements.onForget(player); }
 
     /** Events at or before this time no longer count for the player (0 = none removed). */
     public static long cutoff(String player) { return forgotten.getOrDefault(Payouts.norm(player), 0L); }
