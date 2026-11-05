@@ -38,6 +38,8 @@ public final class Icons {
         g.fill(x + 15.5 * u, y + 12 * u, x + 16.5 * u, y + 18 * u, 0xFFFFFFFF);   // the big hand, up
         g.fill(x + 16 * u, y + 17.5 * u, x + 21 * u, y + 18.5 * u, 0xFFFFFFFF);   // the small hand, to 3
         g.fill(x + 15 * u, y + 17 * u, x + 17 * u, y + 19 * u, 0xFFFBC2EB);   // the pin
+    }
+
     /** Books: a ledger (lavender cover, dark spine, a pale page) with three rising bars on the page, 32 px art scaled to `size`, fills only. */
     public static void drawBooks(G g, double x, double y, double size) {
         double u = size / 32;   // one icon pixel
@@ -47,6 +49,8 @@ public final class Icons {
         for (int i = 0; i < 3; i++) g.fill(x + 13 * u, y + (9 + i * 3) * u, x + 23 * u, y + (10 + i * 3) * u, 0x30403060);   // ruled lines
         int[] hs = {4, 7, 10};   // three bars rising, the last one the mod's green
         for (int i = 0; i < 3; i++) g.fill(x + (13 + i * 4) * u, y + (24 - hs[i]) * u, x + (16 + i * 4) * u, y + 24 * u, i == 2 ? 0xFF4BE07A : 0xFF3BBE63);
+    }
+
     /** Jackpot: a big gold coin (rim, face, a crescent of light) over two coins lying behind it, a sparkle top right. 32 px art scaled to `size`, fills only. */
     public static void drawJackpot(G g, double x, double y, double size) {
         double u = size / 32;   // one icon pixel
