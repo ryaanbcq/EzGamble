@@ -35,7 +35,7 @@ public final class EventsView implements GameView {
 
     private double lx() { return s.x0 + GambleScreen.PAD; }
     private double rx() { return s.x0 + GambleScreen.W - GambleScreen.PAD; }
-    private double by() { return s.y0 + GambleScreen.H - GambleScreen.PAD - 20; }
+    private double by() { return s.y0 + GambleScreen.H - GambleScreen.PAD - 24; }
     private Widget.Clip pastClip() { double top = s.y0 + 182; return new Widget.Clip(lx(), top, GambleScreen.W - 2 * GambleScreen.PAD, s.y0 + GambleScreen.H - GambleScreen.PAD - top); }
     /** A race with winners lists them under its line; anything else is one line. */
     private static double rowH(Events.Event p) { return p.kind() == Events.Kind.RACE && !p.cancelled && !p.top.isEmpty() ? 24 + 16 * p.top.size() : 27; }
@@ -47,7 +47,7 @@ public final class EventsView implements GameView {
         s.add(new GlassButton(lx, y0 + 80, 18, 16, "‹", "GHOST", s::back));
         if (Events.current() != null) {   // running: Cancel asks first, a stray click never kills an event
             boolean armed = P.now() < armedUntil; armedShown = armed;
-            s.add(new GlassButton(rx - 62, by(), 62, 18, armed ? "Sure?" : "Cancel", "DANGER", () -> {
+            s.add(new GlassButton(rx - 62, by(), 62, 24, armed ? "Sure?" : "Cancel", "DANGER", () -> {
                 if (P.now() < armedUntil) { armedUntil = 0; Events.cancel(); } else armedUntil = P.now() + 3000;
                 s.rebuild();
             }));
@@ -127,7 +127,7 @@ public final class EventsView implements GameView {
         g.drawText("Kind", lx, y0 + 107, MUTE, false);
         g.drawText("Lasts", lx, y0 + 129, MUTE, false);
         if (durSeg != null) g.drawText("min", lx + FORM_X + durSeg.w + 6, y0 + 129, DIM, false);
-        String desc = k == Events.Kind.RACE ? "Top 3 split the pool 50 / 30 / 20" : k == Events.Kind.XP ? "VIP XP counts twice while it runs" : "+1% cashback on every tier while it runs";
+        String desc = k == Events.Kind.RACE ? "Top 3 split 50 / 30 / 20" : k == Events.Kind.XP ? "VIP XP counts twice while it runs" : "+1% cashback on every tier while it runs";
         if (k == Events.Kind.RACE) { g.drawText("Prize", lx, y0 + 151, MUTE, false); g.drawText(F.trimToWidth(desc, rx - 68 - (lx + FORM_X + 96)), lx + FORM_X + 96, y0 + 151, DIM, false); }
         else g.drawText(F.trimToWidth(desc, rx - 68 - (lx + FORM_X)), lx + FORM_X, y0 + 151, TEXT, false);
         g.drawText("Past events", lx, y0 + 170, MUTE, false);
@@ -135,7 +135,7 @@ public final class EventsView implements GameView {
         if (hint != null) g.drawText(hint, rx - F.width(hint), y0 + 170, RED, false);
         // the past events, latest first
         Widget.Clip clip = pastClip();
-        if (past.isEmpty()) { g.drawText("No event yet. Start one above.", lx, clip.y() + 4, DIM, false); }
+        if (past.isEmpty()) { g.drawText("No event yet, start one above", lx, clip.y() + 4, DIM, false); }
         double ch = -3;
         for (Events.Event p : past) ch += rowH(p) + 3;
         double off = s.beginList(g, LIST, clip.x(), clip.y(), clip.w(), clip.h(), Math.max(0, ch));
@@ -193,7 +193,7 @@ public final class EventsView implements GameView {
         // the leaderboard: top 8, a bar behind each line relative to the leader
         double ly = y0 + 132;
         if (b.isEmpty()) {
-            String a = "No wager yet", c = "Bets placed with a player's chips during the event count.";
+            String a = "No wager yet", c = "Bets placed with a player's chips during the event count";
             g.drawText(a, cx - F.width(a) / 2.0, ly + 30, TEXT, false);
             g.drawText(c, cx - F.width(c) / 2.0, ly + 42, MUTE, false);
         }
@@ -218,7 +218,7 @@ public final class EventsView implements GameView {
         if (k == Events.Kind.RACE) {
             String[] lbl = {"1st", "2nd", "3rd"};
             double x = lx;
-            for (int i = 0; i < 3; i++) { String v = Money.format((long) Math.floor(e.prize * Events.SPLIT[i])); pill(g, x, by + 2, lbl[i], v, Events.MEDAL[i]); x += pillW(lbl[i], v) + 4; }
-        } else g.drawText(k == Events.Kind.XP ? "VIP XP counts twice until it ends" : "+1% cashback on every tier until it ends", lx, by + 5, TEXT, false);
+            for (int i = 0; i < 3; i++) { String v = Money.format((long) Math.floor(e.prize * Events.SPLIT[i])); pill(g, x, by + 4, lbl[i], v, Events.MEDAL[i]); x += pillW(lbl[i], v) + 4; }   // 15 high, centred on the 24 px button
+        } else g.drawText(k == Events.Kind.XP ? "VIP XP counts twice until it ends" : "+1% cashback on every tier until it ends", lx, by + 8, TEXT, false);
     }
 }

@@ -40,7 +40,7 @@ public final class FairView implements GameView {
     private Widget.Clip listClip() { double top = y() + 150; return new Widget.Clip(lx(), top, rx() - lx(), s.y0 + GambleScreen.H - GambleScreen.PAD - top); }
     private boolean flash(String what) { return what.equals(copied) && P.now() - copiedAt < 1800; }
 
-    private void copy(String what, String text) { Fair.copy(text); copied = what; copiedAt = P.now(); P.play("click"); }
+    private void copy(String what, String text) { Fair.copy(text); copied = what; copiedAt = P.now(); }   // the button already played the click
 
     @Override
     public void init() {
@@ -60,7 +60,7 @@ public final class FairView implements GameView {
             client.x = lx + 8; client.y = y + 121; client.w = sx - lx - 8 - 6 - 40 - 8;
             client.onChange = () -> Fair.setClient(client.value);
             s.add(client);
-            s.add(new GlassButton(sx - 8 - 40, y + 121, 40, 16, "New", "GHOST", () -> { Fair.randomClient(); client.value = Fair.client(); P.play("click"); }));
+            s.add(new GlassButton(sx - 8 - 40, y + 121, 40, 16, "New", "GHOST", () -> { Fair.randomClient(); client.value = Fair.client(); }));
         }
         s.add(new GlassButton(sx + 6 + 8, y + 121, rx - sx - 6 - 16, 16, "Reveal seed", "DANGER", () -> { Fair.Spent sp = Fair.reveal(); copy("reveal", Fair.revealText(sp)); s.rebuild(); }));
     }
@@ -120,8 +120,8 @@ public final class FairView implements GameView {
         card(g, lx, y + 104, sx - lx, 40, "soft");
         g.drawText("Client seed", lx + 8, y + 110, MUTE, false);
         if (played) {
-            g.drawText(Fair.client(), lx + 8, y + 125, TEXT, true);
             String lk = "until the reveal";
+            g.drawText(F.trimToWidth(Fair.client(), sx - 8 - F.width(lk) - 6 - (lx + 8)), lx + 8, y + 125, TEXT, true);   // the field takes 133 px of seed, the room is 116
             g.drawText(lk, sx - 8 - F.width(lk), y + 125, DIM, false);
         }
         card(g, sx + 6, y + 104, rx - sx - 6, 40, "soft");
@@ -137,6 +137,7 @@ public final class FairView implements GameView {
             return;
         }
         double hh = ds.size() * ROW_H, off = s.beginList(g, "fair", clip.x(), clip.y(), clip.w(), clip.h(), hh);
+        double gx = lx + 20 + Math.max(24, F.width("#" + Fair.rounds())) + 6;   // the game column: right of the widest nonce (#1000 and up overlap a fixed column)
         for (int i = 0; i < ds.size(); i++) {
             Fair.Draw d = ds.get(ds.size() - 1 - i);
             double ry = clip.y() + i * ROW_H - off;
@@ -145,7 +146,7 @@ public final class FairView implements GameView {
             String game = d.game().split(" ")[0];
             Icons.drawGameIcon(g, game, lx + 4, ry + 1, 11);
             g.drawText("#" + d.nonce(), lx + 20, ry + 3, DIM, false);
-            g.drawText(game, lx + 44, ry + 3, TEXT, false);
+            g.drawText(game, gx, ry + 3, TEXT, false);
             String tm = HM.format(Instant.ofEpochMilli(d.t()));
             g.drawText(tm, rx - 4 - F.width(tm), ry + 3, DIM, false);
             outcome(g, d, rx - 4 - F.width(tm) - 8, ry);
