@@ -36,7 +36,7 @@ public final class BlackjackView implements GameView {
     private String uiKey = "";
     private GlassButton[] actBtns;
     private String[] actNames;
-    private GlassButton dealBtn, payBtn;
+    private GlassButton dealBtn, rebetBtn, payBtn;
     private Widgets.RefundPill refund;
 
     public BlackjackView(GambleScreen s) { this.screen = s; }
@@ -59,22 +59,22 @@ public final class BlackjackView implements GameView {
         BlackjackTable T = BJ;
         GambleScreen.Geom G0 = s.geom();
         double lx = G0.lx(), rx = G0.rx(), hy = G0.hy(), fy = G0.fy(), by = G0.by(), cx = G0.cx();
-        uiKey = uiState(); actBtns = null; dealBtn = null; payBtn = null; refund = null;
-        s.add(new GlassButton(lx, hy, 18, 16, "‹", "GHOST", () -> { T.apply(); GambleScreen.sub = null; s.rebuild(); }));
+        uiKey = uiState(); actBtns = null; dealBtn = null; rebetBtn = null; payBtn = null; refund = null;
+        s.add(new GlassButton(lx, hy, 18, 16, "‹", "GHOST", s::back));   // back() settles the hand through leave() -> BJ.apply(), like every felt
         if (T.stage.equals("bet")) {
             List<Payouts.Row> list = T.backers();
             if (list.stream().noneMatch(r -> r.name().equals(T.backer))) { T.backer = list.isEmpty() ? null : list.get(0).name(); T.clearBet(); }
             if (!list.isEmpty()) {
                 int n = Chips.CHIPS.length, step = 44;
                 double x0 = cx - ((n * step - (step - 30)) >> 1);
-                for (int i = 0; i < n; i++) s.add(new Widgets.ChipButton(x0 + i * step, fy + 116, Chips.CHIPS[n - 1 - i], T));
+                for (int i = 0; i < n; i++) s.add(new Widgets.ChipButton(x0 + i * step, fy + 120, Chips.CHIPS[n - 1 - i], T));   // the chips row of every felt (fy + fh - 36)
                 s.add(Widgets.area(cx - 80, fy + 44, 160, 68, T::undoChip));   // the bet stack: click = take the last chip back
                 if (T.field == null) T.field = new GlassField(0, 0, 110, 22, "", "Amount", 10);
                 T.field.x = lx; T.field.y = by + 1; T.field.focused = false;
                 s.add(T.field);
                 s.add(new GlassButton(lx + 116, by, 56, 24, "Clear", "GHOST", T::clearBet));
             }
-            dealBtn = s.add(new GlassButton(rx - 96, by, 96, 24, "Deal", "PRIMARY", T::deal));
+            dealBtn = s.add(new GlassButton(rx - 110, by, 110, 24, "Deal", "PRIMARY", T::deal));   // the main button of every felt: 110 wide
             dealBtn.active = GambleData.mode && !list.isEmpty();
             if (!list.isEmpty()) {   // added last: drawn over the felt and the chips, and gets the clicks first while its list is open
                 double[] pb = pickerBox();
@@ -87,8 +87,9 @@ public final class BlackjackView implements GameView {
         BlackjackGame gm = T.game;
         boolean done = gm.phase.equals("done") && T.resultAt > 0 && P.now() >= T.resultAt;
         if (done) {
-            s.add(new GlassButton(rx - 96, by, 96, 24, "Rebet", T.payState() != null ? "GHOST" : "PRIMARY", T::rebet)).active = T.balance() > 0;   // a won hand: Pay is the one tinted button
-            s.add(new GlassButton(rx - 96 - 6 - 80, by, 80, 24, "Change bet", "GHOST", () -> { T.apply(); T.stage = "bet"; }));
+            rebetBtn = s.add(new GlassButton(rx - 110, by, 110, 24, "Rebet", T.payState() != null ? "GHOST" : "PRIMARY", T::rebet));   // a won hand: Pay is the one tinted button
+            rebetBtn.active = T.balance() > 0;
+            s.add(new GlassButton(rx - 110 - 6 - 80, by, 80, 24, "Change bet", "GHOST", () -> { T.apply(); T.stage = "bet"; }));
             if (T.refundPill == null || T.refundPill.round != T.game) { T.refundPill = new Widgets.RefundPill(T, T::apply); T.refundPill.round = T.game; }   // one per hand: survives the rebuilds
             refund = s.add(T.refundPill);
             if (T.payState() != null) {   // the backer won: one click sends him the hand's payout
@@ -116,6 +117,12 @@ public final class BlackjackView implements GameView {
         if (!uiState().equals(uiKey)) { screen.rebuild(); return; }
         if (actBtns != null) for (int i = 0; i < actBtns.length; i++) actBtns[i].active = BJ.canDo(actNames[i]);
         if (dealBtn != null) dealBtn.active = GambleData.mode && !BJ.backers().isEmpty();
+        if (rebetBtn != null) {   // a failed Rebet (mode off, house guard, no chips) shows ON the button, in red, like every other felt
+            String warn = BJ.warn != null && P.now() < BJ.warn.until() ? BJ.warn.text() : !GambleData.mode ? "Gambling mode is off" : null;
+            rebetBtn.label = warn != null ? warn : "Rebet";   // every warning fits 110 px ("Can't cover $123.45M" is 106); "Change bet" sits 6 px left of it
+            rebetBtn.kind = warn != null ? "DANGER" : BJ.payState() != null ? "GHOST" : "PRIMARY";
+            rebetBtn.active = warn != null || BJ.balance() > 0;
+        }
         if (payBtn != null) syncPay();
     }
 
@@ -123,7 +130,7 @@ public final class BlackjackView implements GameView {
         Widgets.PayState st = BJ.payState();
         GlassButton b = payBtn;
         if (st == null) { b.visible = false; return; }
-        b.label = st.label(); b.active = st.active(); b.w = Math.max(120, F.width(st.label()) + 20);
+        b.label = st.label(); b.active = st.active(); b.w = Math.min(Math.max(120, F.width(st.label()) + 20), Widgets.PAY_MAX_W);   // never over "Change bet"
     }
 
     /** true = the key was used (K then types or acts instead of closing the menu). */
@@ -168,19 +175,14 @@ public final class BlackjackView implements GameView {
     public void render(G g, double mx, double my) {
         BlackjackTable T = BJ;
         GambleScreen.Geom G0 = screen.geom();
-        double lx = G0.lx(), rx = G0.rx(), hy = G0.hy(), fy = G0.fy(), fh = G0.fh();
+        double lx = G0.lx(), rx = G0.rx(), hy = G0.hy();
         g.drawText("Blackjack", lx + 24, hy + 4, P.WHITE, true);
         List<Object[]> pills = new ArrayList<>();
         if (T.backer != null && !T.stage.equals("play")) pills.add(new Object[]{"Chips", Money.format(T.balance())});   // in a hand, his name and chips sit on his seat
         pills.add(T.stage.equals("play") ? new Object[]{"Bet", Money.format(T.committed())} : new Object[]{"Shoe", T.shoe.remaining() + " cards"});
         P.pillsRight(g, rx, hy, pills.toArray(new Object[0][]));
         felt(g, lx, G0.ft(), rx - lx, G0.fth());
-        if (T.stage.equals("bet")) renderBet(g); else renderPlay(g);
-        if (T.stage.equals("play") && T.warn != null && P.now() < T.warn.until()) {
-            String w = T.warn.text();
-            double cx = lx + ((rx - lx) / 2);
-            g.drawText(w, cx - (F.width(w) >> 1), fy + 84, P.RED, true);
-        }
+        if (T.stage.equals("bet")) renderBet(g); else renderPlay(g);   // a warning in the play stage is on the Rebet button (tick), never over the verdict
     }
 
     private void renderBet(G g) {
@@ -298,7 +300,7 @@ public final class BlackjackView implements GameView {
             else if (two) P.pill(g, x0, ty, "Hand " + (i + 1), label, bust ? P.RED : P.WHITE, active ? "selected" : "ghost");
             else {   // one tag: head, name, total, and his chips glued to it
                 String name = F.trimToWidth(T.backer, 70);
-                int tw = P.seatTagW(name, label), cw = P.pillW("Chips", bv);
+                int tw = P.seatTagW(name, label), cw = refund != null ? refund.width() : P.pillW("Chips", bv);   // the pill's real width: the pair stays centred when it opens
                 double x = cx - ((tw + 4 + cw) >> 1);
                 P.seatTag(g, x + (tw >> 1), ty, P.skinOf(T.backer), name, label, bust ? P.RED : P.WHITE, active ? "selected" : "ghost");
                 if (refund != null) refund.place(x + tw + 4, ty, chipsCol); else P.pill(g, x + tw + 4, ty, "Chips", bv, chipsCol);   // after the hand: the pill can refund

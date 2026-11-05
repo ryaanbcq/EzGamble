@@ -215,25 +215,33 @@ public final class TableChat {
         double top = y + 26, bottom = y + H - 8, rowH = 30;
         List<Msg> rows = new ArrayList<>();
         for (Msg m : msgs) if (t - m.at < 10 * 60000) rows.add(m);
-        double ry = bottom - rowH;
+        double ry = bottom;
         g.enableScissor(x, top, x + PW, bottom);
-        for (int i = rows.size() - 1; i >= 0 && ry + rowH > top; i--, ry -= rowH) {
+        for (int i = rows.size() - 1; i >= 0; i--) {   // stacked from the bottom, each row its own height
             Msg m = rows.get(i);
+            Act a = m.act; double aw = a != null ? F.width(a.label) + 10 : 0;
+            // a long verdict (a table's refusal) would leave the whisper under 60 px: it takes a third line instead
+            boolean wide = a != null && aw > PW - 22 - 60;
+            double h = wide ? rowH + 12 : rowH;
+            ry -= h;
+            if (ry + h <= top) break;
             double inK = easeOut(Math.min(1, (t - m.at) / 220.0));
             boolean mine = host.backer != null && same(host.backer, m.name);
             g.push(); g.translate((1 - inK) * 16, 0);
-            if (mine) smooth(g, x + 4, ry, PW - 8, rowH - 3, 6, alpha(LAV, 0.08), alpha(LAV, 0.2));
+            if (mine) smooth(g, x + 4, ry, PW - 8, h - 3, 6, alpha(LAV, 0.08), alpha(LAV, 0.2));
             g.drawHead(skinOf(m.name), x + 9, ry + 4, 8);
             int bw = dev.ryaan.ezgamble.vip.VipBadge.w(m.name); dev.ryaan.ezgamble.vip.VipBadge.draw(g, m.name, x + 21, ry + 4);   // his tier gem
             String nm = F.trimToWidth(m.name, PW - 30 - bw);
             if (mine) gradientText(g, nm, x + 21 + bw, ry + 4, false); else g.drawText(nm, x + 21 + bw, ry + 4, TEXT, false);
-            Act a = m.act; double aw = a != null ? F.width(a.label) + 10 : 0;
-            g.drawText(F.trimToWidth(m.text, PW - 22 - (a != null ? aw + 4 : 0)), x + 9, ry + 16, WHITE, false);
-            if (a != null) {   // what the mod did with it
-                double ax = x + PW - 8 - aw, pulse = a.ok && a.at != 0 && t - a.at < 600 ? 1 - (t - a.at) / 600.0 : 0;
-                capsule(g, ax, ry + 13, aw, 13, a.ok && !a.pending ? "selected" : "ghost", false);
-                if (pulse > 0) ring(g, ax, ry + 13, aw, 13, 6.5, alpha(GREEN, pulse), 1);
-                g.drawText(a.label, ax + 5, ry + 16, a.ok ? (a.pending ? TEXT : GREEN) : DIM, false);
+            g.drawText(F.trimToWidth(m.text, wide ? PW - 18 : PW - 22 - (a != null ? aw + 4 : 0)), x + 9, ry + 16, WHITE, false);
+            if (a != null) {   // what the mod did with it: beside the whisper, or on its own line when it is long
+                String label = a.label;
+                if (wide) { aw = Math.min(aw, PW - 18); label = F.trimToWidth(label, aw - 10); }
+                double ax = wide ? x + 9 : x + PW - 8 - aw, ay = wide ? ry + 26 : ry + 13;
+                double pulse = a.ok && a.at != 0 && t - a.at < 600 ? 1 - (t - a.at) / 600.0 : 0;
+                capsule(g, ax, ay, aw, 13, a.ok && !a.pending ? "selected" : "ghost", false);
+                if (pulse > 0) ring(g, ax, ay, aw, 13, 6.5, alpha(GREEN, pulse), 1);
+                g.drawText(label, ax + 5, ay + 3, a.ok ? (a.pending ? TEXT : GREEN) : DIM, false);
             }
             g.pop();
         }

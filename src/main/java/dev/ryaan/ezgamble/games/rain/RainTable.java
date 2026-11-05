@@ -178,10 +178,13 @@ public final class RainTable {
 
     public void again() { if (stage.equals("done")) { settle(); stage = "setup"; round = null; tickets.clear(); order.clear(); } }
 
+    /** The widest Pay button of the rain's done row: from lx to 6 px before "Copy for chat" (87 px) at rx - 203. */
+    public static final int PAY_MAX_W = 143;
+
     public Widgets.PayState payState() {
         Round r = round;
         if (r == null || !stage.equals("done")) return null;
-        return Widgets.payStateOf(r, r.winner, Math.min(r.prize, Payouts.balance(r.winner)), r.landedAt);
+        return Widgets.payStateOf(r, r.winner, Math.min(r.prize, Payouts.balance(r.winner)), r.landedAt, PAY_MAX_W);
     }
 
     public void pay() { Widgets.payOut(round, round.winner, payState(), this::settle); }

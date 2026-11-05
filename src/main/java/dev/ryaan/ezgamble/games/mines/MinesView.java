@@ -123,7 +123,7 @@ public final class MinesView implements GameView {
     private void syncPay() {
         var st = MN.payState(); var b = payBtn;
         if (st == null) { b.visible = false; return; }
-        b.label = st.label(); b.active = st.active(); b.w = Math.max(120, F.width(st.label()) + 20);
+        b.label = st.label(); b.active = st.active(); b.w = Math.min(Math.max(120, F.width(st.label()) + 20), Widgets.PAY_MAX_W);   // never over "Change bet"
     }
 
     @Override
@@ -135,6 +135,8 @@ public final class MinesView implements GameView {
             b.label = warn != null ? warn : again ? "Play again" : MN.bet > 0 ? "Start " + Money.format(MN.bet) : "Start";
             b.kind = warn != null ? "DANGER" : again && MN.payState() != null ? "GHOST" : "PRIMARY";
             b.active = warn != null || (again ? MN.balance() > 0 : GambleData.mode && !MN.backers().isEmpty());
+            double room = again ? 110 : 174;   // a long warning may grow the button up to Clear (ends lx+172); "Change bet" leaves no room
+            b.w = warn != null ? Math.min(Math.max(110, F.width(warn) + 20), room) : 110; b.x = geom().rx() - b.w;
         }
         if (cashBtn != null) {
             int n = MN.round.picked.size();
@@ -203,7 +205,7 @@ public final class MinesView implements GameView {
             return;
         }
         // what each safe tile is worth with this many mines: the ladder, then the promise
-        int steps = Math.min(7, MINES_N - MN.mines), step = 44;
+        int steps = Math.min(7, MINES_N - MN.mines), step = steps <= 5 ? 56 : 44;   // 20 mines: 5 tiles, wide enough for "x51004.8" (5 x 56 - 4 = 276 px still fits)
         double x0 = cx - (((steps * step - 4)) >> 1), y = fy + 40;
         for (int k = 1; k <= steps; k++) {
             double x = x0 + (k - 1) * step;
