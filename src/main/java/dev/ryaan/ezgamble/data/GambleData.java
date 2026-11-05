@@ -86,6 +86,7 @@ public final class GambleData {
             EzGambleMod.LOG.warn("[ezgamble] load failed: {}", e.toString());
         }
         dev.ryaan.ezgamble.themes.Themes.apply(theme);   // outside the try: an unreadable config still gets a palette
+        ver++;
     }
 
     public static Session current() {
@@ -115,12 +116,19 @@ public final class GambleData {
 
     /** When the last transaction was recorded (the HUD's toast). */
     public static long lastTxAt;
+    /**
+     * Bumped on every change of the history (a bet, a payment, a send, a session opening or closing, a forgotten player):
+     * the derived data (PlayerStats, Payouts.rows, Vip, Achievements) is rebuilt once per version, never once per frame.
+     */
+    public static int ver;
 
     public static void setMode(boolean on) {
         if (on == mode) return;
         mode = on;
+        ver++;
         if (on) newSession();
         else { Session s = current(); if (s != null) { s.end = System.currentTimeMillis(); save(s); if (!s.txns.isEmpty()) dev.ryaan.ezgamble.recap.Recap.readyAt = System.currentTimeMillis(); } }   // the HUD hints at the recap
+        if (!on) { dev.ryaan.ezgamble.jackpot.Jackpot.flush(); dev.ryaan.ezgamble.data.Fair.flush(); }   // their writes are batched like ours: a session end never leaves the pot unsaved
         if (!on) dev.ryaan.ezgamble.achievements.Achievements.onSessionEnd(last());   // badges the closed session unlocks (Even Steven, Settled, Comeback)
         saveConfig();
         MinecraftClient mc = MinecraftClient.getInstance();
@@ -134,6 +142,7 @@ public final class GambleData {
         Session s = current();
         if (!mode || s == null) return false;
         s.txns.add(tx);
+        ver++;   // before the hooks: they read the derived data of the history that now holds this bet
         dev.ryaan.ezgamble.vip.Vip.onTxn(tx);   // XP and tier-ups
         dev.ryaan.ezgamble.events.Events.onTxn(tx);   // the running event's live leaderboard
         dev.ryaan.ezgamble.achievements.Achievements.onTxn(tx);   // badges this bet unlocks
@@ -145,7 +154,7 @@ public final class GambleData {
     }
 
     /** A session changed (credit, chips...): written 2 s later. */
-    public static void touch() { dirtyAt = System.currentTimeMillis(); }
+    public static void touch() { dirtyAt = System.currentTimeMillis(); ver++; }
 
     /** Client tick: write the current session 2 s after its last change. */
     public static void tick() {
@@ -158,7 +167,7 @@ public final class GambleData {
 
     public static void setName(String n) { name = n; saveConfig(); }
     /** Removes a player from the player database: everything up to now is ignored; a later payment brings him back fresh. */
-    public static void forget(String player) { forgotten.put(Payouts.norm(player), System.currentTimeMillis()); saveConfig(); dev.ryaan.ezgamble.vip.Vip.forget(player); }
+    public static void forget(String player) { forgotten.put(Payouts.norm(player), System.currentTimeMillis()); ver++; saveConfig(); dev.ryaan.ezgamble.vip.Vip.forget(player); }
 
     /** Events at or before this time no longer count for the player (0 = none removed). */
     public static long cutoff(String player) { return forgotten.getOrDefault(Payouts.norm(player), 0L); }
@@ -179,6 +188,7 @@ public final class GambleData {
         s.file = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss").format(new Date(s.start))
                 + (s.server.isEmpty() ? "" : "_" + s.server.replaceAll("[^A-Za-z0-9.-]", "_")) + ".json";
         sessions.add(s);
+        ver++;
         save(s);
     }
 

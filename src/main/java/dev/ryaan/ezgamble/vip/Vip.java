@@ -194,11 +194,26 @@ public final class Vip {
 
     // ---- tier-ups
 
-    /** Called by GambleData.record once the bet is in the session: it may have lifted its player into the next tier. */
+    /**
+     * Called by GambleData.record once the bet is in the session: it may have lifted its player into the next tier. The bet
+     * is the last line of the history, so when the standings are fresh it folds in alone, exactly as standings() would
+     * fold it: no refold of every bet per bet. A bet that counts for nobody (the host's own game) changes nothing.
+     */
     public static void onTxn(Txn t) {
-        invalidate();
         if (t.player() == null || t.bet() == null || t.bet() <= 0 || t.t() <= GambleData.cutoff(t.player())) return;
-        long xpAfter = xp(t.player()), xpBefore = xpAfter - Math.round(t.bet() * xpMultiplierAt(t.t()));   // the transaction is already counted, at the event's multiplier
+        long xpBefore, xpAfter;
+        if (standings != null && !dirty) {
+            Standing s = standings.computeIfAbsent(Payouts.norm(t.player()), k -> { Standing n = new Standing(); n.name = t.player(); return n; });
+            Tier before = tierOf(s.xp);
+            xpBefore = s.xp;
+            s.earned += (long) Math.floor(t.bet() * (before.rate() + rateBonusAt(t.t())));
+            s.xp += Math.round(t.bet() * xpMultiplierAt(t.t()));
+            xpAfter = s.xp;
+            ver++;
+        } else {
+            invalidate();
+            xpAfter = xp(t.player()); xpBefore = xpAfter - Math.round(t.bet() * xpMultiplierAt(t.t()));   // the transaction is already counted, at the event's multiplier
+        }
         Tier after = tierOf(xpAfter);
         if (xpBefore <= 0) return;   // his very first bet: Bronze, no fanfare
         if (after.rank() <= tierOf(xpBefore).rank()) return;
@@ -207,6 +222,10 @@ public final class Vip {
 
     private static void celebrate(String name, Tier tier) {
         lastTierUp = new TierUp(name, tier, P.now());
+        // the HUD's toast column (hud.Banners): the gem, "X reached " and the tier in its colour, 3 s
+        dev.ryaan.ezgamble.hud.Banners.show(new dev.ryaan.ezgamble.hud.Banners.Toast((g, x, y) -> VipBadge.draw(g, tier, x, y - 1),
+                java.util.List.of(dev.ryaan.ezgamble.hud.Banners.seg(name + " reached ", P.WHITE), dev.ryaan.ezgamble.hud.Banners.seg(tier.name(), tier.color())),
+                tier.color(), 3000, null));
         P.play("mc_levelup", 1, 0.8);
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.inGameHud != null) mc.inGameHud.setOverlayMessage(Text.literal(name + " is now " + tier.name()).withColor(tier.color() & 0xFFFFFF), false);

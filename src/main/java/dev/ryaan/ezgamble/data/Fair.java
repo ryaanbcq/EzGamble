@@ -11,6 +11,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.ArrayList;
@@ -45,6 +46,7 @@ public final class Fair {
     private static State st;
     private static String hash;
     private static int ver;
+    private static long dirtyAt;
 
     private static State st() {
         if (st != null) return st;
@@ -56,10 +58,22 @@ public final class Fair {
         return st;
     }
 
-    private static void save() {
-        ver++;
-        try { Files.createDirectories(FILE.getParent()); Files.writeString(FILE, GSON.toJson(st)); }
-        catch (Exception e) { EzGambleMod.LOG.warn("[ezgamble] fair.json not saved: {}", e.toString()); }
+    /** A change: the views redraw now, the file follows 2 s later (every bet draws for the jackpot: never one write per bet). */
+    private static void save() { ver++; dirtyAt = System.currentTimeMillis(); }
+
+    /** Client tick: fair.json 2 s after its last change. */
+    public static void tick() { if (dirtyAt != 0 && System.currentTimeMillis() - dirtyAt > 2000) { dirtyAt = 0; write(); } }
+
+    /** Whatever waits goes to disk now (the mode turning off, a seed revealed). */
+    public static void flush() { if (dirtyAt != 0) { dirtyAt = 0; write(); } }
+
+    private static void write() {
+        try {
+            Files.createDirectories(FILE.getParent());
+            Path tmp = FILE.resolveSibling(FILE.getFileName() + ".tmp");
+            Files.writeString(tmp, GSON.toJson(st), StandardCharsets.UTF_8);
+            Files.move(tmp, FILE, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (Exception e) { EzGambleMod.LOG.warn("[ezgamble] fair.json not saved: {}", e.toString()); }
     }
 
     /** Bumped on every change (the view rebuilds). */
@@ -75,10 +89,10 @@ public final class Fair {
         c = c == null ? "" : c.trim().replaceAll("[^A-Za-z0-9_\\-]", "");
         if (c.isEmpty() || c.equals(st().client)) return;
         st.client = c.length() > 32 ? c.substring(0, 32) : c;
-        save();
+        save(); flush();   // the host's own action: on disk at once
     }
 
-    public static void randomClient() { st().client = newClient(); save(); }
+    public static void randomClient() { st().client = newClient(); save(); flush(); }
 
     /** One round of a game: a nonce, then as many numbers as the game needs. */
     public static final class Round {
@@ -102,7 +116,7 @@ public final class Fair {
         if (s.past.size() > 50) s.past.remove(0);
         s.seed = newSeed(); s.nonce = 0; s.draws.clear();
         hash = sha256(s.seed);
-        save();
+        save(); flush();   // a revealed seed must never be the live one after a crash
         return sp;
     }
 

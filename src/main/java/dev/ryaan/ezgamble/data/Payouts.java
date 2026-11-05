@@ -57,11 +57,16 @@ public final class Payouts {
     public static Session session() { return GambleData.last(); }
 
     public static boolean same(String a, String b) { return norm(a).equals(norm(b)); }
-    public static String norm(String n) { return n.toLowerCase(Locale.ROOT).replaceFirst("^\\.", ""); }
+    /** Lower case, one leading dot dropped (a Bedrock player). No regex: this is the inner loop of every name comparison. */
+    public static String norm(String n) { String s = n.toLowerCase(Locale.ROOT); return s.startsWith(".") ? s.substring(1) : s; }
+
+    // the rows change on a payment, a /pay or a settle, and a felt asks for them a dozen times per frame: one build per version
+    private static List<Row> rowsCache; private static int rowsPv = -1, rowsDv = -1; private static Session rowsFor;
 
     public static List<Row> rows() {
         Session s = session();
         if (s == null) return List.of();
+        if (rowsCache != null && rowsFor == s && rowsPv == ver && rowsDv == GambleData.ver) return rowsCache;
         List<Row> out = new ArrayList<>();
         // credit first, then whoever only won (a rain winner who never sent chips is owed his prize too)
         var names = new java.util.LinkedHashSet<String>(s.credit.keySet());
@@ -72,7 +77,8 @@ public final class Payouts {
             out.add(new Row(n, recv, sent, won, Math.max(0, recv + won - sent), pend, recent.get(n)));
         }
         out.sort(Comparator.comparingLong((Row r) -> -r.recv).thenComparing(Row::name));
-        return out;
+        rowsCache = List.copyOf(out); rowsFor = s; rowsPv = ver; rowsDv = GambleData.ver;
+        return rowsCache;
     }
 
     public static long balance(String name) {
@@ -148,6 +154,7 @@ public final class Payouts {
         if (m.find()) {   // nothing was paid: the same click goes again once the cooldown is over
             if (p.resent) return false;
             pending.set(pending.indexOf(p), new Pending(p.name, p.amount, p.at, t + (long) (Double.parseDouble(m.group(1)) * 1000) + 150, true, p.cashback));
+            ver++;
             return false;
         }
         String low = line.toLowerCase(Locale.ROOT);
