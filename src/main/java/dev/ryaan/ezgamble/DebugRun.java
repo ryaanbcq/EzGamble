@@ -20,7 +20,7 @@ import java.util.List;
 /**
  * Unattended smoke test: when config/ezgamble-debug exists, its lines are run one by one once a world is loaded,
  * then the game quits. Commands (GUI coordinates):
- *   size W H, gui N, wait T, open, close, tab ID, sub ID, range ID, mode on|off, demo N, chat LINE,
+ *   size W H, gui N, wait T, open, close, tab ID, sub ID, range ID, mode on|off, demo N, chat LINE, recap, recapslide N, recapsave,
  *   mouse X Y, click X Y, rclick X Y, key CODE, type TEXT, scroll X Y AMOUNT, shot NAME, perf NAME, run JAVA_HOOK, quit
  * Every step is logged "[ezgamble] debug: ...". perf = average render time of the current screen over 60 frames.
  */
@@ -152,6 +152,9 @@ public final class DebugRun {
             case "skindirect" -> dev.ryaan.ezgamble.proto.Faces.forceDirect = true;
             case "txn" -> GambleData.record(new dev.ryaan.ezgamble.data.Txn(System.currentTimeMillis(), n[0], dev.ryaan.ezgamble.Money.parse(n[1]), n[2].startsWith("-") ? -dev.ryaan.ezgamble.Money.parse(n[2].substring(1)) : dev.ryaan.ezgamble.Money.parse(n[2]), null, "debug"));   // txn GAME BET DELTA
             case "demo" -> EzGambleMod.demoBets(Integer.parseInt(arg));
+            case "recap" -> EzGambleMod.LOG.info("[ezgamble] debug: recap open {}", dev.ryaan.ezgamble.recap.RecapScreen.openLast(c));   // the last session's recap
+            case "recapslide" -> { var rs = dev.ryaan.ezgamble.recap.RecapScreen.current(); if (rs != null) rs.go(Integer.parseInt(arg) - 1); }   // recapslide N (1-7)
+            case "recapsave" -> { var rs = dev.ryaan.ezgamble.recap.RecapScreen.current(); if (rs != null) rs.save(); }   // the Save card button
             case "chat" -> { c.inGameHud.getChatHud().addMessage(Text.literal(arg)); EzGambleMod.onChat(arg); }
             case "mouse" -> { mx = (int) Double.parseDouble(n[0]); my = (int) Double.parseDouble(n[1]); dev.ryaan.ezgamble.proto.ProtoScreen.forceMx = mx; dev.ryaan.ezgamble.proto.ProtoScreen.forceMy = my; }
             case "click", "rclick" -> {

@@ -55,6 +55,7 @@ public final class EzGambleMod implements ClientModInitializer {
             dev.ryaan.ezgamble.vip.Vip.tick();   // cashback confirmations, the tier-up banner
             dev.ryaan.ezgamble.house.House.tick();   // bankroll vs chips owed, debounced
             DebugRun.tick(client);
+            dev.ryaan.ezgamble.recap.RecapScreen.tickOpen(client);   // /ezgamble recap opens once the chat screen has gone
             while (menuKey.wasPressed()) if (client.currentScreen == null) client.setScreen(new GambleScreen());
             while (modeKey.wasPressed()) GambleData.setMode(!GambleData.mode);
         });
@@ -71,7 +72,9 @@ public final class EzGambleMod implements ClientModInitializer {
         net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry.addLast(Identifier.of("ezgamble", "hud"), new dev.ryaan.ezgamble.hud.GambleHud());
         net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry.addLast(Identifier.of("ezgamble", "auction"), new dev.ryaan.ezgamble.auction.AuctionHud());
         // /ezgamble demo [n]: fake bets in the current session, to see the dashboard before the chat detection exists
+        // /ezgamble recap: the last session's recap
         ClientCommandRegistrationCallback.EVENT.register((d, reg) -> d.register(ClientCommandManager.literal("ezgamble")
+                .then(ClientCommandManager.literal("recap").executes(c -> { dev.ryaan.ezgamble.recap.RecapScreen.request(); return 1; }))
                 .then(ClientCommandManager.literal("demo")
                         .executes(c -> demo(c.getSource(), 20))
                         .then(ClientCommandManager.argument("n", IntegerArgumentType.integer(1, 500))
