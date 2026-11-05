@@ -24,7 +24,7 @@ public final class BadgeIcons {
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);   // pixel art: crisp cells
             int main = a.main(), second = a.second();
             int[] pal = {main, P.shade(main, 0.6), P.lerp(main, 0xFFFFFFFF, 0.55), second, P.shade(second, 0.6)};
-            if (!lit) for (int i = 0; i < pal.length; i++) pal[i] = P.alpha(P.lerp(pal[i], 0xFF9C93B5, 0.6), 0.4);   // locked: greyed glass
+            if (!lit) for (int i = 0; i < pal.length; i++) pal[i] = P.alpha(P.lerp(pal[i], P.DIM, 0.6), 0.4);   // locked: greyed toward the theme's dim (Vec's key carries Themes.ver)
             String[] px = a.px();
             for (int r = 0; r < SIZE && r < px.length; r++) {
                 String row = px[r];

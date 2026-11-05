@@ -28,6 +28,15 @@ public final class ChipsView implements GameView {
     private static GlassSegmented whoSeg;
     private static boolean backing;
     private static int payVer = Payouts.ver;
+    /** The loyalty ladder and the cashback owed in all, refreshed only when Vip.ver moves (a copy + sort otherwise, per frame). */
+    private static List<Vip.Standing> ladder = List.of();
+    private static long ladderOwed;
+    private static int ladderVer = -1;
+
+    private static void refreshLadder() {
+        if (ladderVer == Vip.ver) return;
+        ladder = Vip.ladder(); ladderOwed = Vip.totalOwed(); ladderVer = Vip.ver;
+    }
 
     private final GambleScreen s;
 
@@ -39,6 +48,7 @@ public final class ChipsView implements GameView {
     @Override
     public void init() {
         double lx = lx(s), rx = rx(s), y0 = s.y0;
+        refreshLadder();
         // the Session / All players control (prototype: rightGroup in init); it survives rebuilds so the pill keeps sliding
         if (whoSeg == null) whoSeg = new GlassSegmented(0, 0, 18, new String[][]{{"session", "Session"}, {"all", "All players"}, {"vip", "VIP"}},
                 () -> who, v -> { who = v; GambleScreen cur = GambleScreen.current(); if (cur != null) { cur.chartAt = P.now(); cur.rebuild(); } });
@@ -60,7 +70,7 @@ public final class ChipsView implements GameView {
         String id = "chips-" + who;
         Widget.Clip clip = clip();
         if (who.equals("vip")) {   // the loyalty ladder: the whole row opens the profile
-            List<Vip.Standing> lad = Vip.ladder();
+            List<Vip.Standing> lad = ladder;
             for (int i = 0; i < lad.size(); i++) {
                 final String name = lad.get(i).name;
                 row(Widgets.area(lx, clip.y() + i * 30, rx - lx, 27, () -> openPlayer(name)), id, clip);
@@ -86,13 +96,13 @@ public final class ChipsView implements GameView {
                 if (amountField == null) amountField = new GlassField(0, 0, 86, 18, "", "Amount", 10);
                 amountField.x = rx - 6 - 18 - 4 - 40 - 4 - 86; amountField.y = ry + 4; amountField.focused = true;
                 row(amountField, id, clip);
-                row(new GlassButton(rx - 6 - 18 - 4 - 40, ry + 5, 40, 16, "Send", "PRIMARY", this::sendAmount), id, clip);
+                row(new GlassButton(rx - 6 - 18 - 4 - 40, ry + 5, 40, 16, "Pay", "PRIMARY", this::sendAmount), id, clip);
                 row(new GlassButton(rx - 6 - 18, ry + 5, 18, 16, "×", "GHOST", () -> { editing = null; s.rebuild(); }), id, clip);
                 continue;
             }
-            // ONE button per row: Send opens the amount, filled with everything he has; Send again pays
+            // ONE button per row: Pay opens the amount, filled with everything he has; Pay again sends it
             if (r.bal() <= 0) continue;   // nothing left: "Settled" is drawn instead
-            row(new GlassButton(rx - 6 - 46, ry + 5, 46, 16, "Send", "GHOST", () -> {
+            row(new GlassButton(rx - 6 - 46, ry + 5, 46, 16, "Pay", "GHOST", () -> {
                 editing = r.name();
                 amountField = new GlassField(0, 0, 86, 18, Money.format(r.bal()).replace("$", ""), "Amount", 10);
                 amountField.selectAll = true;
@@ -120,11 +130,11 @@ public final class ChipsView implements GameView {
         return new Widget.Clip(lx(s), top, GambleScreen.W - 2 * GambleScreen.PAD, s.y0 + GambleScreen.H - GambleScreen.PAD - (all ? 0 : 18) - top);
     }
 
-    private static String q() { return search == null ? "" : search.value.trim().toLowerCase().replaceFirst("^\\.", ""); }
+    private static String q() { return search == null ? "" : Payouts.norm(search.value.trim()); }
 
     private static boolean matches(String name) {
         String q = q();
-        return q.isEmpty() || name.toLowerCase().replaceFirst("^\\.", "").contains(q);
+        return q.isEmpty() || Payouts.norm(name).contains(q);
     }
 
     private List<Payouts.Row> chipRows() {
@@ -141,10 +151,7 @@ public final class ChipsView implements GameView {
 
     /** The pills of the Chips header (totals over everybody, not just the search results). */
     private Object[][] pills() {
-        if (who.equals("vip")) {
-            long owed = Vip.totalOwed();
-            return new Object[][]{{"Players", String.valueOf(Vip.ladder().size())}, {"Owed", Money.format(owed), owed > 0 ? P.GREEN : P.WHITE}};
-        }
+        if (who.equals("vip")) return new Object[][]{{"Players", String.valueOf(ladder.size())}, {"Owed", Money.format(ladderOwed), ladderOwed > 0 ? P.GREEN : P.WHITE}};
         if (who.equals("all")) {
             List<PlayerStats> rows = PlayerStats.all();
             long made = 0;
@@ -153,11 +160,11 @@ public final class ChipsView implements GameView {
         }
         long held = 0, sent = 0;
         for (Payouts.Row r : Payouts.rows()) { held += r.bal(); sent += r.sent(); }
-        return new Object[][]{{"Held", Money.format(held)}, {"Sent back", Money.format(sent)}};
+        return new Object[][]{{"Owed", Money.format(held)}, {"Sent back", Money.format(sent)}};   // "Owed": the dashboard's word for the chips held
     }
 
     private void openPlayer(String name) {
-        P.play("click");
+        P.play("open", 1.2, 0.5);
         PlayerView.player = name;
         editing = null;
         GambleScreen.sub = "player";
@@ -192,8 +199,8 @@ public final class ChipsView implements GameView {
             String nm = "No player matches";
             g.drawText(nm, lx + ((rx - lx - F.width(nm)) >> 1), y + 34, P.MUTE, false);
         } else if (rows.isEmpty()) {
-            g.drawText("No chips yet.", lx, y + 30, P.TEXT, false);
-            g.drawText("Players who /pay you during a session show up here.", lx, y + 42, P.MUTE, false);
+            g.drawText("No chips yet", lx, y + 30, P.TEXT, false);
+            g.drawText("Players who /pay you during a session show up here", lx, y + 42, P.MUTE, false);
         }
         Widget.Clip clip = clip();
         String id = "chips-session";
@@ -213,10 +220,12 @@ public final class ChipsView implements GameView {
             g.drawText(paid, lx + 26, ry + 15, P.MUTE, false);
             if (r.won() != 0) g.drawText(Money.signed(r.won()), lx + 26 + F.width(paid) + 6, ry + 15, r.won() > 0 ? P.GREEN : P.RED, false);   // won or lost at the tables
             if (r.name().equals(editing)) continue;   // the field and its buttons take the right side
-            double bx = rx - 6 - 52 - 4 - 40;   // left edge of the buttons
+            double bx = rx - 6 - 46;   // left edge of the Pay button slot (46 wide): the amount ends 8 px before it, "Settled" is centred in it
             String v = Money.format(r.bal());
-            if (r.bal() > 0) P.gradientText(g, v, bx - 8 - F.width(v), ry + 10, true); else g.drawText(v, bx - 8 - F.width(v), ry + 10, P.DIM, false);
-            if (r.bal() <= 0 && r.pend() == null) g.drawText("Settled", bx + 20 - (F.width("Settled") >> 1), ry + 10, P.GREEN, false);
+            if (r.pend() == null) {   // "Sending $X..." takes the right side while a /pay is out
+                if (r.bal() > 0) P.gradientText(g, v, bx - 8 - F.width(v), ry + 10, true); else g.drawText(v, bx - 8 - F.width(v), ry + 10, P.DIM, false);
+                if (r.bal() <= 0) g.drawText("Settled", bx + 23 - (F.width("Settled") >> 1), ry + 10, P.GREEN, false);
+            }
             Payouts.Recent rec = r.recent() != null && P.now() - r.recent().at() < 4000 ? r.recent() : null;
             if (r.pend() != null) { String t = "Sending " + Money.format(r.pend().amount()) + "..."; g.drawText(t, rx - 6 - F.width(t), ry + 10, P.MUTE, false); }
             if (r.pend() == null && rec != null) {   // a short verdict over the row's left side, under the name
@@ -237,7 +246,7 @@ public final class ChipsView implements GameView {
         int lx = lx(s), rx = rx(s); double y = s.y0 + 80;
         List<PlayerStats> rows = allRows();
         P.pillsRight(g, rx, y, pills());
-        if (rows.isEmpty()) { String nm = search != null && !search.value.isEmpty() ? "No player matches" : "Nobody has paid you yet."; g.drawText(nm, lx + ((rx - lx - F.width(nm)) >> 1), y + 34, P.MUTE, false); }
+        if (rows.isEmpty()) { String nm = search != null && !search.value.isEmpty() ? "No player matches" : "Nobody has paid you yet"; g.drawText(nm, lx + ((rx - lx - F.width(nm)) >> 1), y + 34, P.MUTE, false); }
         Widget.Clip clip = clip();
         String id = "chips-all";
         double ch = rows.size() * 30 - 3;
@@ -276,10 +285,11 @@ public final class ChipsView implements GameView {
             String sub = (t.from() == 0 ? "start" : Money.format(t.from()).substring(1)) + (t.rate() > 0 ? " · " + shortRate(t) : "");
             g.drawText(F.trimToWidth(sub, step - 4), tx, y + 11, P.DIM, false);
         }
-        List<Vip.Standing> rows = Vip.ladder();
+        refreshLadder();
+        List<Vip.Standing> rows = ladder;
         if (rows.isEmpty()) {
-            g.drawText("No wager yet.", lx, y + 34, P.TEXT, false);
-            g.drawText("Tiers unlock as players bet at your tables.", lx, y + 46, P.MUTE, false);
+            g.drawText("No wager yet", lx, y + 34, P.TEXT, false);
+            g.drawText("Tiers unlock as players bet at your tables", lx, y + 46, P.MUTE, false);
         }
         Widget.Clip clip = clip();
         String id = "chips-vip";
@@ -288,9 +298,12 @@ public final class ChipsView implements GameView {
         boolean inList = my >= clip.y() && my < clip.y() + clip.h();
         for (int i = 0; i < rows.size(); i++) {
             Vip.Standing r = rows.get(i);
-            Vip.Tier t = Vip.tierOf(r.xp), nx = Vip.next(r.name);
             double ry = clip.y() + i * 30 - off;
             if (ry + 27 < clip.y() || ry > clip.y() + clip.h()) continue;
+            // everything of the row derives from the standing itself (no name lookups per frame)
+            Vip.Tier t = Vip.tierOf(r.xp), nx = t.rank() + 1 < Vip.TIERS.length ? Vip.TIERS[t.rank() + 1] : null;
+            double prog = nx == null ? 1 : Math.max(0, Math.min(1, (r.xp - t.from()) / (double) (nx.from() - t.from())));
+            long owed = Math.max(0, r.earned - Vip.paidCashback(r.name));
             P.card(g, lx, ry, rx - lx, 27, "row");
             if (inList && mx >= lx && mx < rx && my >= ry && my < ry + 27) P.smooth(g, lx, ry, rx - lx, 27, 6, 0x0FFFFFFF, 0x30FFFFFF);
             g.drawText("#" + (i + 1), lx + 5, ry + 10, P.DIM, false);
@@ -298,7 +311,6 @@ public final class ChipsView implements GameView {
             VipBadge.draw(g, t, lx + 43, ry + 4);
             g.drawText(F.trimToWidth(r.name, 90), lx + 52, ry + 4, P.WHITE, false);
             g.drawText(t.name(), lx + 43, ry + 15, t.color(), false);
-            long owed = Vip.owed(r.name);
             if (owed > 0) g.drawText("Owed " + Money.format(owed), lx + 43 + F.width(t.name()) + 6, ry + 15, P.GREEN, false);
             // right: the wager, then a bar to the next tier
             String xp = Money.format(r.xp), to = nx == null ? "Top tier" : Money.format(nx.from() - r.xp) + " to " + nx.name();
@@ -306,7 +318,7 @@ public final class ChipsView implements GameView {
             g.drawText(to, rx - 6 - 40 - 6 - F.width(to), ry + 15, P.MUTE, false);
             double bx = rx - 6 - 40, by = ry + 17;
             g.fill(bx, by, bx + 40, by + 3, 0x1AFFFFFF);
-            int fw = (int) Math.round(40 * Vip.progress(r.name));
+            int fw = (int) Math.round(40 * prog);
             if (fw > 0) g.fill(bx, by, bx + fw, by + 3, nx == null ? t.color() : P.lerp(t.color(), nx.color(), 0.5));
         }
         s.endList(g, id, ch);

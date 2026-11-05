@@ -25,6 +25,9 @@ public final class RollersView implements GameView {
     private static final double STEP_W = 100, GAP = 6, ROW_H = 16;
 
     private final GambleScreen s;
+    /** The list init built the hit areas from: render draws the same one, so clicks and pictures always agree. */
+    private List<PlayerStats.Roller> rows;
+    private static int vipVer = dev.ryaan.ezgamble.vip.Vip.ver;
 
     public RollersView(GambleScreen s) { this.s = s; }
 
@@ -44,7 +47,7 @@ public final class RollersView implements GameView {
         rangeSeg.place(rx - rangeSeg.w, s.y0 + 33);
         s.add(rangeSeg);
         s.add(new GlassButton(lx, s.y0 + 80, 18, 16, "‹", "GHOST", s::back));
-        List<PlayerStats.Roller> rows = PlayerStats.highRollers(range);
+        List<PlayerStats.Roller> rows = this.rows = PlayerStats.highRollers(range);
         dev.ryaan.ezgamble.proto.Faces.prefetch(rows.stream().map(PlayerStats.Roller::name).toList());
         for (int col = 0; col < 3; col++) {   // the podium: step and chibi open the profile
             int rank = ORDER[col];
@@ -63,7 +66,7 @@ public final class RollersView implements GameView {
     }
 
     private void open(String name) {
-        P.play("click");
+        P.play("open", 1.2, 0.5);
         PlayerView.player = name;
         PlayerView.backTo = "rollers";
         GambleScreen.sub = "player";
@@ -71,20 +74,23 @@ public final class RollersView implements GameView {
         s.rebuild();
     }
 
-    @Override public void tick() {}
+    /** A bet while the view is open moves the podium: rebuild so the hit areas follow (Vip.onTxn bumps Vip.ver on every recorded bet). */
+    @Override public void tick() {
+        if (vipVer != dev.ryaan.ezgamble.vip.Vip.ver) { vipVer = dev.ryaan.ezgamble.vip.Vip.ver; s.rebuild(); }
+    }
     @Override public void leave() {}
 
     @Override
     public void render(G g, double mx, double my) {
         double lx = s.x0 + GambleScreen.PAD, rx = s.x0 + GambleScreen.W - GambleScreen.PAD, y = s.y0 + 80;
         long t = now();
-        List<PlayerStats.Roller> rows = PlayerStats.highRollers(range);
+        List<PlayerStats.Roller> rows = this.rows != null ? this.rows : PlayerStats.highRollers(range);
         g.drawText("High rollers", lx + 24, y + 4, WHITE, true);
         long total = 0;
         for (PlayerStats.Roller r : rows) total += r.wagered();
         pillsRight(g, rx, y, new Object[][]{{"Players", String.valueOf(rows.size())}, {"Wagered", Money.format(total)}});
         if (rows.isEmpty()) {
-            String a = "No wagers yet", b = "Bets placed with a player's chips land here.";
+            String a = "No wagers yet", b = "Bets placed with a player's chips land here";
             g.drawText(a, lx + (rx - lx - F.width(a)) / 2, y + 60, TEXT, false);
             g.drawText(b, lx + (rx - lx - F.width(b)) / 2, y + 72, MUTE, false);
             return;
@@ -96,10 +102,16 @@ public final class RollersView implements GameView {
             double sx = stepX(col), sh = stepH(n)[rank], top = base - sh, cx = sx + STEP_W / 2;
             boolean has = rank < n;
             boolean hov = has && mx >= sx && mx < sx + STEP_W && my >= top - (CHIBI_H + 4) * p && my < base;
-            if (has) {   // a soft halo of stacked ovals behind whoever stands there, the winner's the brightest
-                double k = rank == 0 ? 1 : 0.55, hy = top - 1 - CHIBI_H / 2.0 * p;
-                for (int r : new int[]{15, 11, 7}) smooth(g, cx - r * p, hy - r * p * 1.2, 2 * r * p, 2.4 * r * p, r * p * 0.9, alpha(m, 0.06 * k));
-                smooth(g, cx - 8 * p, top - 2, 16 * p, 4, 2, alpha(m, 0.35 * k));
+            if (has) {   // a soft halo of stacked ovals behind whoever stands there, the winner's the brightest: one cached sprite per rank and scale
+                double k = rank == 0 ? 1 : 0.55, hw = 30 * p, hh = 32 * p + 3;
+                Vec.draw(g, "halo/" + rank + "/" + p, cx - 15 * p, top - 1 - 32 * p, hw, hh, 0, g2 -> {
+                    for (int r : new int[]{15, 11, 7}) {   // centred on the chibi's middle, 18 p down from the sprite's top
+                        g2.setColor(Vec.c(alpha(m, 0.06 * k)));
+                        g2.fill(new java.awt.geom.Ellipse2D.Double(15 * p - r * p, 18 * p - 1.2 * r * p, 2 * r * p, 2.4 * r * p));
+                    }
+                    g2.setColor(Vec.c(alpha(m, 0.35 * k)));   // the lip at his feet
+                    g2.fill(new java.awt.geom.RoundRectangle2D.Double(7 * p, 32 * p - 1, 16 * p, 4, 4, 4));
+                });
             }
             // the step: glass tinted with its medal, a lip of the medal along the top
             if (has) smooth(g, sx, top, STEP_W, sh, 6, v(alpha(m, hov ? 0.26 : 0.18), alpha(m, 0.03)), alpha(m, hov ? 0.7 : 0.45));
