@@ -30,12 +30,15 @@ public final class LobbyPill extends Widget {
         long auto = Lobby.autoEnd(GambleScreen.sub);
         Lobby.Seat es = Lobby.errSeat(); String err = es != null && es.game().equals(game) ? Lobby.errText() : null;
         if (d == null && n == 0 && err == null) { w = 0; return; }
-        String label, value; int vc; boolean gem = false;
-        if (err != null) { label = ""; value = err; vc = P.RED; }
-        else if (auto > 0 && d != null) { label = "Next:"; value = d.name() + " in " + Math.max(1, (auto - P.now() + 999) / 1000) + "..."; vc = P.PINK; gem = true; }
-        else if (d != null) { label = "Next"; value = d.name() + " " + Money.format(Lobby.amountOf(d)) + (n > 1 ? " +" + (n - 1) : ""); vc = P.WHITE; gem = true; }
-        else { label = "Next"; value = n + " short of chips"; vc = P.RED; }   // everyone in line for this game is short
+        String label, head, rest = ""; int vc; boolean gem = false;   // value = head + rest, the head (his name) trimmed to the room
+        if (err != null) { label = ""; head = err; vc = P.RED; }
+        else if (auto > 0 && d != null) { label = "Next:"; head = d.name(); rest = " in " + Math.max(1, (auto - P.now() + 999) / 1000) + "..."; vc = P.PINK; gem = true; }
+        else if (d != null) { label = "Next"; head = d.name(); rest = " " + Money.format(Lobby.amountOf(d)) + (n > 1 ? " +" + (n - 1) : ""); vc = P.WHITE; gem = true; }
+        else { label = "Next"; head = n + " short of chips"; vc = P.RED; }   // everyone in line for this game is short
         int bw = gem ? VipBadge.w(d.name()) : 0;
+        // the room right of the tabs segmented (Dashboard / History / Games / HUD, 190 px from lx) on the same row, 6 px apart
+        int room = GambleScreen.W - 2 * GambleScreen.PAD - 196;
+        String value = F.trimToWidth(head, room - P.pillW(label, rest) - bw) + rest;
         w = P.pillW(label, value) + bw;
         x = s.x0 + GambleScreen.W - GambleScreen.PAD - w;
         boolean hot = d != null && err == null, hover = hot && over(mx, my);

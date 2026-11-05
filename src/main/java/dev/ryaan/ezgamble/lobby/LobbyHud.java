@@ -17,7 +17,9 @@ public final class LobbyHud {
         int n = Lobby.size();
         if (n == 0) return;
         String v = "Lobby " + n; int w = F.width(v) + 8;
-        double x = W - 7 - F.width(clock) - 5 - w;
+        double left = 7 + F.width("Session") + 4, x = W - 7 - F.width(clock) - 5 - w;
+        if (x < left) { v = "L" + n; w = F.width(v) + 8; x = W - 7 - F.width(clock) - 5 - w; }   // a long clock (hours) on a narrow card: the short form
+        if (x < left) return;
         P.smooth(g, x, 4, w, 12, 6, 0x33A18CD1, 0x55A18CD1);
         g.drawText(v, x + 4, 6, P.PINK, true);
     }

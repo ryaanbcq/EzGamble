@@ -30,8 +30,10 @@ public final class LobbyView implements GameView {
         for (int i = 0; i < rows.size(); i++) {
             Lobby.Seat d = rows.get(i);
             double ry = clip.y() + i * 30;
-            GlassButton seat = new GlassButton(rx - 6 - 18 - 4 - 40, ry + 5, 40, 16, "Seat", "PRIMARY", () -> Lobby.seat(d));
-            seat.active = GambleData.mode && !Lobby.isShort(d);   // short of chips: he waits, greyed, until he pays again
+            GlassButton seat = new GlassButton(rx - 6 - 18 - 4 - 40, ry + 5, 40, 16, "Seat", "PRIMARY", () -> Lobby.seat(d)) {
+                // short of chips: he waits, greyed, until he pays again; decided every frame, his chips move without the line changing
+                @Override public void render(G g, double mx, double my) { active = GambleData.mode && !Lobby.isShort(d); super.render(g, mx, my); }
+            };
             GlassButton x = new GlassButton(rx - 6 - 18, ry + 5, 18, 16, "×", "GHOST", () -> Lobby.remove(d));
             for (GlassButton b : new GlassButton[]{seat, x}) { s.add(b); b.list = new Widget.ListPos("lobby", b.y); b.clip = clip; }
         }
@@ -76,7 +78,7 @@ public final class LobbyView implements GameView {
             if (!sh) gradientText(g, v, vx, ry + 10, true); else g.drawText(v, vx, ry + 10, DIM, false);
         }
         s.endList(g, "lobby", ch);
-        String foot = "Whisper join <game> [amount], leave to step out. A seat drops after 10 min.";
+        String foot = "Whisper join <game> [amount] or leave. A seat drops after 10 min.";
         g.drawText(F.trimToWidth(foot, rx - lx), lx, s.y0 + GambleScreen.H - GambleScreen.PAD - 12, DIM, false);
     }
 

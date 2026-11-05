@@ -64,6 +64,8 @@ public final class Lobby {
     public static Seat lastJoin; public static long joinAt;
     /** Auto-seat: when the next player sits down and on which felt (0 = no countdown). */
     private static long autoAt; private static String autoSub;
+    /** The felt's backer and bet when the countdown started: a change means the host is composing, nobody is seated over him. */
+    private static String autoBacker; private static long autoBet;
     private static String lastSub, lastPhase;
     /** The last refused seating (the row and the pill say why for 2.5 s). */
     private static Seat errSeat; private static String errText; private static long errAt;
@@ -174,6 +176,20 @@ public final class Lobby {
         };
     }
 
+    /** The table played on a felt (gameOf(sub) != null). */
+    static Host hostOf(String sub) {
+        return switch (sub) {
+            case "coinflip" -> CF; case "crash" -> CX; case "mines" -> MN; case "crates" -> CR; case "roulette" -> RL;
+            default -> BJ;
+        };
+    }
+
+    /** The host touched the felt since the countdown started (picked a backer, clicked chips). */
+    private static boolean touched(String sub) {
+        Host h = hostOf(sub);
+        return !java.util.Objects.equals(h.backer, autoBacker) || h.bet != autoBet;
+    }
+
     /** When the countdown on that felt ends (0 = none running). */
     public static long autoEnd(String sub) { return autoAt > 0 && sub != null && sub.equals(autoSub) ? autoAt : 0; }
 
@@ -183,11 +199,14 @@ public final class Lobby {
         GambleScreen sc = GambleScreen.current();
         String sub = sc != null && GambleScreen.tab.equals("games") && gameOf(GambleScreen.sub) != null ? GambleScreen.sub : null;
         String ph = sub == null ? null : phase(sub);
-        if (sub != null && sub.equals(lastSub) && "live".equals(lastPhase) && "done".equals(ph) && GambleData.autoSeat && next(gameOf(sub)) != null) { autoAt = t + AUTO_MS; autoSub = sub; }
+        if (sub != null && sub.equals(lastSub) && "live".equals(lastPhase) && "done".equals(ph) && GambleData.autoSeat && next(gameOf(sub)) != null) {
+            autoAt = t + AUTO_MS; autoSub = sub; Host h = hostOf(sub); autoBacker = h.backer; autoBet = h.bet;
+        }
         lastSub = sub; lastPhase = ph;
         if (autoAt > 0) {
-            // the host left the felt, turned the option off or dealt again himself: nobody is seated behind his back
-            if (sub == null || !sub.equals(autoSub) || !GambleData.autoSeat || "live".equals(ph)) autoAt = 0;
+            // the host left the felt, turned the option off, dealt again himself or is composing the next bet (another backer,
+            // chips clicked): nobody is seated behind his back
+            if (sub == null || !sub.equals(autoSub) || !GambleData.autoSeat || "live".equals(ph) || touched(sub)) autoAt = 0;
             else if (t >= autoAt) { autoAt = 0; Seat s = next(gameOf(sub)); if (s != null) seat(s); }
         }
     }
@@ -195,6 +214,8 @@ public final class Lobby {
     // ---- seating (the few lines of Duel.accept: backer, bet built as chips, the felt, the round)
 
     private static String fail(Seat s, String why) { errSeat = s; errText = why; errAt = P.now(); P.play("fail", 1.3, 0.4); return why; }
+    /** The table refused the round (house guard, max bet...): it already shows its red warning and played the sound; the row and the pill say it too, he keeps his place. */
+    private static String refused(Seat s, Host h) { errSeat = s; errText = h.warn != null ? h.warn.text() : "Refused"; errAt = P.now(); return errText; }
 
     private static void seed(Host h, Payouts.Row row, long amount) {
         h.backer = row.name(); h.clearBet();
@@ -208,11 +229,15 @@ public final class Lobby {
         if (cur != null) cur.rebuild(); else MinecraftClient.getInstance().setScreen(new GambleScreen());   // the menu is open (the list, a felt): the view changes in place
     }
 
-    private static void take(Seat s) { queue.remove(s); autoAt = 0; changed(); }
+    private static void take(Seat s) { queue.remove(s); changed(); }
 
-    /** Seats him: his chips are the bet, his felt opens, the round starts. null = done, otherwise why not. */
+    /**
+     * Seats him: his chips are the bet, his felt opens, the round starts. null = done, otherwise why not. He leaves the line
+     * only once the table took the round: a refusal (house guard, max bet) keeps his place and shows why.
+     */
     public static String seat(Seat d) {
         if (d == null) return "Nobody in line";
+        autoAt = 0;   // a seating, by hand or by the countdown, ends the countdown
         if (!GambleData.mode) return fail(d, "Gambling mode is off");
         long amount = amountOf(d);
         if (amount <= 0 || chips(d.name) < amount) return fail(d, "Not enough chips");
@@ -221,38 +246,44 @@ public final class Lobby {
         switch (d.game) {
             case "Coinflip" -> {   // his last side (heads the first time), flipped at once
                 if (CF.stage.equals("spin")) return fail(d, "A coin is in the air, wait for it");
-                take(d); CF.settle(); CF.stage = "bet"; seed(CF, row, amount);
+                CF.settle(); CF.stage = "bet"; seed(CF, row, amount);
                 open(sub);
-                CF.start();
+                if (!CF.start()) return refused(d, CF);
+                take(d);
             }
             case "Crash" -> {   // his last auto cash out (x2 the first time), launched at once
                 if (CX.stage.equals("play")) return fail(d, "Finish the flight in play first");
-                take(d); CX.settle(); CX.stage = "bet"; seed(CX, row, amount);
+                CX.settle(); CX.stage = "bet"; seed(CX, row, amount);
                 open(sub);
-                CX.start();
+                if (!CX.start()) return refused(d, CX);
+                take(d);
             }
             case "Mines" -> {   // the mines count he last played (3 the first time), board drawn at once
                 if (MN.stage.equals("play")) return fail(d, "Finish the board in play first");
-                take(d); MN.settle(); MN.stage = "bet"; seed(MN, row, amount);
+                MN.settle(); MN.stage = "bet"; seed(MN, row, amount);
                 open(sub);
-                MN.start();
+                if (!MN.start()) return refused(d, MN);
+                take(d);
             }
             case "Crates" -> {   // the crate he last opened (Basic the first time), opened at once
                 if (CR.stage.equals("spin")) return fail(d, "A crate is opening, wait for it");
-                take(d); CR.settle(); CR.stage = "bet"; seed(CR, row, amount);
+                CR.settle(); CR.stage = "bet"; seed(CR, row, amount);
                 open(sub);
-                CR.open();
+                if (!CR.open()) return refused(d, CR);
+                take(d);
             }
             case "Roulette" -> {   // a wheel has no single bet: he sits with his amount composed, the spin comes with his cell (a whisper "red", or the host's click)
                 if (RL.stage.equals("spin")) return fail(d, "The wheel is spinning, wait for it");
-                take(d); RL.settle(); RL.stage = "bet"; RL.bets.clear(); RL.order.clear(); seed(RL, row, amount); Host.lastBacker = row.name();
+                RL.settle(); RL.stage = "bet"; RL.bets.clear(); RL.order.clear(); seed(RL, row, amount); Host.lastBacker = row.name();
                 open(sub);
+                take(d);
             }
             default -> {
                 if (BJ.game != null && !BJ.game.phase.equals("done")) return fail(d, "Finish the hand in play first");
-                take(d); BJ.apply(); BJ.stage = "bet"; seed(BJ, row, amount);
+                BJ.apply(); BJ.stage = "bet"; seed(BJ, row, amount);
                 open(sub);
-                BJ.deal();   // straight into the hand
+                if (!BJ.deal()) return refused(d, BJ);   // straight into the hand
+                take(d);
             }
         }
         P.play("mc_chime", 1.2, 0.8);
