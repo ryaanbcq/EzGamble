@@ -155,6 +155,9 @@ public final class DebugRun {
             case "recap" -> EzGambleMod.LOG.info("[ezgamble] debug: recap open {}", dev.ryaan.ezgamble.recap.RecapScreen.openLast(c));   // the last session's recap
             case "recapslide" -> { var rs = dev.ryaan.ezgamble.recap.RecapScreen.current(); if (rs != null) rs.go(Integer.parseInt(arg) - 1); }   // recapslide N (1-7)
             case "recapsave" -> { var rs = dev.ryaan.ezgamble.recap.RecapScreen.current(); if (rs != null) rs.save(); }   // the Save card button
+            case "books" -> EzGambleMod.LOG.info("[ezgamble] debug: books {}", dev.ryaan.ezgamble.books.Books.get().describe());   // the all-time totals
+            case "booksexport" -> { var ex = dev.ryaan.ezgamble.books.Books.export(); EzGambleMod.LOG.info("[ezgamble] debug: books export {}", ex == null ? "failed" : ex.rows() + " rows to " + ex.txns() + " and " + ex.sessions()); }
+            case "bookstab" -> { dev.ryaan.ezgamble.books.BooksView.setTab(arg); GambleScreen.debug("sub", "books"); }   // bookstab tables|hours|days|sessions
             case "chat" -> { c.inGameHud.getChatHud().addMessage(Text.literal(arg)); EzGambleMod.onChat(arg); }
             case "mouse" -> { mx = (int) Double.parseDouble(n[0]); my = (int) Double.parseDouble(n[1]); dev.ryaan.ezgamble.proto.ProtoScreen.forceMx = mx; dev.ryaan.ezgamble.proto.ProtoScreen.forceMy = my; }
             case "click", "rclick" -> {

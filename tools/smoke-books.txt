@@ -1,0 +1,61 @@
+# Books smoke test: ./tools/smoke.sh tools/smoke-books.txt 300
+# Two sessions (one closed, one live) with demo bets and players' wagers, then every Books tab, a session's recap and the CSV export.
+size 1280 800
+gui 2
+name ZKR5
+mode on
+demo 60
+paid NotRyzn 50M
+paid Notch 12M
+wager NotRyzn 5M 6
+wager Notch 2M 3
+txn Roulette 4M 7M
+txn Crash 3M -3M
+mode off
+wait 10
+mode on
+demo 20
+wager jeb_ 1M 4
+books
+open
+wait 20
+sub books
+bookstab tables
+wait 20
+shot books-tables
+# the Hours segment (the segmented control at the top right), through its debug command
+bookstab hours
+wait 20
+mouse 0 0
+shot books-hours
+bookstab days
+wait 20
+shot books-days
+bookstab sessions
+wait 20
+shot books-sessions
+# hover the first row: the Recap chevron (mouse takes GUI px: the panel sits at 130, 50 in a 1280 x 800 window at gui 2)
+mouse 330 166
+wait 5
+shot books-sessions-hover
+perf books
+# click the first (live) session: its recap opens
+click @100 @116
+wait 60
+shot books-recap
+key 256
+wait 20
+# the export and the footer text
+open
+wait 20
+sub books
+wait 10
+booksexport
+press-button Export CSV
+wait 10
+shot books-exported
+press-button Copy totals
+wait 10
+shot books-copied
+books
+quit
