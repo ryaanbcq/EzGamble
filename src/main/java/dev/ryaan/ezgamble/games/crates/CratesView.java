@@ -30,6 +30,7 @@ public final class CratesView implements GameView {
     private final GambleScreen screen;
     private String uiKey = "";
     private GlassButton payBtn, openBtn;
+    private GlassSwitch fastSw;   // the "Fast" switch, bet stage only: steps aside while a warning takes the row
     private Widgets.RefundPill refund;
 
     /** A crate to pick. */
@@ -56,7 +57,7 @@ public final class CratesView implements GameView {
         var s = screen;
         var G = geom();
         double lx = G.lx(), rx = G.rx(), hy = G.hy(), fy = G.fy(), fh = G.fh(), by = G.by(), cx = G.cx();
-        uiKey = uiState(); payBtn = null; openBtn = null; refund = null;
+        uiKey = uiState(); payBtn = null; openBtn = null; fastSw = null; refund = null;
         s.add(new GlassButton(lx, hy, 18, 16, "‹", "GHOST", s::back));
         if (CR.stage.equals("bet")) {
             List<Payouts.Row> list = CR.backers();
@@ -82,7 +83,7 @@ public final class CratesView implements GameView {
                 s.add(new GlassButton(lx + 116, by, 56, 24, "Clear", "GHOST", CR::clearBet));
             }
             openBtn = s.add(new GlassButton(rx - 110, by, 110, 24, "Open", "PRIMARY", CR::open));
-            if (!list.isEmpty()) s.add(new GlassSwitch(rx - 110 - 8 - 28, by + 5, 28, 14, () -> GambleData.crateFast, GambleData::setCrateFast));   // "Fast": the next opens spin in 1.5 s
+            if (!list.isEmpty()) fastSw = s.add(new GlassSwitch(rx - 110 - 8 - 28, by + 5, 28, 14, () -> GambleData.crateFast, GambleData::setCrateFast));   // "Fast": the next opens spin in 1.5 s
             if (!list.isEmpty()) {   // added last: its result sheet goes over the crates
                 if (CR.picker == null) CR.picker = new Widgets.BackerPicker(lx + 8, fy + 8, 168, CR);
                 CR.picker.place(lx + 8, fy + 8, 168);
@@ -125,8 +126,9 @@ public final class CratesView implements GameView {
             b.label = warn != null ? warn : again ? "Open again" : CR.bet > 0 ? "Open " + Money.format(CR.bet) : "Open";
             b.kind = warn != null ? "DANGER" : calm;
             b.active = warn != null || (again ? CR.balance() > 0 : GambleData.mode && !CR.backers().isEmpty());
-            double room = again ? 110 : 166;   // a long warning may grow the button up to the "Fast" caption (starts rx-171); "Change bet" leaves no room
+            double room = again ? 110 : 166;   // a long warning may grow the button up to Clear (ends lx+172 = rx-180, 14 px kept); "Change bet" leaves no room
             b.w = warn != null ? Math.min(Math.max(110, F.width(warn) + 20), room) : 110; b.x = geom().rx() - b.w;
+            if (fastSw != null) fastSw.visible = warn == null;   // the switch sits at rx-146..rx-118, under a warning over 98 px: it and its caption step aside
         }
         if (payBtn != null) syncPay();
     }
@@ -167,7 +169,7 @@ public final class CratesView implements GameView {
         else pillsRight(g, rx, hy, new Object[][]{{"Bet", Money.format(CR.round.bet)}});
         felt(g, lx, G.ft(), rx - lx, G.fth());
         if (CR.stage.equals("bet")) renderBet(g, mx, my); else renderSpin(g);
-        if (CR.stage.equals("bet") && !CR.backers().isEmpty()) g.drawText("Fast", rx - 110 - 8 - 28 - 4 - F.width("Fast"), G.by() + 8, GambleData.crateFast ? PINK : MUTE, false);
+        if (fastSw != null && fastSw.visible) g.drawText("Fast", rx - 110 - 8 - 28 - 4 - F.width("Fast"), G.by() + 8, GambleData.crateFast ? PINK : MUTE, false);
     }
 
     private void renderBet(G g, double mx, double my) {
