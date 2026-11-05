@@ -1,5 +1,5 @@
 # Themes smoke test: every preset on the dashboard, the games grid and the HUD tab (theme row with the swatches).
-# Run: ./tools/smoke.sh tools/smoke-themes.txt ; expect 18 screenshots ezgamble-theme-<id>-{dash,games,hud}.png
+# Run: ./tools/smoke.sh tools/smoke-themes.txt ; expect 19 screenshots: ezgamble-theme-<id>-{dash,games,hud}.png for the six themes plus ezgamble-theme-click-lavender.png,
 # and no "step failed" line. The config keeps the last theme applied (mono): the last block puts Lavender back.
 mode on
 demo 20

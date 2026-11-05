@@ -73,7 +73,7 @@ public final class ProfitChart {
         if (iw <= 0 || ih <= 0) return null;
         String slot = mini ? "mini" : "full";
         String key = java.util.Arrays.hashCode(deltas) + "/" + deltas.length + "/" + iw + "x" + ih + "/" + (ox % 1) + "/" + k + "/" + gradient + lineColor
-                + "/" + Math.round(left - ox) + "/" + Math.round(top - oy);
+                + "/" + Math.round(left - ox) + "/" + Math.round(top - oy) + "/" + dev.ryaan.ezgamble.themes.Themes.ver;   // the gradient bakes the theme colours in
         Object[] c = CACHE.get(slot);
         if (c != null && c[0].equals(key)) return (Identifier) c[1];
         int n = deltas.length;
