@@ -23,14 +23,24 @@ public final class Widgets {
     public record Paid(long at, long amount) {}
     public record PayState(String label, boolean active, long amount, boolean retry, boolean done) {}
 
+    /** The widest Pay button on a felt: from lx to 6 px before "Change bet" / "New bets" at rx - 196. */
+    public static final int PAY_MAX_W = 150;
+
     /**
      * One /pay per round, ever: round.paid is set on the first click, so a double click or a second click while it
      * is sending does nothing. Only a payment the server did NOT confirm (15 s) opens a retry. Armed 0.6 s after the
      * result shows.
      */
-    public static PayState payStateOf(Round round, String backer, long amount, long shownAt) {
+    public static PayState payStateOf(Round round, String backer, long amount, long shownAt) { return payStateOf(round, backer, amount, shownAt, PAY_MAX_W); }
+
+    /** maxW: the button's widest; the name gives way first so "Pay " + name + amount always fits it. */
+    public static PayState payStateOf(Round round, String backer, long amount, long shownAt, int maxW) {
         if (round == null || (amount <= 0 && round.paid == null)) return null;
-        if (round.paid == null) return new PayState("Pay " + F.trimToWidth(backer, 70) + " " + Money.format(amount), P.now() >= shownAt + 600, amount, false, false);
+        if (round.paid == null) {
+            String amt = " " + Money.format(amount);
+            int nameW = maxW - 20 - F.width("Pay ") - F.width(amt);
+            return new PayState("Pay " + F.trimToWidth(backer, Math.min(70, nameW)) + amt, P.now() >= shownAt + 600, amount, false, false);
+        }
         if (Payouts.pending.stream().anyMatch(p -> p.name().equals(backer))) return new PayState("Sending...", false, 0, false, false);
         Payouts.Recent r = Payouts.recent.get(backer);
         if (r != null && r.at() >= round.paid.at() && !r.ok()) return new PayState((r.why() != null ? r.why() : "Not confirmed") + ", retry", P.now() >= r.at() + 600, round.paid.amount(), true, false);
@@ -123,7 +133,7 @@ public final class Widgets {
             double ly = listY(), lh = listH();
             List<Payouts.Row> list = matches();
             int hov = rowAt(mx, my);
-            P.smooth(g, x, ly, w, lh, 8, P.v(0xF0291C42, 0xF01C1230), 0x40FFFFFF);
+            P.smooth(g, x, ly, w, lh, 8, P.v(P.alpha(P.lerp(P.PANEL_TOP, P.WHITE, 0.05), 0.94), P.alpha(P.PANEL_BOT, 0.94)), 0x40FFFFFF);   // the theme's panel, not Lavender's
             if (list.isEmpty()) { String t = "No player matches"; g.drawText(t, x + (int) ((w - F.width(t)) / 2), ly + 8, P.MUTE, false); return; }
             for (int i = 0; i < list.size(); i++) {
                 Payouts.Row r = list.get(i);
@@ -217,11 +227,14 @@ public final class Widgets {
             return null;
         }
 
+        /** The width place() gives it now: a pair centred around it stays centred once it opens or settles. */
+        public int width() { St st = state(); return st != null ? F.width(st.label) + 14 : P.pillW("Chips", Money.format(host.balance())); }
+
         /** Left edge x, top y; the width follows its text. */
         public void place(double x, double y, int color) {
             this.x = x; this.y = y; this.color = color;
             St st = state();
-            w = st != null ? F.width(st.label) + 14 : P.pillW("Chips", Money.format(host.balance()));
+            w = width();
         }
 
         @Override

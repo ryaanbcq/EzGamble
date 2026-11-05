@@ -110,7 +110,7 @@ public final class CratesView implements GameView {
     private void syncPay() {
         var st = CR.payState(); var b = payBtn;
         if (st == null) { b.visible = false; return; }
-        b.label = st.label(); b.active = st.active(); b.w = Math.max(120, F.width(st.label()) + 20);
+        b.label = st.label(); b.active = st.active(); b.w = Math.min(Math.max(120, F.width(st.label()) + 20), Widgets.PAY_MAX_W);   // never over "Change bet"
     }
 
     @Override
@@ -125,6 +125,8 @@ public final class CratesView implements GameView {
             b.label = warn != null ? warn : again ? "Open again" : CR.bet > 0 ? "Open " + Money.format(CR.bet) : "Open";
             b.kind = warn != null ? "DANGER" : calm;
             b.active = warn != null || (again ? CR.balance() > 0 : GambleData.mode && !CR.backers().isEmpty());
+            double room = again ? 110 : 166;   // a long warning may grow the button up to the "Fast" caption (starts rx-171); "Change bet" leaves no room
+            b.w = warn != null ? Math.min(Math.max(110, F.width(warn) + 20), room) : 110; b.x = geom().rx() - b.w;
         }
         if (payBtn != null) syncPay();
     }
@@ -222,7 +224,7 @@ public final class CratesView implements GameView {
         boolean done = CR.stage.equals("done");
         // who and which crate, above the reel
         String name = F.trimToWidth(r.backer, 70), bal = Money.format(CR.balance());
-        int tw = seatTagW(name, r.type.name), cw = pillW("Chips", bal), sx = (int) cx - ((tw + 4 + cw) >> 1);
+        int tw = seatTagW(name, r.type.name), cw = refund != null ? refund.width() : pillW("Chips", bal), sx = (int) cx - ((tw + 4 + cw) >> 1);   // the pill's real width: the pair stays centred when it opens
         seatTag(g, sx + (tw >> 1), fy + 10, skinOf(r.backer), name, r.type.name, WHITE);
         int chipsCol = done && t - r.landedAt < 1800 ? (CR.payoutOf(r) >= r.bet ? GREEN : RED) : WHITE;
         if (refund != null) refund.place(sx + tw + 4, fy + 10, chipsCol);   // the round is over: the pill can refund (drawn as a widget)

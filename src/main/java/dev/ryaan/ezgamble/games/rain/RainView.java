@@ -51,8 +51,9 @@ public final class RainView implements GameView {
                 mainBtn = s.add(new GlassButton(rx - 110, by, 110, 24, "Start rain", "PRIMARY", this::startRain));
             }
             case "open" -> {
-                s.add(new GlassButton(lx, by, 104, 24, "Copy for chat", "GHOST", () -> copy(RN.count() == 0 ? RN.announceText() : RN.progressText())));
-                s.add(new GlassButton(lx + 110, by, 64, 24, "Cancel", "GHOST", RN::cancel));
+                int cw = F.width("Copy for chat") + 16;   // sized by its text (87 px), the same in both stages
+                s.add(new GlassButton(lx, by, cw, 24, "Copy for chat", "GHOST", () -> copy(RN.count() == 0 ? RN.announceText() : RN.progressText())));
+                s.add(new GlassButton(lx + cw + 6, by, 64, 24, "Cancel", "GHOST", RN::cancel));
                 mainBtn = s.add(new GlassButton(rx - 110, by, 110, 24, "Spin now", RN.count() >= 2 ? "PRIMARY" : "GHOST", () -> { if (RN.count() >= 2) RN.spin(); else P.play("fail", 1, 0.5); }));
             }
             case "done" -> {
@@ -60,7 +61,8 @@ public final class RainView implements GameView {
                     @Override public void click(double mx, double my) { if (active) action.run(); }   // pay() plays the click, once, only when it sends
                 });
                 syncPay();
-                s.add(new GlassButton(rx - 110 - 6 - 104, by, 104, 24, "Copy for chat", "GHOST", () -> copy(RN.winnerText())));
+                int cw = F.width("Copy for chat") + 16;   // 87 px at rx-203: the Pay button (PAY_MAX_W, ends lx+143) stays 6 px short of it
+                s.add(new GlassButton(rx - 110 - 6 - cw, by, cw, 24, "Copy for chat", "GHOST", () -> copy(RN.winnerText())));
                 mainBtn = s.add(new GlassButton(rx - 110, by, 110, 24, "New rain", "GHOST", RN::again));
             }
             default -> {}
@@ -93,7 +95,7 @@ public final class RainView implements GameView {
         if (payBtn == null) return;
         var st = RN.payState();
         if (st == null) { payBtn.visible = false; return; }
-        payBtn.label = st.label(); payBtn.active = st.active(); payBtn.w = Math.max(120, F.width(st.label()) + 20);
+        payBtn.label = st.label(); payBtn.active = st.active(); payBtn.w = Math.min(Math.max(120, F.width(st.label()) + 20), PAY_MAX_W);   // never over "Copy for chat"
     }
 
     @Override
@@ -105,6 +107,7 @@ public final class RainView implements GameView {
             String warn = w ? RN.warn : !GambleData.mode ? "Gambling mode is off" : null;
             mainBtn.label = warn != null ? warn : "Start rain";
             mainBtn.kind = warn != null ? "DANGER" : "PRIMARY";
+            mainBtn.w = Math.max(110, F.width(mainBtn.label) + 20); mainBtn.x = screen.geom().rx() - mainBtn.w;   // "Goal: 2 tickets at least" is 114 px; nothing else is on this row
         }
         syncPay();
     }

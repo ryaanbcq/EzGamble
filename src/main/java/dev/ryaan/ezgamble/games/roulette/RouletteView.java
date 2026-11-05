@@ -76,8 +76,8 @@ public final class RouletteView implements GameView {
             }
             spinBtn = s.add(new GlassButton(rx - 110, by, 110, 24, "Spin", "PRIMARY", RL::spin));
             if (!list.isEmpty()) {
-                if (RL.picker == null) RL.picker = new Widgets.BackerPicker(lx + 8, fy + 6, 168, RL);
-                RL.picker.place(lx + 8, fy + 6, 168);
+                if (RL.picker == null) RL.picker = new Widgets.BackerPicker(lx + 8, fy + 8, 168, RL);
+                RL.picker.place(lx + 8, fy + 8, 168);   // fy + 8 on every felt; the last numbers start at x0+198, past its end
                 s.add(RL.picker);
             }
             return;
@@ -100,7 +100,7 @@ public final class RouletteView implements GameView {
     private void syncPay() {
         var st = RL.payState(); var b = payBtn;
         if (st == null) { b.visible = false; return; }
-        b.label = st.label(); b.active = st.active(); b.w = Math.max(120, F.width(st.label()) + 20);
+        b.label = st.label(); b.active = st.active(); b.w = Math.min(Math.max(120, F.width(st.label()) + 20), Widgets.PAY_MAX_W);   // never over "New bets"
     }
 
     @Override
@@ -115,8 +115,8 @@ public final class RouletteView implements GameView {
             b.label = warn != null ? warn : again ? "Spin again" : tot > 0 ? "Spin " + Money.format(tot) : "Spin";
             b.kind = warn != null ? "DANGER" : again && RL.payState() != null ? "GHOST" : "PRIMARY";
             b.active = warn != null || (again ? RL.balance() > 0 : GambleData.mode && !RL.backers().isEmpty());
-            if (warn != null) { b.w = Math.max(110, F.width(warn) + 20); b.x = geom().rx() - b.w; }
-            else { b.w = 110; b.x = geom().rx() - 110; }
+            double room = again ? 110 : geom().rx() - (geom().lx() + 202 + 6);   // a long warning may grow the button up to Undo (ends lx+202); "New bets" leaves no room
+            b.w = warn != null ? Math.min(Math.max(110, F.width(warn) + 20), room) : 110; b.x = geom().rx() - b.w;
         }
         if (payBtn != null) syncPay();
     }
@@ -250,7 +250,7 @@ public final class RouletteView implements GameView {
         double lx = Ge.lx(), rx = Ge.rx(), fy = Ge.fy(), cx = Ge.cx();
         Spin r = RL.round; long t = P.now(); boolean done = RL.stage.equals("done");
         String name = F.trimToWidth(r.backer, 70), bal = Money.format(RL.balance());
-        int tw = P.seatTagW(name, Money.format(r.total)), cw = P.pillW("Chips", bal);
+        int tw = P.seatTagW(name, Money.format(r.total)), cw = refund != null ? refund.width() : P.pillW("Chips", bal);   // the pill's real width: the pair stays centred when it opens
         double sx = cx - ((tw + 4 + cw) >> 1);
         P.seatTag(g, sx + (tw >> 1), fy + 8, P.skinOf(r.backer), name, Money.format(r.total), P.WHITE);
         long pay = RL.payoutOf(r);

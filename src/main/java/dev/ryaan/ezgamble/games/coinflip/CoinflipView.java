@@ -82,8 +82,8 @@ public final class CoinflipView implements GameView {
             }
             flipBtn = s.add(new GlassButton(rx - 110, by, 110, 24, "Flip", "PRIMARY", CF::start));
             if (!list.isEmpty()) {
-                if (CF.picker == null) CF.picker = new Widgets.BackerPicker(lx + 8, fy + 2, 168, CF);
-                CF.picker.place(lx + 8, fy + 2, 168); s.add(CF.picker);
+                if (CF.picker == null) CF.picker = new Widgets.BackerPicker(lx + 8, fy + 8, 168, CF);
+                CF.picker.place(lx + 8, fy + 8, 168); s.add(CF.picker);   // fy + 8 on every felt; the streak row starts at x0+198, past its end
             }
             return;
         }
@@ -105,7 +105,7 @@ public final class CoinflipView implements GameView {
     private void syncPay() {
         var st = CF.payState(); GlassButton b = payBtn;
         if (st == null) { b.visible = false; return; }
-        b.label = st.label(); b.active = st.active(); b.w = Math.max(120, F.width(st.label()) + 20);
+        b.label = st.label(); b.active = st.active(); b.w = Math.min(Math.max(120, F.width(st.label()) + 20), Widgets.PAY_MAX_W);   // never over "Change bet"
     }
 
     @Override
@@ -118,6 +118,8 @@ public final class CoinflipView implements GameView {
             b.label = warn != null ? warn : again ? "Flip again" : CF.bet > 0 ? "Flip " + Money.format(CF.bet) : "Flip";
             b.kind = warn != null ? "DANGER" : again && CF.payState() != null ? "GHOST" : "PRIMARY";
             b.active = warn != null || (again ? CF.balance() > 0 : GambleData.mode && !CF.backers().isEmpty());
+            double room = again ? 110 : 174;   // a long warning may grow the button up to Clear (ends lx+172); "Change bet" leaves no room
+            b.w = warn != null ? Math.min(Math.max(110, F.width(warn) + 20), room) : 110; b.x = screen.geom().rx() - b.w;
         }
         if (payBtn != null) syncPay();
     }
@@ -210,7 +212,7 @@ public final class CoinflipView implements GameView {
         double fy = G.fy(), cx = G.cx();
         CoinTable.Rnd r = CF.round; long t = P.now(); boolean done = CF.stage.equals("done");
         String name = F.trimToWidth(r.backer, 70), bal = Money.format(CF.balance());
-        int tw = P.seatTagW(name, cfName(r.side)), cw = P.pillW("Chips", bal);
+        int tw = P.seatTagW(name, cfName(r.side)), cw = refund != null ? refund.width() : P.pillW("Chips", bal);   // the pill's real width: the pair stays centred when it opens
         double sx = cx - ((tw + 4 + cw) >> 1);
         P.seatTag(g, sx + (tw >> 1), fy + 2, P.skinOf(r.backer), name, cfName(r.side), P.WHITE);
         int chipsCol = done && t - r.landedAt < 1800 ? (CF.won(r) ? P.GREEN : P.RED) : P.WHITE;

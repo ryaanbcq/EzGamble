@@ -84,7 +84,8 @@ public final class House {
         return bankroll() < 0 || maxWin <= f;
     }
 
-    public static String reason(long maxWin) { return "House can't cover a " + Money.format(maxWin) + " win"; }
+    /** The refusal shown on a 110 px main button (the DANGER tint says it is a refusal): "Can't cover $123.45M" is 106 px at most. */
+    public static String reason(long maxWin) { return "Can't cover " + Money.format(maxWin); }
 
     /** The biggest bet whose top win (bet x mult) stays under a quarter of the free bankroll; -1 unknown, 0 none. */
     public static long safeMax(double mult) {

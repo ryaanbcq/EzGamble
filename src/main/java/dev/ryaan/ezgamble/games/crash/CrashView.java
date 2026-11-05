@@ -57,7 +57,7 @@ public final class CrashView implements GameView {
             // auto cash out: the odds tiles ARE the choices (Off + 6 targets), one click picks one
             int n0 = CRASH_TARGETS.length + 1, step0 = 46;
             double x00 = cx - ((n0 * step0 - 4) >> 1);
-            for (int i = 0; i < n0; i++) s.add(new AutoTile(x00 + i * step0, fy + 40, step0 - 4, 34, i == 0 ? 0 : CRASH_TARGETS[i - 1]));
+            for (int i = 0; i < n0; i++) s.add(new AutoTile(x00 + i * step0, fy + 42, step0 - 4, 34, i == 0 ? 0 : CRASH_TARGETS[i - 1]));   // under the caption, clear of the picker
             if (!list.isEmpty()) {
                 int n = Chips.CHIPS.length, step = 44;
                 double x0 = cx - ((n * step - (step - 30)) >> 1);
@@ -91,7 +91,7 @@ public final class CrashView implements GameView {
     private void syncPay() {
         var st = CX.payState(); GlassButton b = payBtn;
         if (st == null) { b.visible = false; return; }
-        b.label = st.label(); b.active = st.active(); b.w = Math.max(120, F.width(st.label()) + 20);
+        b.label = st.label(); b.active = st.active(); b.w = Math.min(Math.max(120, F.width(st.label()) + 20), Widgets.PAY_MAX_W);   // never over "Change bet"
     }
 
     @Override
@@ -104,6 +104,8 @@ public final class CrashView implements GameView {
             b.label = warn != null ? warn : again ? "Play again" : CX.bet > 0 ? "Launch " + Money.format(CX.bet) : "Launch";
             b.kind = warn != null ? "DANGER" : again && CX.payState() != null ? "GHOST" : "PRIMARY";
             b.active = warn != null || (again ? CX.balance() > 0 : GambleData.mode && !CX.backers().isEmpty());
+            double room = again ? 110 : 174;   // a long warning may grow the button up to Clear (ends lx+172); "Change bet" leaves no room
+            b.w = warn != null ? Math.min(Math.max(110, F.width(warn) + 20), room) : 110; b.x = screen.geom().rx() - b.w;
         }
         if (cashBtn != null) {
             var r = CX.round; boolean on = P.now() >= r.launch;
@@ -169,8 +171,8 @@ public final class CrashView implements GameView {
             return;
         }
         // auto cash out: each target with its real chance to be reached (the tiles are the choices)
-        String lab = "Auto cash out"; g.drawText(lab, cx - (F.width(lab) >> 1), fy + 29, P.MUTE, false);
-        double y = fy + 40;
+        String lab = "Auto cash out"; g.drawText(lab, cx - (F.width(lab) >> 1), fy + 32, P.MUTE, false);   // the picker capsule ends at fy+28
+        double y = fy + 42;
         for (Widget w0 : screen.children) {
             if (!(w0 instanceof AutoTile w)) continue;
             double x = w.opt; boolean sel = CX.auto == x, hov = w.over(mx, my);
@@ -194,7 +196,7 @@ public final class CrashView implements GameView {
         CrashTable.Rnd r = CX.round; long t = P.now();
         // who, his chips (the refund pill once it is over for him)
         String name = F.trimToWidth(r.backer, 70), bal = Money.format(CX.balance()), autoT = r.auto != 0 ? "auto " + crashText(r.auto) : "no auto";
-        int tw = P.seatTagW(name, autoT), cw = P.pillW("Chips", bal);
+        int tw = P.seatTagW(name, autoT), cw = refund != null ? refund.width() : P.pillW("Chips", bal);   // the pill's real width: the pair stays centred when it opens
         double sx = cx - ((tw + 4 + cw) >> 1);
         P.seatTag(g, sx + (tw >> 1), fy + 8, P.skinOf(r.backer), name, autoT, P.WHITE);
         long since = r.cashAt != 0 ? r.cashAt : r.crashedAt != 0 ? r.crashedAt : t;
