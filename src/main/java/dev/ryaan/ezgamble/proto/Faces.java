@@ -79,27 +79,44 @@ public final class Faces {
         for (String n : names) get(n);
     }
 
-    private static String key(String name) { return name.toLowerCase(Locale.ROOT).replaceFirst("^\\.", ""); }
+    /** Lower case, the Bedrock dot dropped. No regex: this runs once per tab entry per lookup. */
+    private static String key(String name) {
+        String s = name.toLowerCase(Locale.ROOT);
+        return s.startsWith(".") ? s.substring(1) : s;
+    }
+
+    /** The tab list's answer for a name (its real skin, or null when it has none or hands out the default), and when it was read. */
+    private record Tab(SkinTextures t, long at) {}
+    private static final Map<String, Tab> TAB = new HashMap<>();
 
     public static SkinTextures get(String name) {
         if (name == null || name.isEmpty()) return null;
         MinecraftClient mc = MinecraftClient.getInstance();
         String k = key(name);
-        // the tab list first, read every time and never cached: right after joining (or while the server's skin is
-        // downloading) an entry hands out the DEFAULT skin, and caching that drew the player as a Steve for the whole
-        // session (seen live on ZKR5). A default from the tab list sends us to Mojang instead.
-        if (mc.getNetworkHandler() != null) {
-            for (PlayerListEntry e : mc.getNetworkHandler().getPlayerList()) {
-                if (!key(e.getProfile().name()).equals(k)) continue;
-                SkinTextures t = e.getSkinTextures();
-                if (!t.equals(DefaultSkinHelper.getSkinTextures(e.getProfile().id()))) {
-                    Saved v = saved().get(k);   // kept for the next launch, when he may be offline
-                    if ((v == null || System.currentTimeMillis() - v.at() > STALE) && !e.getProfile().properties().get("textures").isEmpty()) save(k, e.getProfile());
-                    return t;
+        // the tab list first, re-read every 500 ms per name (walking 150 entries per head per frame cost the podium 5 ms):
+        // right after joining (or while the server's skin is downloading) an entry hands out the DEFAULT skin, and keeping
+        // that drew the player as a Steve for the whole session (seen live on ZKR5). So a default is remembered for 500 ms
+        // only, then the list is asked again; meanwhile it sends us to Mojang instead.
+        long now = System.currentTimeMillis();
+        Tab c = TAB.get(k);
+        if (c == null || now - c.at() >= 500) {
+            SkinTextures found = null;
+            if (mc.getNetworkHandler() != null) {
+                for (PlayerListEntry e : mc.getNetworkHandler().getPlayerList()) {
+                    if (!key(e.getProfile().name()).equals(k)) continue;
+                    SkinTextures t = e.getSkinTextures();
+                    if (!t.equals(DefaultSkinHelper.getSkinTextures(e.getProfile().id()))) {
+                        Saved v = saved().get(k);   // kept for the next launch, when he may be offline
+                        if ((v == null || now - v.at() > STALE) && !e.getProfile().properties().get("textures").isEmpty()) save(k, e.getProfile());
+                        found = t;
+                    }
+                    break;
                 }
-                break;
             }
+            c = new Tab(found, now);
+            TAB.put(k, c);
         }
+        if (c.t() != null) return c.t();
         SkinTextures ready = READY.get(k);
         if (ready != null) return ready;
         CompletableFuture<Optional<SkinTextures>> f = FETCHING.get(k);
