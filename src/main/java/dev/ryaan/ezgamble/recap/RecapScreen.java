@@ -14,6 +14,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.ScreenshotRecorder;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -343,8 +344,12 @@ public final class RecapScreen extends ProtoScreen {
             Recap.Roller ro = r.rollers.get(rank);
             double sx = cx - stepW * 1.5 - gap + col * (stepW + gap), scx = sx + stepW / 2;
             double grow = k(delay[rank], 700), sh = stepH[rank] * grow, top = base - sh;
-            if (sh < 1) continue;
             double pp = rank == 0 ? p : ps;
+            // the name sits 12 above the chibi, plus the crown (3 texels) and the hop (4 texels) of the winner, who always has both;
+            // measured from the step's rest height so the caption never moves while the steps grow
+            double lift = CHIBI_H * pp + (rank == 0 ? 7 * pp : 0) + 12;
+            topName = Math.min(topName, base - stepH[rank] - 1 - lift);
+            if (sh < 1) continue;
             double kk = rank == 0 ? 1 : 0.55, hy = top - 1 - CHIBI_H / 2.0 * pp;
             for (int rr : new int[]{15, 11, 7}) smooth(g, scx - rr * pp, hy - rr * pp * 1.2, 2 * rr * pp, 2.4 * rr * pp, rr * pp * 0.9, alpha(m, 0.06 * kk * grow));
             smooth(g, sx, top, stepW, sh, 6, v(alpha(m, 0.2), alpha(m, 0.03)), alpha(m, 0.5));
@@ -355,9 +360,6 @@ public final class RecapScreen extends ProtoScreen {
             if (sh > 32) { if (rank == 0) gradientText(g, v, scx - F.width(v) / 2.0, top + 24, true); else g.drawText(v, scx - F.width(v) / 2.0, top + 24, WHITE, true); }
             String bets = ro.bets() + (ro.bets() == 1 ? " bet" : " bets");
             if (sh > 44) g.drawText(bets, scx - F.width(bets) / 2.0, top + 36, MUTE, false);
-            // the name sits 12 above the chibi, plus the crown (3 texels) and the hop (4 texels) of the winner, who always has both
-            double lift = CHIBI_H * pp + (rank == 0 ? 7 * pp : 0) + 12;
-            topName = Math.min(topName, top - 1 - lift);
             // the chibi drops onto his step once it has grown
             double land = k(delay[rank] + 600, 380);
             if (land <= 0.01) continue;
@@ -481,14 +483,23 @@ public final class RecapScreen extends ProtoScreen {
         g.drawText("Profit", x + 12, y + 26, alpha(MUTE, a), false);
         long profit = r.stats.profit();
         String pr = Money.signed(profit);
-        // the three pills right-aligned (the card never loses its win rate), the profit at scale 2 or smaller to fit the room left
-        Object[][] pills = {{"Bets", String.valueOf(r.bets), alpha(WHITE, a)}, {"Wagered", Money.format(r.stats.volume()), alpha(WHITE, a)}, {"Win", pct(r), alpha(WHITE, a)}};
-        int pw = -4;
-        for (Object[] it : pills) pw += pillW((String) it[0], (String) it[1]) + 4;
+        // the three pills right-aligned; the profit stays at least 1.5x: when the room is short a pill goes (Bets, then Wagered), never the win rate
+        List<Object[]> pills = new ArrayList<>();
+        pills.add(new Object[]{"Bets", String.valueOf(r.bets), alpha(WHITE, a)});
+        pills.add(new Object[]{"Wagered", Money.format(r.stats.volume()), alpha(WHITE, a)});
+        pills.add(new Object[]{"Win", pct(r), alpha(WHITE, a)});
+        double need = 1.5 * F.width(pr) + 10;
+        int pw;
+        while (true) {
+            pw = -4;
+            for (Object[] it : pills) pw += pillW((String) it[0], (String) it[1]) + 4;
+            if (pills.size() <= 1 || x + 12 + need <= x + CW - 12 - pw) break;
+            pills.remove(0);
+        }
         double pillsX = x + CW - 12 - pw;
-        double sc = Math.min(2, (pillsX - 10 - (x + 12)) / Math.max(1, F.width(pr)));
+        double sc = Math.min(2, Math.max(1.5, (pillsX - 10 - (x + 12)) / Math.max(1, F.width(pr))));
         g.push(); g.translate(x + 12, y + 36 + (2 - sc) * 4); g.scale(sc, sc); g.drawText(pr, 0, 0, alpha(profit > 0 ? GREEN : profit < 0 ? RED : WHITE, a), true); g.pop();
-        pillsRight(g, x + CW - 12, y + 36, pills);
+        pillsRight(g, x + CW - 12, y + 36, pills.toArray(new Object[0][]));
         double chy = y + 60, chh = 62;
         card(g, x + 12, chy, CW - 24, chh, "chart");
         if (r.bets > 0) ProfitChart.draw(g.d, r.deltas, (int) (x + 12), (int) chy, CW - 24, (int) chh, -1, -1, false, 0, true, 1f);
