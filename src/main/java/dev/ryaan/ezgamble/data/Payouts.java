@@ -22,8 +22,10 @@ public final class Payouts {
     private Payouts() {}
 
     /** resendAt > 0: the server asked to wait (command cooldown), the same /pay goes again at that time, once. */
-    public record Pending(String name, long amount, long at, long resendAt, boolean resent) {
-        Pending(String name, long amount, long at) { this(name, amount, at, 0, false); }
+    /** cashback: a VIP cashback (vip.Vip), confirmed like any send but never counted against his chips. */
+    public record Pending(String name, long amount, long at, long resendAt, boolean resent, boolean cashback) {
+        Pending(String name, long amount, long at) { this(name, amount, at, 0, false, false); }
+        Pending(String name, long amount, long at, long resendAt, boolean resent) { this(name, amount, at, resendAt, resent, false); }
     }
     /** why: the server's refusal in a few words, null when it simply never answered. */
     public record Recent(boolean ok, long amount, long at, String why) {
@@ -79,9 +81,12 @@ public final class Payouts {
         return 0;
     }
 
-    public static void send(String name, long amount) {
+    public static void send(String name, long amount) { send(name, amount, false); }
+
+    /** cashback = a VIP cashback: the /pay is confirmed the same way, but it is his reward, not his chips coming back. */
+    public static void send(String name, long amount, boolean cashback) {
         if (amount <= 0 || pending.stream().anyMatch(p -> p.name.equals(name))) return;
-        pending.add(new Pending(name, amount, P.now()));   // before the command: typed() sees our own /pay go out and must find it already waiting
+        pending.add(new Pending(name, amount, P.now(), 0, false, cashback));   // before the command: typed() sees our own /pay go out and must find it already waiting
         var nh = MinecraftClient.getInstance().getNetworkHandler();
         if (nh != null) nh.sendChatCommand("pay " + name + " " + amount);   // whole dollars: no K/M rounding on the server
         ver++;
@@ -110,7 +115,7 @@ public final class Payouts {
         if (p == null) return true;   // a /pay typed by hand: not ours to count
         pending.remove(p); late.remove(p);
         Session s = session();
-        if (s != null) {
+        if (s != null && !p.cashback) {   // a cashback is recorded by vip.json, never as chips sent back
             // only what he had counts as chips sent back: anything above is a gift, never a debt that would eat his next payments
             long counted = Math.min(p.amount, balance(p.name));
             if (counted > 0) s.sent.merge(p.name, counted, Long::sum);
@@ -131,7 +136,7 @@ public final class Payouts {
         Matcher m = WAIT.matcher(line);
         if (m.find()) {   // nothing was paid: the same click goes again once the cooldown is over
             if (p.resent) return false;
-            pending.set(pending.indexOf(p), new Pending(p.name, p.amount, p.at, t + (long) (Double.parseDouble(m.group(1)) * 1000) + 150, true));
+            pending.set(pending.indexOf(p), new Pending(p.name, p.amount, p.at, t + (long) (Double.parseDouble(m.group(1)) * 1000) + 150, true, p.cashback));
             return false;
         }
         String low = line.toLowerCase(Locale.ROOT);
@@ -150,7 +155,7 @@ public final class Payouts {
             if (p.resendAt > 0 && t >= p.resendAt) {
                 var nh = MinecraftClient.getInstance().getNetworkHandler();
                 if (nh != null) nh.sendChatCommand("pay " + p.name + " " + p.amount);
-                pending.set(pending.indexOf(p), new Pending(p.name, p.amount, t, 0, true));
+                pending.set(pending.indexOf(p), new Pending(p.name, p.amount, t, 0, true, p.cashback));
             } else if (p.resendAt == 0 && t - p.at > TIMEOUT) {
                 pending.remove(p); late.add(p); recent.put(p.name, new Recent(false, 0, t)); ver++;
             }

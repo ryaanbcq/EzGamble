@@ -4,6 +4,8 @@ import dev.ryaan.ezgamble.Money;
 import dev.ryaan.ezgamble.data.PlayerStats;
 import dev.ryaan.ezgamble.games.GameView;
 import dev.ryaan.ezgamble.proto.*;
+import dev.ryaan.ezgamble.vip.Vip;
+import dev.ryaan.ezgamble.vip.VipBadge;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -24,6 +26,7 @@ public final class PlayerView implements GameView {
 
     @Override
     public void init() {
+        payBtn = null;
         s.add(new GlassButton(s.x0 + GambleScreen.PAD, s.y0 + 80, 18, 16, "‹", "GHOST", () -> { GambleScreen.sub = backTo; backTo = "chips"; s.rebuild(); }));
         // Remove from the player database: first click arms for 3 s, the second removes (he comes back fresh if he pays again)
         if (player != null) {
@@ -36,10 +39,23 @@ public final class PlayerView implements GameView {
                     GambleScreen.sub = backTo; backTo = "chips"; player = null; s.rebuild();
                 } else { removeArmed = P.now() + 3000; removeBtn.label = "Sure?"; }
             }));
+            // VIP cashback owed: one click sends it all (one /pay, confirmed by the server, never his chips)
+            long owed = Vip.owed(player);
+            if (owed > 0) {
+                String lbl = "Pay cashback " + Money.format(owed);
+                double bw = F.width(lbl) + 16, rx = s.x0 + GambleScreen.W - GambleScreen.PAD;
+                payBtn = s.add(new GlassButton(rx - bw, vipRowY() - 2, bw, 14, lbl, "PRIMARY", () -> { if (!Vip.pay(player)) P.play("fail", 1, 0.5); }));
+                payBtn.active = !Vip.paying(player) && dev.ryaan.ezgamble.data.Payouts.pending.stream().noneMatch(p -> dev.ryaan.ezgamble.data.Payouts.same(p.name(), player));
+            }
         }
     }
 
-    @Override public void tick() {}
+    private static GlassButton payBtn;
+    private static int vipVer = Vip.ver;
+    /** The XP row sits under the stats card (and under the Blackjack line when there is one). */
+    private double vipRowY() { return s.y0 + 80 + 22 + 38 + (dev.ryaan.ezgamble.data.PlayerStats.of(player).bj.hands() > 0 ? 19 : 0); }
+
+    @Override public void tick() { if (vipVer != Vip.ver) { vipVer = Vip.ver; s.rebuild(); } }
     @Override public void leave() {}
 
     @Override
@@ -51,6 +67,11 @@ public final class PlayerView implements GameView {
         double y = s.y0 + 80;
         g.drawHead(P.skinOf(st.name), lx + 24, y, 16);
         P.gradientText(g, st.name, lx + 45, y + 4, true);
+        Vip.Tier tier = Vip.tier(player);
+        if (tier != null && removeBtn != null) {   // his tier after the Remove button
+            double tx = removeBtn.x + removeBtn.w + 8;
+            VipBadge.draw(g, tier, tx, y + 4); g.drawText(tier.name(), tx + 10, y + 4, tier.color(), false);
+        }
         P.pillsRight(g, rx, y, new Object[][]{{"Sessions", String.valueOf(st.sessions)}, {"Since", st.first != null ? P.DATE(st.first).substring(0, 5) : "-"}});
         y += 22;
         P.card(g, lx, y, rx - lx, 34, "soft");
@@ -66,8 +87,19 @@ public final class PlayerView implements GameView {
             P.pillsRight(g, rx, y, new Object[][]{{"Hands", String.valueOf(st.bj.hands())}, {"Wagered", Money.format(st.bj.wagered())}, {"Net", Money.signed(net), net > 0 ? P.GREEN : net < 0 ? P.RED : P.WHITE}});
             y += 19;
         }
+        if (tier != null) {   // the loyalty row: tier, wagered, the bar to the next tier, the cashback
+            Vip.Tier nx = Vip.next(player);
+            String line = tier.name() + " · " + Money.format(Vip.xp(player)) + " wagered" + (nx == null ? ", top tier" : " · " + Money.format(nx.from() - Vip.xp(player)) + " to " + nx.name());
+            VipBadge.draw(g, tier, lx + 8, y + 2); g.drawText(line, lx + 18, y + 2, P.TEXT, false);
+            double bx = lx + 8, bw2 = (payBtn != null ? payBtn.x - 8 : rx - 8) - bx;
+            g.fill(bx, y + 12, bx + bw2, y + 15, 0x1AFFFFFF);
+            int fw = (int) Math.round(bw2 * Vip.progress(player));
+            if (fw > 0) g.fill(bx, y + 12, bx + fw, y + 15, nx == null ? tier.color() : P.lerp(tier.color(), nx.color(), 0.5));
+            if (payBtn == null && Vip.paidCashback(player) > 0) { String pd = "Cashback paid " + Money.format(Vip.paidCashback(player)); g.drawText(pd, rx - 8 - F.width(pd), y + 2, P.MUTE, false); }
+            y += 19;
+        }
         // what you made with him over time: each payment in goes up, each send back goes down
-        double ch = st.bj.hands() > 0 ? 44 : 54;
+        double ch = (st.bj.hands() > 0 ? 44 : 54) - (tier != null ? 14 : 0);
         P.card(g, lx, y, rx - lx, ch, "chart");
         if (!st.ev.isEmpty()) {
             long[] d = new long[st.ev.size()];

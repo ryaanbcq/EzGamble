@@ -1,0 +1,34 @@
+# VIP tiers: three players wager their way to different tiers, the ladder, a profile with cashback, the tier-up banner
+size 1280 800
+gui 2
+mode on
+paid Alpha 500M
+paid Bravo 2B
+paid Charlie 100M
+# Alpha: 30 x 1M = 30M wagered (Silver). Bravo: 20 x 30M = 600M (Platinum, 1% then 1.5% cashback owed). Charlie: 5 x 1M (Bronze)
+wager Alpha 1M 30
+wager Bravo 30M 20
+wager Charlie 1M 5
+vipstate Alpha
+vipstate Bravo
+vipstate Charlie
+wait 20
+open
+chipswho vip
+wait 20
+shot vip-ladder
+# the first row of the ladder (Bravo): his profile with the cashback button
+click @100 @116
+wait 20
+shot vip-player
+vippaid Bravo 1M
+wait 10
+shot vip-player-paid
+vipstate Bravo
+close
+# a tier-up while the menu is closed: Charlie crosses Silver, the banner shows under the top of the screen
+wager Charlie 25M 1
+wait 15
+shot vip-tierup
+wait 60
+quit

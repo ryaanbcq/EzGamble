@@ -124,10 +124,12 @@ public final class RollersView implements GameView {
             // the chibi on top, his name over his head
             chibi(g, r.name(), cx, top - 1, p, t, rank == 0, rank == 0);
             if (rank == 0) sparkles(g, cx, top - 1, p, t);
-            String nm = F.trimToWidth(r.name(), STEP_W - 8);
-            double ny = top - 1 - CHIBI_H * p - (rank == 0 ? 3 * p : 0) - 12;
-            if (hov || rank == 0) gradientText(g, nm, cx - F.width(nm) / 2.0, ny, true);
-            else g.drawText(nm, cx - F.width(nm) / 2.0, ny, TEXT, true);
+            int bw = dev.ryaan.ezgamble.vip.VipBadge.w(r.name());
+            String nm = F.trimToWidth(r.name(), STEP_W - 8 - bw);
+            double ny = top - 1 - CHIBI_H * p - (rank == 0 ? 3 * p : 0) - 12, nx = cx - (F.width(nm) + bw) / 2.0;
+            dev.ryaan.ezgamble.vip.VipBadge.draw(g, r.name(), nx, ny);   // the gem over his head, before the name
+            if (hov || rank == 0) gradientText(g, nm, nx + bw, ny, true);
+            else g.drawText(nm, nx + bw, ny, TEXT, true);
         }
         // everybody else, under the podium
         if (rows.size() <= 3) return;
@@ -142,7 +144,8 @@ public final class RollersView implements GameView {
             if (hov) smooth(g, lx, ry, rx - lx, ROW_H - 1, 5, 0x14FFFFFF);
             g.drawText("#" + (i + 1), lx + 6, ry + 4, DIM, false);
             g.drawHead(skinOf(r.name()), lx + 28, ry + 3, 9);
-            g.drawText(F.trimToWidth(r.name(), 140), lx + 41, ry + 4, TEXT, false);
+            int bw = dev.ryaan.ezgamble.vip.VipBadge.w(r.name()); dev.ryaan.ezgamble.vip.VipBadge.draw(g, r.name(), lx + 41, ry + 4);
+            g.drawText(F.trimToWidth(r.name(), 140 - bw), lx + 41 + bw, ry + 4, TEXT, false);
             String v = Money.format(r.wagered()), bets = r.bets() + (r.bets() == 1 ? " bet" : " bets");
             g.drawText(v, rx - 6 - F.width(v), ry + 4, WHITE, false);
             g.drawText(bets, rx - 6 - F.width(v) - 8 - F.width(bets), ry + 4, MUTE, false);

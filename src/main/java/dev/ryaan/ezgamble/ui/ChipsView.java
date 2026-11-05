@@ -8,6 +8,8 @@ import dev.ryaan.ezgamble.data.Session;
 import dev.ryaan.ezgamble.games.GameView;
 import dev.ryaan.ezgamble.games.Widgets;
 import dev.ryaan.ezgamble.proto.*;
+import dev.ryaan.ezgamble.vip.Vip;
+import dev.ryaan.ezgamble.vip.VipBadge;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,7 +20,7 @@ import java.util.List;
  * the prototype kept it on the screen).
  */
 public final class ChipsView implements GameView {
-    /** session | all */
+    /** session | all | vip (the loyalty ladder) */
     public static String who = "session";
     public static GlassField search, amountField;
     /** Name of the row whose amount field is open. */
@@ -38,7 +40,7 @@ public final class ChipsView implements GameView {
     public void init() {
         double lx = lx(s), rx = rx(s), y0 = s.y0;
         // the Session / All players control (prototype: rightGroup in init); it survives rebuilds so the pill keeps sliding
-        if (whoSeg == null) whoSeg = new GlassSegmented(0, 0, 18, new String[][]{{"session", "Session"}, {"all", "All players"}},
+        if (whoSeg == null) whoSeg = new GlassSegmented(0, 0, 18, new String[][]{{"session", "Session"}, {"all", "All players"}, {"vip", "VIP"}},
                 () -> who, v -> { who = v; GambleScreen cur = GambleScreen.current(); if (cur != null) { cur.chartAt = P.now(); cur.rebuild(); } });
         whoSeg.place(rx - whoSeg.w, y0 + 33);
         s.add(whoSeg);
@@ -53,10 +55,18 @@ public final class ChipsView implements GameView {
             search.onChange = () -> { GambleScreen cur = GambleScreen.current(); if (cur == null) return; cur.sc("chips-" + who).target = 0; cur.rebuild(); };
         }
         search.x = lx + 24; search.y = y0 + 80; search.w = Math.max(70, rx - pw - 6 - (lx + 24));
-        s.add(search);
+        if (!who.equals("vip")) s.add(search);   // the ladder shows the tier legend there instead
         List<Payouts.Row> rows = who.equals("all") ? null : chipRows();
         String id = "chips-" + who;
         Widget.Clip clip = clip();
+        if (who.equals("vip")) {   // the loyalty ladder: the whole row opens the profile
+            List<Vip.Standing> lad = Vip.ladder();
+            for (int i = 0; i < lad.size(); i++) {
+                final String name = lad.get(i).name;
+                row(Widgets.area(lx, clip.y() + i * 30, rx - lx, 27, () -> openPlayer(name)), id, clip);
+            }
+            return;
+        }
         if (rows == null) {   // all players: the whole row opens the profile
             List<PlayerStats> all = allRows();
             for (int i = 0; i < all.size(); i++) {
@@ -101,7 +111,7 @@ public final class ChipsView implements GameView {
     /** Where the Chips / All players list scrolls: under the title row, down to the footer pill (or the bottom). */
     private Widget.Clip clip() {
         double top = s.y0 + 102;
-        return new Widget.Clip(lx(s), top, GambleScreen.W - 2 * GambleScreen.PAD, s.y0 + GambleScreen.H - GambleScreen.PAD - (who.equals("all") ? 0 : 18) - top);
+        return new Widget.Clip(lx(s), top, GambleScreen.W - 2 * GambleScreen.PAD, s.y0 + GambleScreen.H - GambleScreen.PAD - (who.equals("session") ? 18 : 0) - top);
     }
 
     /** Also used by the duel requests list (prototype chipsClip). */
@@ -131,6 +141,10 @@ public final class ChipsView implements GameView {
 
     /** The pills of the Chips header (totals over everybody, not just the search results). */
     private Object[][] pills() {
+        if (who.equals("vip")) {
+            long owed = Vip.totalOwed();
+            return new Object[][]{{"Players", String.valueOf(Vip.ladder().size())}, {"Owed", Money.format(owed), owed > 0 ? P.GREEN : P.WHITE}};
+        }
         if (who.equals("all")) {
             List<PlayerStats> rows = PlayerStats.all();
             long made = 0;
@@ -159,13 +173,17 @@ public final class ChipsView implements GameView {
         s.rebuild();
     }
 
+    private static int vipVer = Vip.ver;
+
     @Override
     public void tick() {
         if (payVer != Payouts.ver) { payVer = Payouts.ver; s.rebuild(); }
+        if (vipVer != Vip.ver) { vipVer = Vip.ver; if (who.equals("vip")) s.rebuild(); }
     }
 
     @Override
     public void render(G g, double mx, double my) {
+        if (who.equals("vip")) { renderVip(g, mx, my); return; }
         if (who.equals("all")) { renderAll(g, mx, my); return; }
         int lx = lx(s), rx = rx(s); double y = s.y0 + 80;
         List<Payouts.Row> rows = chipRows();
@@ -189,7 +207,8 @@ public final class ChipsView implements GameView {
             P.card(g, lx, ry, rx - lx, 27, "row");
             if (inList && mx >= lx && mx < rx && my >= ry && my < ry + 27 && !r.name().equals(editing)) P.smooth(g, lx, ry, rx - lx, 27, 6, 0x0FFFFFFF, 0x30FFFFFF);   // hover: the row is a link
             g.drawHead(P.skinOf(r.name()), lx + 5, ry + 5, 16);
-            g.drawText(F.trimToWidth(r.name(), 90), lx + 26, ry + 4, P.WHITE, false);
+            int bw = VipBadge.w(r.name()); VipBadge.draw(g, r.name(), lx + 26, ry + 4);
+            g.drawText(F.trimToWidth(r.name(), 90 - bw), lx + 26 + bw, ry + 4, P.WHITE, false);
             String paid = "Paid " + Money.format(r.recv());
             g.drawText(paid, lx + 26, ry + 15, P.MUTE, false);
             if (r.won() != 0) g.drawText(Money.signed(r.won()), lx + 26 + F.width(paid) + 6, ry + 15, r.won() > 0 ? P.GREEN : P.RED, false);   // won or lost at the tables
@@ -231,12 +250,65 @@ public final class ChipsView implements GameView {
             P.card(g, lx, ry, rx - lx, 27, "row");
             if (inList && mx >= lx && mx < rx && my >= ry && my < ry + 27) P.smooth(g, lx, ry, rx - lx, 27, 6, 0x0FFFFFFF, 0x30FFFFFF);
             g.drawHead(P.skinOf(r.name), lx + 5, ry + 5, 16);
-            g.drawText(F.trimToWidth(r.name, 110), lx + 26, ry + 4, P.WHITE, false);
+            int bw = VipBadge.w(r.name); VipBadge.draw(g, r.name, lx + 26, ry + 4);
+            g.drawText(F.trimToWidth(r.name, 110 - bw), lx + 26 + bw, ry + 4, P.WHITE, false);
             g.drawText("Paid " + Money.format(r.paid), lx + 26, ry + 15, P.MUTE, false);
             String v = Money.signed(r.made), lbl = "You made";
             g.drawText(lbl, rx - 18 - F.width(lbl), ry + 4, P.MUTE, false);
             g.drawText(v, rx - 18 - F.width(v), ry + 15, r.made >= 0 ? P.GREEN : P.RED, false);
             g.drawText("›", rx - 10, ry + 10, P.DIM, false);
+        }
+        s.endList(g, id, ch);
+    }
+
+    /** The loyalty ladder: the five tiers as a legend, then everyone who ever wagered, Diamond first. */
+    private void renderVip(G g, double mx, double my) {
+        int lx = lx(s), rx = rx(s); double y = s.y0 + 80;
+        P.pillsRight(g, rx, y, pills());
+        // the legend where the search sits for the other lists: a gem and its threshold per tier
+        double legW = 0;
+        for (Object[] p : pills()) legW += P.pillW((String) p[0], (String) p[1]) + 4;
+        double lgx = lx + 24, lgw = rx - legW - 6 - lgx, step = Math.floor(lgw / Vip.TIERS.length);
+        for (int i = 0; i < Vip.TIERS.length; i++) {
+            Vip.Tier t = Vip.TIERS[i];
+            String th = t.from() == 0 ? t.name() : Money.format(t.from()).substring(1);
+            double tx = lgx + i * step;
+            VipBadge.draw(g, t, tx, y + 1);
+            g.drawText(F.trimToWidth(th, step - 12), tx + 10, y + 1, t.color(), false);
+            g.drawText(F.trimToWidth(t.rateText(), step - 4), tx, y + 10, P.DIM, false);
+        }
+        List<Vip.Standing> rows = Vip.ladder();
+        if (rows.isEmpty()) {
+            g.drawText("No wager yet.", lx, y + 34, P.TEXT, false);
+            g.drawText("Tiers unlock as players bet at your tables.", lx, y + 46, P.MUTE, false);
+        }
+        Widget.Clip clip = clip();
+        String id = "chips-vip";
+        double ch = rows.size() * 30 - 3;
+        double off = s.beginList(g, id, clip.x(), clip.y(), clip.w(), clip.h(), ch);
+        boolean inList = my >= clip.y() && my < clip.y() + clip.h();
+        for (int i = 0; i < rows.size(); i++) {
+            Vip.Standing r = rows.get(i);
+            Vip.Tier t = Vip.tierOf(r.xp), nx = Vip.next(r.name);
+            double ry = clip.y() + i * 30 - off;
+            if (ry + 27 < clip.y() || ry > clip.y() + clip.h()) continue;
+            P.card(g, lx, ry, rx - lx, 27, "row");
+            if (inList && mx >= lx && mx < rx && my >= ry && my < ry + 27) P.smooth(g, lx, ry, rx - lx, 27, 6, 0x0FFFFFFF, 0x30FFFFFF);
+            g.drawText("#" + (i + 1), lx + 5, ry + 10, P.DIM, false);
+            g.drawHead(P.skinOf(r.name), lx + 22, ry + 5, 16);
+            VipBadge.draw(g, t, lx + 43, ry + 4);
+            g.drawText(F.trimToWidth(r.name, 90), lx + 52, ry + 4, P.WHITE, false);
+            g.drawText(t.name(), lx + 43, ry + 15, t.color(), false);
+            long owed = Vip.owed(r.name);
+            if (owed > 0) g.drawText("Owed " + Money.format(owed), lx + 43 + F.width(t.name()) + 6, ry + 15, P.GREEN, false);
+            // right: the wager, then a bar to the next tier
+            String xp = Money.format(r.xp), to = nx == null ? "Top tier" : Money.format(nx.from() - r.xp) + " to " + nx.name();
+            g.drawText(xp, rx - 6 - F.width(xp), ry + 4, P.WHITE, false);
+            g.drawText(to, rx - 6 - 40 - 6 - F.width(to), ry + 15, P.MUTE, false);
+            double bx = rx - 6 - 40, by = ry + 17;
+            g.fill(bx, by, bx + 40, by + 3, 0x1AFFFFFF);
+            int fw = (int) Math.round(40 * Vip.progress(r.name));
+            if (fw > 0) g.fill(bx, by, bx + fw, by + 3, nx == null ? t.color() : P.lerp(t.color(), nx.color(), 0.5));
         }
         s.endList(g, id, ch);
     }

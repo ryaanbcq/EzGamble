@@ -143,6 +143,9 @@ public final class DebugRun {
                 var fr = dev.ryaan.ezgamble.data.Fair.round(gm); double u = fr.next();
                 fr.result(switch (gm) { case "Roulette" -> String.valueOf((int) Math.floor(u * 37)); case "Coinflip" -> u < 0.5 ? "heads" : "tails";
                     case "Crash" -> "x" + Math.min(1000, Math.max(1, Math.floor(0.96 / (1 - u) * 100) / 100)); default -> "3 bombs 4,11,20"; }); } }
+            case "vipstate" -> EzGambleMod.LOG.info("[ezgamble] debug: vip {} = {}", arg, dev.ryaan.ezgamble.vip.Vip.describe(arg));   // vipstate NAME
+            case "vippaid" -> dev.ryaan.ezgamble.vip.Vip.markPaid(n[0], dev.ryaan.ezgamble.Money.parse(n[1]));   // vippaid NAME AMT: as if a cashback /pay had been confirmed
+            case "chipswho" -> { dev.ryaan.ezgamble.ui.ChipsView.who = arg; GambleScreen.debug("sub", "chips"); }   // chipswho session|all|vip
             case "skindirect" -> dev.ryaan.ezgamble.proto.Faces.forceDirect = true;
             case "txn" -> GambleData.record(new dev.ryaan.ezgamble.data.Txn(System.currentTimeMillis(), n[0], dev.ryaan.ezgamble.Money.parse(n[1]), n[2].startsWith("-") ? -dev.ryaan.ezgamble.Money.parse(n[2].substring(1)) : dev.ryaan.ezgamble.Money.parse(n[2]), null, "debug"));   // txn GAME BET DELTA
             case "demo" -> EzGambleMod.demoBets(Integer.parseInt(arg));

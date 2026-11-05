@@ -373,7 +373,9 @@ public final class GambleScreen extends ProtoScreen {
             g.drawText(t.game(), lx + 26, y + 4, P.WHITE, false);
             if (t.player() != null) {
                 double px = lx + 26 + F.width(t.game()) + 8;
-                g.drawHead(t.player(), px, y + 4, 8); g.drawText(F.trimToWidth(t.player(), 70), px + 11, y + 4, P.MUTE, false);
+                g.drawHead(t.player(), px, y + 4, 8);
+                int bw = dev.ryaan.ezgamble.vip.VipBadge.w(t.player()); dev.ryaan.ezgamble.vip.VipBadge.draw(g, t.player(), px + 11, y + 4);
+                g.drawText(F.trimToWidth(t.player(), 70 - bw), px + 11 + bw, y + 4, P.MUTE, false);
             }
             String d = P.DATE_S(t.t());
             g.drawText(d, rx - 6 - F.width(d), y + 4, P.DIM, false);

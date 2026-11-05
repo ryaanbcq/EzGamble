@@ -114,7 +114,8 @@ public final class Widgets {
                     String v = Money.format(host.balance());
                     int vw = F.width(v);
                     g.drawHead(host.backer, x + 20, y + 6, 8);
-                    g.drawText(F.trimToWidth(host.backer, w - 44 - vw), x + 32, ty, P.WHITE, true);
+                    int bw = dev.ryaan.ezgamble.vip.VipBadge.w(host.backer); dev.ryaan.ezgamble.vip.VipBadge.draw(g, host.backer, x + 32, y + 6);   // his tier gem before the name
+                    g.drawText(F.trimToWidth(host.backer, w - 44 - vw - bw), x + 32 + bw, ty, P.WHITE, true);
                     P.gradientText(g, v, x + w - 9 - vw, ty, false);
                 } else g.drawText("Search player", x + 20, ty, P.DIM, false);
             }
@@ -131,8 +132,9 @@ public final class Widgets {
                 if (on) P.smooth(g, x + 3, ry, w - 6, 18, 5, P.h(0x33A18CD1, 0x26FBC2EB));
                 g.drawHead(r.name(), x + 9, ry + 5, 8);
                 String v = Money.format(r.bal());
-                int vw = F.width(v);
-                g.drawText(F.trimToWidth(r.name(), w - 40 - vw), x + 21, ry + 5, on || picked ? P.WHITE : P.TEXT, picked);
+                int vw = F.width(v), bw = dev.ryaan.ezgamble.vip.VipBadge.w(r.name());
+                dev.ryaan.ezgamble.vip.VipBadge.draw(g, r.name(), x + 21, ry + 5);
+                g.drawText(F.trimToWidth(r.name(), w - 40 - vw - bw), x + 21 + bw, ry + 5, on || picked ? P.WHITE : P.TEXT, picked);
                 g.drawText(v, x + w - 9 - vw, ry + 5, picked ? P.WHITE : P.MUTE, false);
             }
         }

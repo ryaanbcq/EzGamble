@@ -38,6 +38,7 @@ public final class GambleHud implements HudElement {
         try {
             drawToast(g, toastK());
             for (String id : new String[]{"session", "pay"}) if (HUD.get(id).visible) { Rect r = wrect(id); drawWidget(g, id, r.x(), r.y()); }
+            drawTierUp(g);   // "X reached Gold", 3 s under the top of the screen
             drawRain(g);   // last: its finale covers the whole screen
         } catch (Throwable e) {
             if (!logged) { logged = true; EzGambleMod.LOG.error("[ezgamble] HUD render failed (not logged again)", e); }
@@ -191,9 +192,10 @@ public final class GambleHud implements HudElement {
                     double sc = pel < 250 ? 1 + 0.4 * (1 - easeOut(pel / 250.0)) : 1;   // head pops in
                     g.push(); g.translate(16, 17); g.scale(sc, sc); g.drawHead(skinOf(pc.name()), -8, -8, 16); g.pop();
                     // line 1: the name, then " paid you" only if it fits; a long name is cut, never runs under the edge
-                    int avail = W - 37;
-                    if (F.width(pc.name() + " paid you") <= avail) { g.drawText(pc.name(), 30, 8, WHITE, true); g.drawText(" paid you", 30 + F.width(pc.name()), 8, MUTE, true); }
-                    else g.drawText(F.trimToWidth(pc.name(), avail), 30, 8, WHITE, true);
+                    int bw = dev.ryaan.ezgamble.vip.VipBadge.w(pc.name()), avail = W - 37 - bw;   // his tier gem first, when it leaves room for the name
+                    dev.ryaan.ezgamble.vip.VipBadge.draw(g, pc.name(), 30, 8);
+                    if (F.width(pc.name() + " paid you") <= avail) { g.drawText(pc.name(), 30 + bw, 8, WHITE, true); g.drawText(" paid you", 30 + bw + F.width(pc.name()), 8, MUTE, true); }
+                    else g.drawText(F.trimToWidth(pc.name(), avail), 30 + bw, 8, WHITE, true);
                     if (!Payments.queue.isEmpty()) right(g, W, "+" + Payments.queue.size() + " more", 19, DIM);   // waiting payments: on the amount line, out of the name's way
                     long v = Math.round(pc.amount() * easeOut(Math.min(1, pel / 650.0)));   // amount counts up
                     String amt = "+" + money(v, c, false);
@@ -473,6 +475,23 @@ public final class GambleHud implements HudElement {
                 g.pop();
             }
         }
+    }
+
+    /** A player crossed a tier: a glass pill slides down from the top of the screen, his gem and the news, 3 s. */
+    private static void drawTierUp(G g) {
+        var up = dev.ryaan.ezgamble.vip.Vip.lastTierUp();
+        if (up == null) return;
+        long e = now() - up.at();
+        double k = e < 250 ? easeOut(e / 250.0) : e < 2750 ? 1 : e < 3000 ? 1 - easeIn((e - 2750) / 250.0) : 0;
+        if (k <= 0) return;
+        String a = up.name() + " reached ", b = up.tier().name();
+        int w = 9 + 6 + F.width(a) + F.width(b) + 14, h = 17;
+        double x = Math.round((sw() - w) / 2.0), y = Math.round(8 - (1 - k) * (h + 10));
+        glass(g, x, y, w, h, 8, 0.75, 0.6);
+        ring(g, x, y, w, h, 8, alpha(up.tier().color(), 0.55 * k), 1);
+        dev.ryaan.ezgamble.vip.VipBadge.draw(g, up.tier(), x + 7, y + 5);
+        g.drawText(a, x + 7 + 9 + 4, y + 5, WHITE, true);
+        g.drawText(b, x + 7 + 9 + 4 + F.width(a), y + 5, up.tier().color(), true);
     }
 
     /** 0..1: how far the toast is out of the card. In 250 ms, stays 3.5 s, back in 250 ms. */

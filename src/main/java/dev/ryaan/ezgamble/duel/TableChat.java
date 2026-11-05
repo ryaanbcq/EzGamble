@@ -224,8 +224,9 @@ public final class TableChat {
             g.push(); g.translate((1 - inK) * 16, 0);
             if (mine) smooth(g, x + 4, ry, PW - 8, rowH - 3, 6, 0x14A18CD1, 0x33A18CD1);
             g.drawHead(skinOf(m.name), x + 9, ry + 4, 8);
-            String nm = F.trimToWidth(m.name, PW - 30);
-            if (mine) gradientText(g, nm, x + 21, ry + 4, false); else g.drawText(nm, x + 21, ry + 4, TEXT, false);
+            int bw = dev.ryaan.ezgamble.vip.VipBadge.w(m.name); dev.ryaan.ezgamble.vip.VipBadge.draw(g, m.name, x + 21, ry + 4);   // his tier gem
+            String nm = F.trimToWidth(m.name, PW - 30 - bw);
+            if (mine) gradientText(g, nm, x + 21 + bw, ry + 4, false); else g.drawText(nm, x + 21 + bw, ry + 4, TEXT, false);
             Act a = m.act; double aw = a != null ? F.width(a.label) + 10 : 0;
             g.drawText(F.trimToWidth(m.text, PW - 22 - (a != null ? aw + 4 : 0)), x + 9, ry + 16, WHITE, false);
             if (a != null) {   // what the mod did with it

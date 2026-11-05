@@ -126,6 +126,7 @@ public final class GambleData {
         Session s = current();
         if (!mode || s == null) return false;
         s.txns.add(tx);
+        dev.ryaan.ezgamble.vip.Vip.onTxn(tx);   // XP and tier-ups
         dirtyAt = System.currentTimeMillis();
         lastTxAt = System.currentTimeMillis();
         if (tx.delta() > 0) dev.ryaan.ezgamble.proto.Snd.play("pay", 1, 0.35);
@@ -146,7 +147,7 @@ public final class GambleData {
 
     public static void setName(String n) { name = n; saveConfig(); }
     /** Removes a player from the player database: everything up to now is ignored; a later payment brings him back fresh. */
-    public static void forget(String player) { forgotten.put(Payouts.norm(player), System.currentTimeMillis()); saveConfig(); }
+    public static void forget(String player) { forgotten.put(Payouts.norm(player), System.currentTimeMillis()); saveConfig(); dev.ryaan.ezgamble.vip.Vip.invalidate(); }
 
     /** Events at or before this time no longer count for the player (0 = none removed). */
     public static long cutoff(String player) { return forgotten.getOrDefault(Payouts.norm(player), 0L); }
