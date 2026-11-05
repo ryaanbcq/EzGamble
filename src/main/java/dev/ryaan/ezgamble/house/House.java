@@ -112,7 +112,7 @@ public final class House {
             boolean alarm = candidate == State.UNDER && since != 0;   // not at startup: the first reading is not news
             state = candidate; since = t;
             if (alarm) {
-                P.play("mc_anvil", 0.7, 0.6);
+                P.play("mc_thunder", 0.6, 0.5);   // a low rumble (an already registered vanilla event: nothing unverified against MC)
                 P.play("mc_bell", 0.6, 0.5);
                 MinecraftClient mc = MinecraftClient.getInstance();
                 if (mc.inGameHud != null) mc.inGameHud.setOverlayMessage(
