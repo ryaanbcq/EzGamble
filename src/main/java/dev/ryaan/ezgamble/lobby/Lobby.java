@@ -60,7 +60,7 @@ public final class Lobby {
 
     public static final List<Seat> queue = new ArrayList<>();
     private static int ver;
-    /** The last player who joined and when (the HUD slide). */
+    /** The last player who joined and when (data only: the HUD shows the join as a Banners toast). */
     public static Seat lastJoin; public static long joinAt;
     /** Auto-seat: when the next player sits down and on which felt (0 = no countdown). */
     private static long autoAt; private static String autoSub;
@@ -115,12 +115,14 @@ public final class Lobby {
     public static Seat next(String game) { for (Seat s : queue) if (s.game.equals(game) && !isShort(s)) return s; return null; }
 
     public static long chips(String name) {
-        for (Payouts.Row r : Payouts.rows()) if (Payouts.same(r.name(), name)) return r.bal();
+        String nn = Payouts.norm(name);   // normalised once, not per row
+        for (Payouts.Row r : Payouts.rows()) if (Payouts.norm(r.name()).equals(nn)) return r.bal();
         return 0;
     }
 
     private static Payouts.Row rowOf(String name) {
-        for (Payouts.Row r : Payouts.rows()) if (Payouts.same(r.name(), name)) return r;
+        String nn = Payouts.norm(name);
+        for (Payouts.Row r : Payouts.rows()) if (Payouts.norm(r.name()).equals(nn)) return r;
         return null;
     }
 
@@ -156,6 +158,8 @@ public final class Lobby {
         Seat s = new Seat(i >= 0 ? queue.get(i).name : name, game, amount, P.now());   // his new word replaces the old one, same place; the 10 min restart from it
         if (i >= 0) queue.set(i, s); else queue.add(s);
         lastJoin = s; joinAt = P.now();
+        final String nm = s.name, gm = s.game;   // the HUD toast: his gem, his name, the game's icon and name, in the one top-centre slot
+        dev.ryaan.ezgamble.hud.Banners.show(new dev.ryaan.ezgamble.hud.Banners.Toast(dev.ryaan.ezgamble.vip.VipBadge.w(nm) > 0 ? (g, x, y) -> dev.ryaan.ezgamble.vip.VipBadge.draw(g, nm, x, y - 1) : null, java.util.List.of(dev.ryaan.ezgamble.hud.Banners.seg(nm, P.WHITE), dev.ryaan.ezgamble.hud.Banners.seg(" joined the line for ", P.MUTE), dev.ryaan.ezgamble.hud.Banners.icon((g, x, y) -> dev.ryaan.ezgamble.ui.Icons.drawGameIcon(g, gm, x, y - 2, 11), 14), dev.ryaan.ezgamble.hud.Banners.seg(gm, P.PINK)), P.LAV, 2500, null));
         changed();
         P.play("ui_tick_open", 1.2, 0.6);
         return true;
@@ -215,7 +219,7 @@ public final class Lobby {
 
     private static String fail(Seat s, String why) { errSeat = s; errText = why; errAt = P.now(); P.play("fail", 1.3, 0.4); return why; }
     /** The table refused the round (house guard, max bet...): it already shows its red warning and played the sound; the row and the pill say it too, he keeps his place. */
-    private static String refused(Seat s, Host h) { errSeat = s; errText = h.warn != null ? h.warn.text() : "Refused"; errAt = P.now(); return errText; }
+    private static String refused(Seat s, Host h) { errSeat = s; errText = h.warn != null && dev.ryaan.ezgamble.proto.F.width(h.warn.text()) <= 142 ? h.warn.text() : "Seat refused"; errAt = P.now(); return errText; }   // the pill holds 142 px; the table's own button shows the full reason
 
     private static void seed(Host h, Payouts.Row row, long amount) {
         h.backer = row.name(); h.clearBet();
@@ -245,41 +249,41 @@ public final class Lobby {
         String sub = SUB_OF.get(d.game);
         switch (d.game) {
             case "Coinflip" -> {   // his last side (heads the first time), flipped at once
-                if (CF.stage.equals("spin")) return fail(d, "A coin is in the air, wait for it");
+                if (CF.stage.equals("spin")) return fail(d, "Coin in the air, wait");
                 CF.settle(); CF.stage = "bet"; seed(CF, row, amount);
                 open(sub);
                 if (!CF.start()) return refused(d, CF);
                 take(d);
             }
             case "Crash" -> {   // his last auto cash out (x2 the first time), launched at once
-                if (CX.stage.equals("play")) return fail(d, "Finish the flight in play first");
+                if (CX.stage.equals("play")) return fail(d, "Flight in play, wait");
                 CX.settle(); CX.stage = "bet"; seed(CX, row, amount);
                 open(sub);
                 if (!CX.start()) return refused(d, CX);
                 take(d);
             }
             case "Mines" -> {   // the mines count he last played (3 the first time), board drawn at once
-                if (MN.stage.equals("play")) return fail(d, "Finish the board in play first");
+                if (MN.stage.equals("play")) return fail(d, "Board in play, wait");
                 MN.settle(); MN.stage = "bet"; seed(MN, row, amount);
                 open(sub);
                 if (!MN.start()) return refused(d, MN);
                 take(d);
             }
             case "Crates" -> {   // the crate he last opened (Basic the first time), opened at once
-                if (CR.stage.equals("spin")) return fail(d, "A crate is opening, wait for it");
+                if (CR.stage.equals("spin")) return fail(d, "Crate opening, wait");
                 CR.settle(); CR.stage = "bet"; seed(CR, row, amount);
                 open(sub);
                 if (!CR.open()) return refused(d, CR);
                 take(d);
             }
             case "Roulette" -> {   // a wheel has no single bet: he sits with his amount composed, the spin comes with his cell (a whisper "red", or the host's click)
-                if (RL.stage.equals("spin")) return fail(d, "The wheel is spinning, wait for it");
+                if (RL.stage.equals("spin")) return fail(d, "Wheel spinning, wait");
                 RL.settle(); RL.stage = "bet"; RL.bets.clear(); RL.order.clear(); seed(RL, row, amount); Host.lastBacker = row.name();
                 open(sub);
                 take(d);
             }
             default -> {
-                if (BJ.game != null && !BJ.game.phase.equals("done")) return fail(d, "Finish the hand in play first");
+                if (BJ.game != null && !BJ.game.phase.equals("done")) return fail(d, "Hand in play, wait");
                 BJ.apply(); BJ.stage = "bet"; seed(BJ, row, amount);
                 open(sub);
                 if (!BJ.deal()) return refused(d, BJ);   // straight into the hand

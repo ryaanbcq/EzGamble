@@ -25,8 +25,8 @@ import static dev.ryaan.ezgamble.proto.P.*;
 
 /**
  * Games > Books: the accounts. Tables (one row per game with the realised return against the table's theoretical
- * RTP), Hours (24 bars of activity), Days (a 7 x 5 calendar heatmap of the last five weeks) and Sessions (every
- * session, a click replays its recap). The footer exports CSV files and copies the totals. Drawn under its widgets
+ * RTP), Hours (24 bars of activity), Days (a 7 x 5 calendar heatmap of the last five weeks) and Log (every session,
+ * a click replays its recap). The footer exports CSV files and copies the totals. Drawn under its widgets
  * like the other non-game sub-views; the selected tab and the last export are kept in config/ezgamble/books.json.
  */
 public final class BooksView implements GameView {
@@ -55,8 +55,8 @@ public final class BooksView implements GameView {
     private double rx() { return s.x0 + GambleScreen.W - GambleScreen.PAD; }
     /** The content: under the title row, over the footer buttons. */
     private double top() { return s.y0 + 102; }
-    private double bottom() { return s.y0 + GambleScreen.H - GambleScreen.PAD - 22; }
-    private double footY() { return s.y0 + GambleScreen.H - GambleScreen.PAD - 18; }
+    private double bottom() { return s.y0 + GambleScreen.H - GambleScreen.PAD - 28; }
+    private double footY() { return s.y0 + GambleScreen.H - GambleScreen.PAD - 24; }
     private Widget.Clip clip() { return new Widget.Clip(lx(), top(), rx() - lx(), bottom() - top()); }
 
     private static State st() {
@@ -96,8 +96,8 @@ public final class BooksView implements GameView {
         s.add(tabSeg);
         s.add(new GlassButton(lx, y, 18, 16, "‹", "GHOST", s::back));
         double ew = F.width("Export CSV") + 16, cw = F.width("Copy totals") + 16;
-        exportBtn = s.add(new GlassButton(lx, footY(), ew, 16, "Export CSV", "GHOST", this::export));
-        copyBtn = s.add(new GlassButton(lx + ew + 6, footY(), cw, 16, "Copy totals", "GHOST", this::copy));
+        exportBtn = s.add(new GlassButton(lx, footY(), ew, 24, "Export CSV", "GHOST", this::export));
+        copyBtn = s.add(new GlassButton(lx + ew + 6, footY(), cw, 24, "Copy totals", "GHOST", this::copy));
         Books b = Books.get();
         builtSessions = rows(b);
         if (tab.equals("sessions") && b.bets > 0) {   // every row opens that session's recap; none while render shows "The books are empty"
@@ -111,7 +111,6 @@ public final class BooksView implements GameView {
     }
 
     private void open(Session ses) {
-        P.play("click");
         MinecraftClient.getInstance().setScreen(new RecapScreen(ses));   // the full-screen story of THAT session; K brings the menu back on Books
     }
 
@@ -142,7 +141,7 @@ public final class BooksView implements GameView {
         g.drawText("Books", lx + 24, y + 4, WHITE, true);
         pillsRight(g, rx, y, pills(b));
         if (b.bets == 0) {
-            String a = "The books are empty", c = "Every bet of every session is tallied here.";
+            String a = "The books are empty", c = "Every bet of every session is tallied here";
             g.drawText(a, lx + (rx - lx - F.width(a)) / 2, y + 60, TEXT, false);
             g.drawText(c, lx + (rx - lx - F.width(c)) / 2, y + 72, MUTE, false);
         } else switch (tab) {
@@ -160,9 +159,9 @@ public final class BooksView implements GameView {
             case "hours" -> b.bestHour < 0 ? new Object[][]{{"Bets", String.valueOf(b.bets)}}
                     : new Object[][]{{"Busiest", P.pad2(b.bestHour) + "h"}, {"Bets", String.valueOf(b.hourBets[b.bestHour]), WHITE}};
             case "days" -> new Object[][]{{"Days played", String.valueOf(b.daysPlayed)}, {"7 days", Money.signed(b.week), b.week >= 0 ? GREEN : RED}};
-            case "sessions" -> new Object[][]{{"Sessions", String.valueOf(b.sessions.size())},
+            case "sessions" -> new Object[][]{{"Log", String.valueOf(b.sessions.size())},
                     {"Best", b.best == null ? "-" : Money.signed(b.best.profit()), b.best == null ? DIM : GREEN}, {"Worst", b.worst == null ? "-" : Money.signed(b.worst.profit()), b.worst == null ? DIM : RED}};
-            default -> new Object[][]{{"Bets", String.valueOf(b.bets)}, {"Volume", Money.format(b.volume)}, {"Profit", Money.signed(b.profit), b.profit >= 0 ? GREEN : RED}};
+            default -> new Object[][]{{"Bets", String.valueOf(b.bets)}, {"Wagered", Money.format(b.volume)}, {"Profit", Money.signed(b.profit), b.profit >= 0 ? GREEN : RED}};
         };
     }
 
@@ -180,7 +179,7 @@ public final class BooksView implements GameView {
         // column heads, then one row per table: icon and name, bets, volume, house profit, realised / theoretical RTP
         double cBets = lx + 150, cVol = lx + 212, cProf = lx + 268, cRtp = rx - 6, hy = clip.y();   // "104.2% / 99.5%" is 72 px, it starts at lx + 274
         g.drawText("Table", lx + 6, hy, DIM, false);
-        String[] heads = {"Bets", "Volume", "House", "RTP / theory"}; double[] right = {cBets, cVol, cProf, cRtp};
+        String[] heads = {"Bets", "Wagered", "Profit", "RTP / theory"}; double[] right = {cBets, cVol, cProf, cRtp};
         for (int i = 0; i < heads.length; i++) g.drawText(heads[i], right[i] - F.width(heads[i]), hy, DIM, false);
         double top = hy + 11, lh = clip.y() + clip.h() - top, ch = b.games.size() * TABLE_ROW - 2;
         double off = s.beginList(g, "books-tables", lx, top, rx - lx, lh, ch);
@@ -225,7 +224,7 @@ public final class BooksView implements GameView {
             else {
                 double hh = Math.max(3, Math.round(maxH * b.hourBets[h] / (double) b.hourMax));
                 int c = b.hourProfit[h] >= 0 ? GREEN : RED;
-                smooth(g, x, base - hh, bw, hh, 3, v(alpha(c, over ? 1 : 0.85), alpha(c, over ? 0.6 : 0.35)), h == b.bestHour ? 0xB0FBC2EB : over ? 0x60FFFFFF : 0);
+                smooth(g, x, base - hh, bw, hh, 3, v(alpha(c, over ? 1 : 0.85), alpha(c, over ? 0.6 : 0.35)), h == b.bestHour ? alpha(PINK, 0.69) : over ? 0x60FFFFFF : 0);
             }
             if (h % 6 == 0) { String l = h + "h"; g.drawText(l, x + (bw - F.width(l)) / 2, base + 3, DIM, false); }
         }
@@ -239,7 +238,7 @@ public final class BooksView implements GameView {
     private void renderDays(G g, double mx, double my, Books b) {
         double lx = lx(), rx = rx();
         Widget.Clip clip = clip();
-        double cw = 44, chh = 18, gap = 3, gx = lx + 16, gy = clip.y() + 11;
+        double cw = 50, chh = 18, gap = 3, gx = lx + 16, gy = clip.y() + 11;   // 5 x 50 + 4 x 3 = 262 px: every amount up to "$123.45M" fits a cell
         String[] wd = {"M", "T", "W", "T", "F", "S", "S"};
         for (int r = 0; r < 7; r++) g.drawText(wd[r], lx + 4, gy + r * (chh + gap) + 5, DIM, false);
         int hov = -1;
@@ -257,12 +256,12 @@ public final class BooksView implements GameView {
                 if (future) fill = 0x05FFFFFF;
                 else if (b.dayBets[i] == 0) fill = 0x0CFFFFFF;
                 else { int c = b.dayProfit[i] >= 0 ? GREEN : RED; fill = alpha(c, 0.18 + 0.62 * (b.dayMax == 0 ? 1 : Math.abs(b.dayProfit[i]) / (double) b.dayMax)); }   // the tint is the sign, the intensity the amount
-                smooth(g, x, y, cw, chh, 4, fill, i == todayIdx ? 0x90FBC2EB : over ? 0x60FFFFFF : 0);
-                if (!future && b.dayBets[i] > 0) { String t = Money.signed(b.dayProfit[i]); if (F.width(t) <= cw - 6) g.drawText(t, x + (cw - F.width(t)) / 2, y + 5, alpha(WHITE, 0.9), false); }
+                smooth(g, x, y, cw, chh, 4, fill, i == todayIdx ? alpha(PINK, 0.56) : over ? 0x60FFFFFF : 0);
+                if (!future && b.dayBets[i] > 0) { String t = Money.format(Math.abs(b.dayProfit[i])); if (F.width(t) <= cw - 6) g.drawText(t, x + (cw - F.width(t)) / 2, y + 5, alpha(WHITE, 0.9), false); }
             }
         }
         // the summary column: the five weeks, the best day, the rolling week
-        double sx = gx + Books.WEEKS * (cw + gap) + 8, sw = rx - sx;
+        double sx = gx + Books.WEEKS * cw + (Books.WEEKS - 1) * gap + 8, sw = rx - sx;   // lx + 286: 66 px, "Days played" (61) and every amount fit
         long five = 0; for (long v : b.dayProfit) five += v;
         tile(g, sx, clip.y() + 2, "5 weeks", F.trimToWidth(Money.signed(five), sw), five >= 0 ? GREEN : RED);
         tile(g, sx, clip.y() + 30, "Best day", b.bestDay < 0 ? "-" : F.trimToWidth(Books.dayText(b.firstDay.plusDays(b.bestDay)), sw), b.bestDay < 0 ? DIM : WHITE);
@@ -307,7 +306,7 @@ public final class BooksView implements GameView {
 
     /** Export CSV, Copy totals, and what just happened (3 s), else when the books were last exported. */
     private void renderFooter(G g) {
-        double y = footY() + 4, x = copyBtn.x + copyBtn.w + 8;
+        double y = footY() + 8, x = copyBtn.x + copyBtn.w + 8;
         copyBtn.label = P.now() - copiedAt < 3000 ? "✔ Copied" : "Copy totals";
         if (P.now() - exportedAt < 3000) g.drawText("Exported " + exportedRows + (exportedRows == 1 ? " row" : " rows"), x, y, GREEN, false);
         else if (P.now() - failedAt < 3000) g.drawText("Export failed, see the log", x, y, RED, false);
@@ -317,7 +316,7 @@ public final class BooksView implements GameView {
     /** A glass label centred over (cx, bottom), kept inside the panel. */
     private void tip(G g, double cx, double bottom, String t, int color) {
         double tw = F.width(t) + 12, tx = Math.max(lx(), Math.min(cx - tw / 2, rx() - tw)), ty = bottom - 15;
-        smooth(g, tx, ty, tw, 15, 7.5, v(0xF0291C42, 0xF01C1230), 0x40FFFFFF);
+        smooth(g, tx, ty, tw, 15, 7.5, v(alpha(lerp(PANEL_TOP, WHITE, 0.05), 0.94), alpha(PANEL_BOT, 0.94)), 0x40FFFFFF);
         g.drawText(t, tx + 6, ty + 4, color, false);
     }
 }
