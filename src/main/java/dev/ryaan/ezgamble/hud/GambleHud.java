@@ -39,7 +39,9 @@ public final class GambleHud implements HudElement {
             drawToast(g, toastK());
             for (String id : new String[]{"session", "pay"}) if (HUD.get(id).visible) { Rect r = wrect(id); drawWidget(g, id, r.x(), r.y()); }
             drawTierUp(g);   // "X reached Gold", 3 s under the top of the screen
+            dev.ryaan.ezgamble.jackpot.JackpotHud.draw(g);   // the jackpot counter, top centre under the banner spot (when enabled)
             drawRain(g);   // last: its finale covers the whole screen
+            dev.ryaan.ezgamble.jackpot.JackpotFinale.drawHud(g);   // a jackpot hit: its finale over everything for 7 s (the menu draws its own copy when open)
         } catch (Throwable e) {
             if (!logged) { logged = true; EzGambleMod.LOG.error("[ezgamble] HUD render failed (not logged again)", e); }
         } finally {

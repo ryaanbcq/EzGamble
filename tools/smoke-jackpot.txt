@@ -1,0 +1,31 @@
+# Progressive jackpot: the HUD counter, the Games > Jackpot view, a forced hit with its finale, the hit in the history
+size 1280 800
+gui 2
+mode on
+paid Alpha 500M
+paid Bravo 200M
+# a pot worth looking at, then bets that feed it (1% of each) and draw at it (1 in 20 000 per $1M, next to never here)
+jackpotset 50M
+wager Alpha 5M 10
+wager Bravo 2M 10
+jackpot
+close
+wait 30
+shot jackpot-hud
+open
+sub jackpot
+wait 20
+shot jackpot-view
+close
+# the forced hit: the pot into Alpha's chips, the finale over the whole screen
+jackpothit Alpha
+wait 30
+shot jackpot-finale
+wait 120
+chips Alpha
+jackpot
+open
+sub jackpot
+wait 20
+shot jackpot-history
+quit

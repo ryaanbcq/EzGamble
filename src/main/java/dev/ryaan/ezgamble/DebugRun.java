@@ -155,6 +155,9 @@ public final class DebugRun {
             case "recap" -> EzGambleMod.LOG.info("[ezgamble] debug: recap open {}", dev.ryaan.ezgamble.recap.RecapScreen.openLast(c));   // the last session's recap
             case "recapslide" -> { var rs = dev.ryaan.ezgamble.recap.RecapScreen.current(); if (rs != null) rs.go(Integer.parseInt(arg) - 1); }   // recapslide N (1-7)
             case "recapsave" -> { var rs = dev.ryaan.ezgamble.recap.RecapScreen.current(); if (rs != null) rs.save(); }   // the Save card button
+            case "jackpot" -> EzGambleMod.LOG.info("[ezgamble] debug: jackpot {}", dev.ryaan.ezgamble.jackpot.Jackpot.describe());   // the pot and the odds
+            case "jackpotset" -> dev.ryaan.ezgamble.jackpot.Jackpot.setPot(dev.ryaan.ezgamble.Money.parse(arg));   // jackpotset POT
+            case "jackpothit" -> dev.ryaan.ezgamble.jackpot.Jackpot.forceHit(arg);   // jackpothit NAME: a forced hit (smoke test), logged as forced in the Fair rounds
             case "chat" -> { c.inGameHud.getChatHud().addMessage(Text.literal(arg)); EzGambleMod.onChat(arg); }
             case "mouse" -> { mx = (int) Double.parseDouble(n[0]); my = (int) Double.parseDouble(n[1]); dev.ryaan.ezgamble.proto.ProtoScreen.forceMx = mx; dev.ryaan.ezgamble.proto.ProtoScreen.forceMy = my; }
             case "click", "rclick" -> {
