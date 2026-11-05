@@ -1,5 +1,7 @@
 package dev.ryaan.ezgamble.ui;
 
+import dev.ryaan.ezgamble.proto.F;
+import dev.ryaan.ezgamble.proto.P;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gl.RenderPipelines;
@@ -21,22 +23,16 @@ public final class ProfitChart {
     public static Result draw(DrawContext g, long[] deltas, int cx, int cy, int cw, int ch, int mx, int my,
                               boolean mini, int lineColor, boolean gradient, float reveal) {
         int n = deltas.length;
-        float k = (float) MinecraftClient.getInstance().getWindow().getScaleFactor();
-        long[] cum = new long[n + 1];
-        for (int i = 0; i < n; i++) cum[i + 1] = cum[i] + deltas[i];
-        double min = 0, max = 0;
-        for (long v : cum) { min = Math.min(min, v); max = Math.max(max, v); }
-        if (max == min) max = min + 1;
-        int m = mini ? 3 : 10, mv = mini ? 4 : 14;
-        double top = (cy + mv) * k, bottom = (cy + ch - mv) * k, left = (cx + m) * k, right = (cx + cw - m) * k;
-        double[] xs = new double[n + 1], ys = new double[n + 1];
-        for (int i = 0; i <= n; i++) {
-            xs[i] = left + i * (right - left) / Math.max(1, n);
-            ys[i] = bottom - (cum[i] - min) / (max - min) * (bottom - top);
-        }
+        // the menu is drawn under viewZ (P.zoom): rasterise at the real pixel density, like Liquid, or the curve is
+        // upscaled 2x at zoom 2 (blurry) and oversampled at 0.5
+        float k = (float) (MinecraftClient.getInstance().getWindow().getScaleFactor() * P.zoom);
+        Geo ge = geo(deltas, cx, cy, cw, ch, k, mini);
+        long[] cum = ge.cum;
+        double[] xs = ge.xs, ys = ge.ys;
+        double left = ge.left, right = ge.right;
         int hover = -1;
         int ox = Math.round(cx * k), oy = Math.round(cy * k), iw = Math.round(cw * k), ih = Math.round(ch * k);
-        Identifier img = image(deltas, cum, xs, ys, min, max, top, bottom, left, right, ox, oy, iw, ih, k, mini, gradient, lineColor);
+        Identifier img = image(ge, ox, oy, iw, ih, k, mini, gradient, lineColor);
         g.getMatrices().pushMatrix();
         try {
             g.getMatrices().scale(1 / k, 1 / k);
@@ -44,7 +40,7 @@ public final class ProfitChart {
             if (img != null && shown > 0) g.drawTexture(RenderPipelines.GUI_TEXTURED, img, ox, oy, 0, 0, shown, ih, shown, ih, iw, ih);
             if (n > 0 && reveal >= 1) {
                 int ex = (int) Math.round(xs[n]), ey = (int) Math.round(ys[n]), last = deltas[n - 1] >= 0 ? Glass.GREEN : Glass.RED;
-                disk(g, ex, ey, (mini ? 3 : 4.5f) * k * (0.8f + 0.4f * Ui.pulse(System.currentTimeMillis() * 2)), Glass.alpha(last, 0.25f));
+                disk(g, ex, ey, (mini ? 3 : 4.5f) * k * (0.8f + 0.4f * (float) P.pulse(P.now() * 2)), Glass.alpha(last, 0.25f));   // P.now: the demo recorder freezes it
                 disk(g, ex, ey, (mini ? 1.6f : 2.2f) * k, last);
             }
             if (!mini && n > 0 && reveal >= 1 && mx >= cx && mx < cx + cw && my >= cy && my < cy + ch) {
@@ -58,9 +54,46 @@ public final class ProfitChart {
         } finally {
             g.getMatrices().popMatrix();
         }
-        int[] px = new int[n + 1];
-        for (int i = 0; i <= n; i++) px[i] = (int) Math.round(xs[i] / k);
-        return new Result(hover, px, cum);
+        return new Result(hover, ge.px, cum);   // the cached arrays: callers read them, nobody writes
+    }
+
+    // ---- the geometry of a slot (mini / full), kept while the data (same array instance), the frame and the scale are unchanged:
+    // with 5000 deltas it was cum / xs / ys / px (about 220 KB) allocated per frame, and Arrays.hashCode over the whole array
+    // for the texture key. Callers hand the same instance while the data is unchanged (GambleHud.deltas, Recap.deltas).
+
+    private static final class Geo {
+        long[] deltas; int cx, cy, cw, ch; float k;
+        String hash;
+        long[] cum; double[] xs, ys; int[] px;
+        double min, max, top, bottom, left, right;
+    }
+    private static final Geo[] GEO = {new Geo(), new Geo()};
+
+    private static Geo geo(long[] deltas, int cx, int cy, int cw, int ch, float k, boolean mini) {
+        Geo ge = GEO[mini ? 0 : 1];
+        if (ge.deltas == deltas && ge.cx == cx && ge.cy == cy && ge.cw == cw && ge.ch == ch && ge.k == k) return ge;
+        if (ge.deltas != deltas) { ge.deltas = deltas; ge.hash = String.valueOf(java.util.Arrays.hashCode(deltas)); }
+        ge.cx = cx; ge.cy = cy; ge.cw = cw; ge.ch = ch; ge.k = k;
+        int n = deltas.length;
+        long[] cum = ge.cum != null && ge.cum.length == n + 1 ? ge.cum : (ge.cum = new long[n + 1]);
+        cum[0] = 0;
+        for (int i = 0; i < n; i++) cum[i + 1] = cum[i] + deltas[i];
+        double min = 0, max = 0;
+        for (long v : cum) { min = Math.min(min, v); max = Math.max(max, v); }
+        if (max == min) max = min + 1;
+        // the vertical margin shrinks with a short card (PlayerView's 30 px chart had a 2 px band under a 22 px marker); a card of 56+ keeps 14
+        int m = mini ? 3 : 10, mv = mini ? 4 : Math.min(14, Math.max(4, ch / 4));
+        double top = (cy + mv) * k, bottom = (cy + ch - mv) * k, left = (cx + m) * k, right = (cx + cw - m) * k;
+        double[] xs = ge.xs != null && ge.xs.length == n + 1 ? ge.xs : (ge.xs = new double[n + 1]);
+        double[] ys = ge.ys != null && ge.ys.length == n + 1 ? ge.ys : (ge.ys = new double[n + 1]);
+        int[] px = ge.px != null && ge.px.length == n + 1 ? ge.px : (ge.px = new int[n + 1]);
+        for (int i = 0; i <= n; i++) {
+            xs[i] = left + i * (right - left) / Math.max(1, n);
+            ys[i] = bottom - (cum[i] - min) / (max - min) * (bottom - top);
+            px[i] = (int) Math.round(xs[i] / k);
+        }
+        ge.min = min; ge.max = max; ge.top = top; ge.bottom = bottom; ge.left = left; ge.right = right;
+        return ge;
     }
 
     // ---- the curve, area and zero line rasterised once into a texture (redrawn only when the data or the size change)
@@ -68,11 +101,13 @@ public final class ProfitChart {
     private static final java.util.Map<String, Object[]> CACHE = new java.util.HashMap<>();   // slot -> {key, id}
     private static int seq;
 
-    private static Identifier image(long[] deltas, long[] cum, double[] xs, double[] ys, double min, double max, double top, double bottom,
-                                    double left, double right, int ox, int oy, int iw, int ih, float k, boolean mini, boolean gradient, int lineColor) {
+    private static Identifier image(Geo ge, int ox, int oy, int iw, int ih, float k, boolean mini, boolean gradient, int lineColor) {
         if (iw <= 0 || ih <= 0) return null;
+        long[] deltas = ge.deltas;
+        double[] xs = ge.xs, ys = ge.ys;
+        double min = ge.min, max = ge.max, top = ge.top, bottom = ge.bottom, left = ge.left, right = ge.right;
         String slot = mini ? "mini" : "full";
-        String key = java.util.Arrays.hashCode(deltas) + "/" + deltas.length + "/" + iw + "x" + ih + "/" + (ox % 1) + "/" + k + "/" + gradient + lineColor
+        String key = ge.hash + "/" + deltas.length + "/" + iw + "x" + ih + "/" + (ox % 1) + "/" + k + "/" + gradient + lineColor
                 + "/" + Math.round(left - ox) + "/" + Math.round(top - oy) + "/" + dev.ryaan.ezgamble.themes.Themes.ver;   // the gradient bakes the theme colours in
         Object[] c = CACHE.get(slot);
         if (c != null && c[0].equals(key)) return (Identifier) c[1];
@@ -141,7 +176,7 @@ public final class ProfitChart {
 
     /** Two-line tooltip above the point, each line with an optional right part, kept inside [lx, rx]. */
     public static void tooltip(DrawContext g, String l1, String l2, int c2, int px, int cy, int lx, int rx, String r1, String r2) {
-        var f = Ui.font();
+        var f = F.tr();
         int tw = Math.max(f.getWidth(l1) + (r1.isEmpty() ? 0 : 12 + f.getWidth(r1)), f.getWidth(l2) + (r2.isEmpty() ? 0 : 12 + f.getWidth(r2))) + 12;
         int tx = Math.min(Math.max(lx, px - tw / 2), rx - tw), ty = cy - 2;
         Liquid.glass(g, tx, ty - 24, tw, 26, 7, 0.8f, 0.8f);
