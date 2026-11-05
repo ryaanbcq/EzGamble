@@ -24,7 +24,7 @@ public final class LobbyView implements GameView {
     public void init() {
         double lx = s.x0 + GambleScreen.PAD, rx = s.x0 + GambleScreen.W - GambleScreen.PAD, y0 = s.y0;
         ver = Lobby.ver();
-        s.add(new GlassButton(lx, y0 + 80, 18, 16, "‹", "GHOST", () -> { GambleScreen.sub = null; s.rebuild(); }));
+        s.add(new GlassButton(lx, y0 + 80, 18, 16, "‹", "GHOST", s::back));
         Widget.Clip clip = ChipsView.listClip(s, false);
         List<Lobby.Seat> rows = Lobby.seats();
         for (int i = 0; i < rows.size(); i++) {
@@ -46,7 +46,7 @@ public final class LobbyView implements GameView {
         double lx = s.x0 + GambleScreen.PAD, rx = s.x0 + GambleScreen.W - GambleScreen.PAD, y = s.y0 + 80;
         List<Lobby.Seat> rows = Lobby.seats();
         g.drawText("Lobby", lx + 24, y + 4, WHITE, true);
-        P.pillsRight(g, rx, y, new Object[][]{{"In line", String.valueOf(rows.size())}, {"Auto-seat", GambleData.autoSeat ? "on" : "off", GambleData.autoSeat ? GREEN : DIM}});
+        P.pillsRight(g, rx, y, new Object[][]{{"Lobby", String.valueOf(rows.size())}, {"Auto-seat", GambleData.autoSeat ? "on" : "off", GambleData.autoSeat ? GREEN : DIM}});
         if (rows.isEmpty()) {
             String a = "Nobody in line", b = "A player whispers you: join blackjack 5M";
             g.drawText(a, lx + ((rx - lx - F.width(a)) / 2), y + 50, TEXT, false);
@@ -63,7 +63,7 @@ public final class LobbyView implements GameView {
             card(g, lx, ry, rx - lx, 27, "row");
             boolean sh = Lobby.isShort(d);
             String err = Lobby.errSeat() == d ? Lobby.errText() : null;
-            g.drawText("#" + (i + 1), lx + 5, ry + 10, i == 0 ? PINK : DIM, false);
+            String rk = "#" + (i + 1); g.drawText(rk, lx + 20 - F.width(rk), ry + 10, i == 0 ? PINK : DIM, false);
             g.drawHead(skinOf(d.name()), lx + 22, ry + 5, 16);
             int bw = VipBadge.w(d.name()); VipBadge.draw(g, d.name(), lx + 43, ry + 4);
             g.drawText(F.trimToWidth(d.name(), 90 - bw), lx + 43 + bw, ry + 4, WHITE, false);
@@ -78,7 +78,7 @@ public final class LobbyView implements GameView {
             if (!sh) gradientText(g, v, vx, ry + 10, true); else g.drawText(v, vx, ry + 10, DIM, false);
         }
         s.endList(g, "lobby", ch);
-        String foot = "Whisper join <game> [amount] or leave. A seat drops after 10 min.";
+        String foot = "Whisper join <game> [amount] or leave, a seat drops after 10 min";
         g.drawText(F.trimToWidth(foot, rx - lx), lx, s.y0 + GambleScreen.H - GambleScreen.PAD - 12, DIM, false);
     }
 
