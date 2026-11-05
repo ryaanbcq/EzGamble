@@ -126,7 +126,9 @@ public final class GambleHud implements HudElement {
                 }
                 HudConfig.Rows r = HUD.session.rows;
                 int yy = 37;
-                if (!(r.curve || r.winrate || r.total)) break;
+                var hs = dev.ryaan.ezgamble.house.House.state();
+                if (hs == dev.ryaan.ezgamble.house.House.State.UNDER) ring(g, 0, 0, W, H, 8, alpha(RED, 0.45 + 0.5 * pulse(t)), 1.4);   // the house owes more than it has: the card itself says so
+                if (!(r.curve || r.winrate || r.total || r.house)) break;
                 g.fill(7, yy, W - 7, yy + 1, 0x14FFFFFF);
                 yy += 4;
                 if (r.curve) {
@@ -154,6 +156,20 @@ public final class GambleHud implements HudElement {
                     g.drawText("All-time", 7, yy, MUTE, true);
                     String v = money(p, c, true);
                     if (c.autoSignColor) right(g, W, v, yy, p >= 0 ? GREEN : RED); else valueText(g, v, W - 7 - F.width(v), yy, c, p, false);
+                    yy += TOTAL_H;
+                }
+                if (r.house) {   // House: a cover bar (full at 3x) in the state's colour, the cover text on the right
+                    int hc = dev.ryaan.ezgamble.house.House.color(hs);
+                    g.drawText("House", 7, yy, MUTE, true);
+                    String cv = dev.ryaan.ezgamble.house.House.coverText();
+                    right(g, W, cv, yy, hc);
+                    int bx = 7 + F.width("House") + 4, bw = W - 7 - F.width(cv) - 6 - bx;
+                    if (bw > 8) {
+                        g.fill(bx, yy + 3, bx + bw, yy + 6, 0x1AFFFFFF);
+                        double cov = dev.ryaan.ezgamble.house.House.coverage();
+                        int fw = Double.isNaN(cov) ? 0 : (int) Math.round(bw * Math.min(1, cov / 3));
+                        if (fw > 0) g.fill(bx, yy + 3, bx + fw, yy + 6, hc);
+                    }
                 }
             }
             case "last" -> {   // the toast

@@ -51,6 +51,7 @@ public final class EzGambleMod implements ClientModInitializer {
             dev.ryaan.ezgamble.duel.Duel.tick();
             dev.ryaan.ezgamble.duel.TableChat.tick();
             dev.ryaan.ezgamble.games.Ticks.tick();
+            dev.ryaan.ezgamble.house.House.tick();   // bankroll vs chips owed, debounced
             DebugRun.tick(client);
             while (menuKey.wasPressed()) if (client.currentScreen == null) client.setScreen(new GambleScreen());
             while (modeKey.wasPressed()) GambleData.setMode(!GambleData.mode);

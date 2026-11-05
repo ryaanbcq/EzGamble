@@ -37,14 +37,15 @@ public final class HudConfig {
         DEF.put("pay", new Def(150, 30, "Payments", "your name, who just paid you"));
     }
     public static final String[] ORDER = {"session", "last", "pay"};
-    public static final int CURVE_H = 28, WINRATE_H = 13, TOTAL_H = 13;
+    public static final int CURVE_H = 28, WINRATE_H = 13, TOTAL_H = 13, HOUSE_H = 13;
     public static final Object[] COLORS = ColorSwatches.COLORS;
     public static final double[] SCALES = {0.5, 0.75, 1, 1.25, 1.5, 2};
 
     public static final class Rows {
-        public boolean curve, winrate, total;
-        Rows(boolean c, boolean w, boolean t) { curve = c; winrate = w; total = t; }
-        Rows copy() { return new Rows(curve, winrate, total); }
+        public boolean curve, winrate, total, house;
+        Rows(boolean c, boolean w, boolean t) { this(c, w, t, false); }
+        Rows(boolean c, boolean w, boolean t, boolean h) { curve = c; winrate = w; total = t; house = h; }
+        Rows copy() { return new Rows(curve, winrate, total, house); }
     }
 
     public static final class Style {
@@ -64,13 +65,15 @@ public final class HudConfig {
         public Style get(String id) { return id.equals("session") ? session : id.equals("last") ? last : pay; }
     }
 
-    public record Preset(boolean curve, boolean winrate, boolean total, double scale) {}
+    public record Preset(boolean curve, boolean winrate, boolean total, double scale, boolean house) {
+        Preset(boolean curve, boolean winrate, boolean total, double scale) { this(curve, winrate, total, scale, false); }
+    }
     /** Rows + size; positions are kept. */
     public static final Map<String, Preset> PRESETS = new LinkedHashMap<>();
     static {
         PRESETS.put("minimal", new Preset(false, false, false, 1));
         PRESETS.put("standard", new Preset(true, true, false, 1));
-        PRESETS.put("streamer", new Preset(true, true, true, 1.25));
+        PRESETS.put("streamer", new Preset(true, true, true, 1.25, true));   // the house line too: the stream sees the bank is good for it
     }
 
     public static Data HUD = load();
@@ -81,8 +84,8 @@ public final class HudConfig {
         if (id.equals("pay")) return 34;
         if (id.equals("last")) return 24;
         Rows r = HUD.session.rows;
-        boolean any = r.curve || r.winrate || r.total;
-        return 37 + (any ? 4 + (r.curve ? CURVE_H : 0) + (r.winrate ? WINRATE_H : 0) + (r.total ? TOTAL_H : 0) + 2 : 0);
+        boolean any = r.curve || r.winrate || r.total || r.house;
+        return 37 + (any ? 4 + (r.curve ? CURVE_H : 0) + (r.winrate ? WINRATE_H : 0) + (r.total ? TOTAL_H : 0) + (r.house ? HOUSE_H : 0) + 2 : 0);
     }
 
     public static double sw() { return MinecraftClient.getInstance().getWindow().getScaledWidth(); }
@@ -91,7 +94,7 @@ public final class HudConfig {
     public static void applyPreset(String name) {
         Preset p = PRESETS.get(name);
         Style sc = HUD.session;
-        sc.rows = new Rows(p.curve(), p.winrate(), p.total()); sc.scale = p.scale(); sc.visible = true;
+        sc.rows = new Rows(p.curve(), p.winrate(), p.total(), p.house()); sc.scale = p.scale(); sc.visible = true;
         HUD.last.visible = true; HUD.pay.visible = true; HUD.pay.scale = p.scale();
         save();
     }
@@ -100,7 +103,7 @@ public final class HudConfig {
         Style sc = HUD.session;
         for (var e : PRESETS.entrySet()) {
             Preset p = e.getValue();
-            if (sc.scale == p.scale() && sc.rows.curve == p.curve() && sc.rows.winrate == p.winrate() && sc.rows.total == p.total()) return e.getKey();
+            if (sc.scale == p.scale() && sc.rows.curve == p.curve() && sc.rows.winrate == p.winrate() && sc.rows.total == p.total() && sc.rows.house == p.house()) return e.getKey();
         }
         return "custom";
     }
@@ -108,7 +111,7 @@ public final class HudConfig {
     public static Data defaults() {
         Data d = new Data();
         Preset std = PRESETS.get("standard");
-        d.session = new Style(0.006, 0.30); d.session.rows = new Rows(std.curve(), std.winrate(), std.total());
+        d.session = new Style(0.006, 0.30); d.session.rows = new Rows(std.curve(), std.winrate(), std.total(), std.house());
         d.last = new Style(0, 0);
         d.pay = new Style(0.994, 0.03);
         return d;
@@ -188,6 +191,7 @@ public final class HudConfig {
         out.addProperty("version", 2);
         JsonObject s = styleJson(HUD.session), rows = new JsonObject();
         rows.addProperty("curve", HUD.session.rows.curve); rows.addProperty("winrate", HUD.session.rows.winrate); rows.addProperty("total", HUD.session.rows.total);
+        rows.addProperty("house", HUD.session.rows.house);
         s.add("rows", rows);
         ws.add("session", s);
         JsonObject last = new JsonObject(); last.addProperty("visible", HUD.last.visible);
@@ -214,6 +218,7 @@ public final class HudConfig {
                 if (rows.has("curve")) d.session.rows.curve = rows.get("curve").getAsBoolean();
                 if (rows.has("winrate")) d.session.rows.winrate = rows.get("winrate").getAsBoolean();
                 if (rows.has("total")) d.session.rows.total = rows.get("total").getAsBoolean();
+                if (rows.has("house")) d.session.rows.house = rows.get("house").getAsBoolean();
             }
         } catch (Exception e) {
             EzGambleMod.LOG.warn("[ezgamble] hud load failed, defaults: {}", e.toString());

@@ -41,6 +41,7 @@ public final class CoinTable extends Host {
         if (bet <= 0) return fail("Place a bet");
         if (bet > balance()) return fail("Not enough chips");
         if (bet * CF_PAY > CF_MAX_WIN) return fail("Max bet " + Money.format((long) Math.floor(CF_MAX_WIN / CF_PAY)));
+        if (!covered((long) Math.floor(bet * CF_PAY))) return false;   // house guard
         settle();
         var fr = dev.ryaan.ezgamble.data.Fair.round("Coinflip");
         String result = fr.next() < 0.5 ? "heads" : "tails";

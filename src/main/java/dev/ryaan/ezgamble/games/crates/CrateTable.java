@@ -107,6 +107,7 @@ public final class CrateTable extends Host {
         if (bet <= 0) return fail("Place a bet");
         if (bet > balance()) return fail("Not enough chips");
         if (bet > crateMaxBet(type())) return fail("Max bet " + Money.format(crateMaxBet(type())));
+        if (!covered((long) Math.floor(bet * type().top))) return false;   // house guard: the crate's top prize
         settle();
         CrateType type = type();
         var fr = dev.ryaan.ezgamble.data.Fair.round("Crates");

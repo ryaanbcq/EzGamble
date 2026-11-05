@@ -118,6 +118,18 @@ public final class RouletteTable extends Host {
 
     public long placed() { long a = 0; for (long v : bets.values()) a += v; return a; }
 
+    /** The most one spin could pay with the bets on the table (plus `extra` on `key`): the player's best number. */
+    public long worstCase(String key, long extra) {
+        long worst = 0;
+        for (int n = 0; n < 37; n++) {
+            long a = 0;
+            for (var e : bets.entrySet()) { Bet b = BETS.get(e.getKey()); if (b != null && b.wins().test(n)) a += e.getValue() * b.ret(); }
+            if (key != null) { Bet b = BETS.get(key); if (b != null && b.wins().test(n)) a += extra * b.ret(); }
+            worst = Math.max(worst, a);
+        }
+        return worst;
+    }
+
     /** Put `amount` (the composed one by default) on a cell. */
     public boolean place(String key) { return place(key, bet); }
     public boolean place(String key, long amount) {
@@ -128,6 +140,7 @@ public final class RouletteTable extends Host {
         if (placed() + amount > balance()) return fail("Not enough chips");
         Bet b = BETS.get(key); if (b == null) return false;
         if ((bets.getOrDefault(key, 0L) + amount) * b.ret() > MAX_WIN) return fail("Max " + Money.format(MAX_WIN / b.ret()) + " on " + b.label());
+        if (!covered(worstCase(key, amount))) return false;   // house guard: the number that would pay the most of everything placed
         bets.merge(key, amount, Long::sum); order.add(Map.entry(key, amount));
         P.play("ui_kcollide_open", 1, 0.5);
         return true;
@@ -150,6 +163,7 @@ public final class RouletteTable extends Host {
         long total = placed();
         if (total <= 0) return fail("Click a cell to bet");
         if (total > balance()) return fail("Not enough chips");
+        if (!covered(worstCase(null, 0))) return false;   // house guard, again: the bankroll may have moved since the bets were placed
         settle();
         var fr = dev.ryaan.ezgamble.data.Fair.round("Roulette");   // provably fair: the number (the landing jitter stays cosmetic)
         int n = (int) Math.floor(fr.next() * 37), idx = LAPS * 37 + indexOf(n);

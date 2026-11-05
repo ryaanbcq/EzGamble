@@ -227,6 +227,7 @@ public final class GambleScreen extends ProtoScreen {
         renderTitle(g);
         String lbl = "Gambling mode";
         if (!welcome) g.drawText(lbl, x0 + W - PAD - 28 - 6 - F.width(lbl), y0 + PAD, GambleData.mode ? P.TEXT : P.MUTE, false);
+        renderHouseDot(g);
         g.pop();
         if (DebugRun.ON) DebugRun.renderNanos += System.nanoTime() - t0;
     }
@@ -266,6 +267,7 @@ public final class GambleScreen extends ProtoScreen {
         if (game) {
             view(sub).render(g, mx, my);
             renderChildren(g, mx, my);
+            renderHouseTip(g, mx, my);
             g.pop();
             dev.ryaan.ezgamble.duel.TableChat.render(g, this, pop());
             renderUpdateStatus(g);
@@ -285,6 +287,7 @@ public final class GambleScreen extends ProtoScreen {
                 default -> {}
             }
         }
+        renderHouseTip(g, mx, my);
         g.pop();
         renderUpdateStatus(g);
         if (DebugRun.ON) { DebugRun.renderNanos += System.nanoTime() - t0; DebugRun.renderFrames++; }
@@ -333,7 +336,9 @@ public final class GambleScreen extends ProtoScreen {
         P.tile(g, lx + 10, y + 6, "Win rate", st.n() > 0 ? Math.round(st.rate() * 100) + "%" : "-", st.n() > 0 ? P.WHITE : P.DIM);
         P.tile(g, lx + 10 + third, y + 6, "Best win", st.best() == null ? "-" : Money.signed(st.best()), st.best() == null ? P.DIM : P.GREEN);
         P.tile(g, lx + 10 + 2 * third, y + 6, "Worst loss", st.worst() == null ? "-" : Money.signed(st.worst()), st.worst() == null ? P.DIM : P.RED);
-        double cy = y + 40, ch = y0 + H - PAD - cy;
+        y += 38;
+        renderHouse(g, lx, rx, y);   // the house line: bankroll, owed, cover
+        double cy = y + 20, ch = y0 + H - PAD - cy;
         P.card(g, lx, cy, rx - lx, ch, "chart");
         if (list.isEmpty()) { g.drawText("No transaction yet.", lx + 8, cy + (int) (ch / 2) - 4, P.DIM, false); return; }
         float reveal = (float) P.easeOut((P.now() - chartAt) / 600.0);
@@ -345,6 +350,50 @@ public final class GambleScreen extends ProtoScreen {
             ProfitChart.tooltip(g.d, t.game(), Money.signed(t.delta()), t.delta() >= 0 ? P.GREEN : P.RED, r.px()[r.hover()], (int) cy, (int) lx, (int) rx,
                     P.DATE_S(t.t()), t.bet() != null ? "Bet " + Money.format(t.bet()) : "");
         }
+    }
+
+    /** One line under the stats: a dot and the house's state, then Bankroll / Owed / Cover pills (house.House). */
+    private void renderHouse(G g, double lx, double rx, double y) {
+        var st = dev.ryaan.ezgamble.house.House.state();
+        int col = dev.ryaan.ezgamble.house.House.color(st);
+        P.dot(g, lx + 2, y + 6, st == dev.ryaan.ezgamble.house.House.State.UNDER ? P.alpha(col, 0.55 + 0.45 * P.pulse(P.now())) : col);
+        g.drawText("House", lx + 12, y + 4, P.MUTE, false);
+        g.drawText(dev.ryaan.ezgamble.house.House.word(st), lx + 12 + F.width("House") + 5, y + 4, col, false);
+        long bank = dev.ryaan.ezgamble.house.House.bankroll(), owed = dev.ryaan.ezgamble.house.House.owed();
+        P.pillsRight(g, rx, y, new Object[][]{
+                {"Bankroll", bank < 0 ? "-" : Money.format(bank), bank < 0 ? P.DIM : P.WHITE},
+                {"Owed", Money.format(owed), bank >= 0 && owed > bank ? P.RED : P.WHITE},
+                {"Cover", dev.ryaan.ezgamble.house.House.coverText(), col}});
+    }
+
+    /** Where the house dot sits (left of "Gambling mode"), or null when there is nothing to say or an Update button takes the place. */
+    private double[] houseDot() {
+        if (welcome) return null;
+        var st = dev.ryaan.ezgamble.house.House.state();
+        if (st == dev.ryaan.ezgamble.house.House.State.HEALTHY || st == dev.ryaan.ezgamble.house.House.State.UNKNOWN) return null;   // nothing to say when all is well
+        if (Updater.state() == Updater.State.AVAILABLE || (Updater.state() == Updater.State.READY && Updater.canRestart())) return null;   // the update button lives there
+        return new double[]{x0 + W - PAD - 28 - 6 - F.width("Gambling mode") - 12, y0 + PAD + 1};
+    }
+
+    /** A 7-px dot in the house's colour (Tight: gold, Under-covered: pulsing red), on every tab. */
+    private void renderHouseDot(G g) {
+        double[] d = houseDot();
+        if (d == null) return;
+        var st = dev.ryaan.ezgamble.house.House.state();
+        int col = dev.ryaan.ezgamble.house.House.color(st);
+        boolean under = st == dev.ryaan.ezgamble.house.House.State.UNDER;
+        P.smooth(g, d[0], d[1], 7, 7, 3.5, under ? P.alpha(col, 0.55 + 0.45 * P.pulse(P.now())) : col);
+    }
+
+    /** Hovering the dot: a glass label with the state and the cover, drawn over everything. */
+    private void renderHouseTip(G g, double mx, double my) {
+        double[] d = houseDot();
+        if (d == null || !(mx >= d[0] - 3 && mx < d[0] + 10 && my >= d[1] - 3 && my < d[1] + 10)) return;
+        var st = dev.ryaan.ezgamble.house.House.state();
+        String t = "House: " + dev.ryaan.ezgamble.house.House.word(st) + ", cover " + dev.ryaan.ezgamble.house.House.coverText();
+        double tw = F.width(t) + 12, tx = Math.min(d[0] + 3 - tw / 2, x0 + W - PAD - tw), ty = d[1] + 11;
+        P.smooth(g, tx, ty, tw, 15, 7.5, P.v(0xF0291C42, 0xF01C1230), 0x40FFFFFF);
+        g.drawText(t, tx + 6, ty + 4, dev.ryaan.ezgamble.house.House.color(st), false);
     }
 
     /** Running all-time total, then the filter, newest first. */

@@ -109,6 +109,9 @@ public final class DebugRun {
             case "send" -> dev.ryaan.ezgamble.data.Payouts.send(n[0], dev.ryaan.ezgamble.Money.parse(n[1]));   // send NAME AMT: the Pay button's path
             case "paystate" -> EzGambleMod.LOG.info("[ezgamble] debug: paystate {} pending={} recent={}", arg, dev.ryaan.ezgamble.data.Payouts.pending.stream().filter(p -> p.name().equals(arg)).findFirst().orElse(null), dev.ryaan.ezgamble.data.Payouts.recent.get(arg));
             case "cratefast" -> GambleData.setCrateFast(arg.equals("on"));
+            case "house" -> EzGambleMod.LOG.info("[ezgamble] debug: house {}", dev.ryaan.ezgamble.house.House.describe());
+            case "houseguard" -> GambleData.setHouseGuard(arg.equals("on"));
+            case "cfbet" -> { var cf = dev.ryaan.ezgamble.games.coinflip.CoinTable.CF; cf.backer = n[0]; cf.bet = dev.ryaan.ezgamble.Money.parse(n[1]); cf.betChips.clear(); EzGambleMod.LOG.info("[ezgamble] debug: coinflip start {} warn {}", cf.start(), cf.warn == null ? null : cf.warn.text()); }   // cfbet NAME BET
             case "crateopen" -> { var cr = dev.ryaan.ezgamble.games.crates.CrateTable.CR; cr.backer = n[0]; cr.bet = dev.ryaan.ezgamble.Money.parse(n[1]); EzGambleMod.LOG.info("[ezgamble] debug: crate open {} fast={}", cr.open(), GambleData.crateFast); }   // crateopen NAME BET
             case "cratestage" -> EzGambleMod.LOG.info("[ezgamble] debug: crate stage {}", dev.ryaan.ezgamble.games.crates.CrateTable.CR.stage);
             case "rain" -> { var rn = dev.ryaan.ezgamble.games.rain.RainTable.RN; rn.entry = dev.ryaan.ezgamble.Money.parse(n[0]); rn.goal = dev.ryaan.ezgamble.Money.parse(n[1]); rn.fee = Double.parseDouble(n[2]); if (n.length > 3) rn.durationMs = dev.ryaan.ezgamble.games.rain.RainTable.parseDuration(n[3]); EzGambleMod.LOG.info("[ezgamble] debug: rain start {}", rn.start()); }   // rain ENTRY GOAL FEE [DURATION]
