@@ -1,0 +1,54 @@
+# Session Recap smoke test: ./tools/smoke.sh tools/smoke-recap.txt 300
+# A session with payments, table bets and server games, closed; the HUD hint, then every slide and the saved card.
+size 1920 1080
+gui 2
+name ZKR5
+mode on
+paid NotRyzn 50M
+paid Notch 12M
+paid jeb_ 8M
+wager NotRyzn 5M 6
+wager Notch 2M 3
+wager jeb_ 1M 2
+demo 30
+txn Roulette 4M 7M
+txn Crash 3M -3M
+txn Blackjack 10M 10M
+mode off
+wait 20
+shot recap-hint
+wait 20
+recap
+wait 20
+recapslide 1
+wait 70
+shot recap-1
+recapslide 2
+wait 90
+shot recap-2
+recapslide 3
+wait 80
+shot recap-3
+recapslide 4
+wait 90
+shot recap-4
+recapslide 5
+wait 80
+shot recap-5
+recapslide 6
+wait 80
+shot recap-6
+recapslide 7
+wait 40
+shot recap-7
+recapsave
+wait 40
+shot recap-saved
+perf recap
+# the recap of a running session: 5 bets in, the Recap button on the dashboard
+mode on
+demo 8
+open
+wait 20
+shot recap-dashboard-button
+quit

@@ -113,7 +113,7 @@ public final class GambleData {
         if (on == mode) return;
         mode = on;
         if (on) newSession();
-        else { Session s = current(); if (s != null) { s.end = System.currentTimeMillis(); save(s); } }
+        else { Session s = current(); if (s != null) { s.end = System.currentTimeMillis(); save(s); if (!s.txns.isEmpty()) dev.ryaan.ezgamble.recap.Recap.readyAt = System.currentTimeMillis(); } }   // the HUD hints at the recap
         saveConfig();
         MinecraftClient mc = MinecraftClient.getInstance();
         dev.ryaan.ezgamble.proto.Snd.play(on ? "open" : "close", 0.8, 0.6);

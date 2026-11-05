@@ -152,6 +152,13 @@ public final class GambleScreen extends ProtoScreen {
         if (tab.equals("transactions")) rightGroup(new String[][]{{"all", "All"}, {"wins", "Wins"}, {"losses", "Losses"}}, () -> filter, v -> { filter = v; chartAt = P.now(); });
         if (!GambleData.mode && !(tab.equals("games") && sub != null && GAME_SUBS.contains(sub)))
             add(new GlassButton(rx - 54, y0 + 58, 52, 14, "Turn on", "PRIMARY", () -> GambleData.setMode(true)));
+        // Recap: the last session's story (mode off, next to Turn on) or the session so far (dashboard, from 5 bets on)
+        if (!(tab.equals("games") && sub != null && GAME_SUBS.contains(sub)) && GambleData.last() != null && !GambleData.last().txns.isEmpty()
+                && (!GambleData.mode || (tab.equals("dashboard") && GambleData.last().txns.size() >= 5))) {
+            double rw = F.width("Recap") + 14;
+            add(new GlassButton(GambleData.mode ? lx + 10 + F.width("Recording") + 8 : rx - 54 - 6 - rw, y0 + 58, rw, 14, "Recap", "GHOST",
+                    () -> dev.ryaan.ezgamble.recap.RecapScreen.openLast(MinecraftClient.getInstance())));
+        }
         if (tab.equals("games") && sub == null) {
             cardBtn = add(new Widget(lx, y0 + 80, rx - lx, CARD_H) { @Override public void click(double mx, double my) { P.play("click"); sub = "chips"; rebuild(); } });
             double[] gc = gamesClip();

@@ -32,7 +32,7 @@ public final class GambleHud implements HudElement {
     public void render(DrawContext d, RenderTickCounter t) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.options.hudHidden || mc.currentScreen instanceof HudEditorScreen) return;   // F1, or the editor draws its own copy
-        if (!GambleData.mode) return;   // gambling mode off: no HUD at all
+        if (!GambleData.mode) { dev.ryaan.ezgamble.recap.RecapHint.draw(new G(d)); return; }   // gambling mode off: no HUD, only the "Session over" hint for a few seconds
         G g = new G(d);
         long t0 = System.nanoTime();
         try {
