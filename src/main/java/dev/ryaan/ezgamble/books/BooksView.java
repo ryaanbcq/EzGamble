@@ -89,8 +89,9 @@ public final class BooksView implements GameView {
     @Override
     public void init() {
         double lx = lx(), rx = rx(), y = s.y0 + 80;
-        // the Tables / Hours / Days / Sessions control, top right like the chips' Session / All players; it survives rebuilds so the pill slides
-        if (tabSeg == null) tabSeg = new GlassSegmented(0, 0, 18, new String[][]{{"tables", "Tables"}, {"hours", "Hours"}, {"days", "Days"}, {"sessions", "Sessions"}}, () -> tab, BooksView::setTab);
+        // the Tables / Hours / Days / Log control, top right like the chips' Session / All players; it survives rebuilds so the pill slides.
+        // "Log" rather than "Sessions": the control must end short of the main tab bar on the same row (it ends at x0 + 204)
+        if (tabSeg == null) tabSeg = new GlassSegmented(0, 0, 18, new String[][]{{"tables", "Tables"}, {"hours", "Hours"}, {"days", "Days"}, {"sessions", "Log"}}, () -> tab, BooksView::setTab);
         tabSeg.place(rx - tabSeg.w, s.y0 + 33);
         s.add(tabSeg);
         s.add(new GlassButton(lx, y, 18, 16, "‹", "GHOST", s::back));
@@ -98,8 +99,8 @@ public final class BooksView implements GameView {
         exportBtn = s.add(new GlassButton(lx, footY(), ew, 16, "Export CSV", "GHOST", this::export));
         copyBtn = s.add(new GlassButton(lx + ew + 6, footY(), cw, 16, "Copy totals", "GHOST", this::copy));
         Books b = Books.get();
-        builtSessions = b.sessions.size();
-        if (tab.equals("sessions")) {   // every row opens that session's recap
+        builtSessions = rows(b);
+        if (tab.equals("sessions") && b.bets > 0) {   // every row opens that session's recap; none while render shows "The books are empty"
             Widget.Clip clip = clip();
             for (int i = 0; i < b.sessions.size(); i++) {
                 Session ses = b.sessions.get(i).session();
@@ -127,7 +128,9 @@ public final class BooksView implements GameView {
         copiedAt = P.now();
     }
 
-    @Override public void tick() { if (tab.equals("sessions") && Books.get().sessions.size() != builtSessions) s.rebuild(); }   // a session opened or closed: new rows
+    /** The session rows the page shows: none until the first bet (render says the books are empty instead). */
+    private static int rows(Books b) { return b.bets == 0 ? 0 : b.sessions.size(); }
+    @Override public void tick() { if (tab.equals("sessions") && rows(Books.get()) != builtSessions) s.rebuild(); }   // a session opened or closed, or the first bet: new rows
     @Override public void leave() {}
 
     // ---- drawing
@@ -175,7 +178,7 @@ public final class BooksView implements GameView {
         double lx = lx(), rx = rx();
         Widget.Clip clip = clip();
         // column heads, then one row per table: icon and name, bets, volume, house profit, realised / theoretical RTP
-        double cBets = lx + 150, cVol = lx + 212, cProf = lx + 278, cRtp = rx - 6, hy = clip.y();
+        double cBets = lx + 150, cVol = lx + 212, cProf = lx + 268, cRtp = rx - 6, hy = clip.y();   // "104.2% / 99.5%" is 72 px, it starts at lx + 274
         g.drawText("Table", lx + 6, hy, DIM, false);
         String[] heads = {"Bets", "Volume", "House", "RTP / theory"}; double[] right = {cBets, cVol, cProf, cRtp};
         for (int i = 0; i < heads.length; i++) g.drawText(heads[i], right[i] - F.width(heads[i]), hy, DIM, false);
@@ -308,7 +311,7 @@ public final class BooksView implements GameView {
         copyBtn.label = P.now() - copiedAt < 3000 ? "✔ Copied" : "Copy totals";
         if (P.now() - exportedAt < 3000) g.drawText("Exported " + exportedRows + (exportedRows == 1 ? " row" : " rows"), x, y, GREEN, false);
         else if (P.now() - failedAt < 3000) g.drawText("Export failed, see the log", x, y, RED, false);
-        else if (st().lastExportAt > 0) g.drawText(F.trimToWidth("Last export " + P.DATE(st().lastExportAt) + ", " + st().lastExportRows + " rows", rx() - x), x, y, DIM, false);
+        else if (st().lastExportAt > 0) g.drawText(F.trimToWidth("Last export " + P.DATE(st().lastExportAt) + ", " + st().lastExportRows + (st().lastExportRows == 1 ? " row" : " rows"), rx() - x), x, y, DIM, false);
     }
 
     /** A glass label centred over (cx, bottom), kept inside the panel. */
