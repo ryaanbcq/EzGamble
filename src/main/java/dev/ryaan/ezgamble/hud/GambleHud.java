@@ -39,6 +39,7 @@ public final class GambleHud implements HudElement {
             drawToast(g, toastK());
             for (String id : new String[]{"session", "pay"}) if (HUD.get(id).visible) { Rect r = wrect(id); drawWidget(g, id, r.x(), r.y()); }
             drawTierUp(g);   // "X reached Gold", 3 s under the top of the screen
+            dev.ryaan.ezgamble.lobby.LobbyHud.drawJoin(g);   // "X joined the line for Blackjack", 2.5 s
             drawRain(g);   // last: its finale covers the whole screen
         } catch (Throwable e) {
             if (!logged) { logged = true; EzGambleMod.LOG.error("[ezgamble] HUD render failed (not logged again)", e); }
@@ -111,6 +112,7 @@ public final class GambleHud implements HudElement {
                 g.drawText("Session", 7, 6, MUTE, true);
                 Session cur = GambleData.current();
                 if (cur != null) right(g, W, clock(t - cur.start), 6, WHITE); else right(g, W, "OFF", 6, RED);
+                if (cur != null) dev.ryaan.ezgamble.lobby.LobbyHud.sessionPill(g, W, clock(t - cur.start));   // "Lobby N" by the timer while players wait in line
                 // big: your balance (sidebar / last /bal), the session's profit small on its right; before the balance is
                 // known, the profit alone as before. x2 like the menu, shrunk only if the full format does not fit
                 long bal = dev.ryaan.ezgamble.data.Balance.value();

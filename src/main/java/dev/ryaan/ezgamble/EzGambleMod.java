@@ -54,6 +54,7 @@ public final class EzGambleMod implements ClientModInitializer {
             dev.ryaan.ezgamble.games.Ticks.tick();
             dev.ryaan.ezgamble.vip.Vip.tick();   // cashback confirmations, the tier-up banner
             dev.ryaan.ezgamble.house.House.tick();   // bankroll vs chips owed, debounced
+            dev.ryaan.ezgamble.lobby.Lobby.tick();   // the waiting line: old seats dropped, Auto-seat after a round
             DebugRun.tick(client);
             dev.ryaan.ezgamble.recap.RecapScreen.tickOpen(client);   // /ezgamble recap opens once the chat screen has gone
             while (menuKey.wasPressed()) if (client.currentScreen == null) client.setScreen(new GambleScreen());
@@ -94,6 +95,7 @@ public final class EzGambleMod implements ClientModInitializer {
             dev.ryaan.ezgamble.data.Balance.onChat(line);
             if (dev.ryaan.ezgamble.data.Payouts.onChat(line)) return;
             if (dev.ryaan.ezgamble.data.Payments.onChat(line)) return;
+            if (dev.ryaan.ezgamble.lobby.Lobby.onChat(line)) return;   // "join blackjack 5M" / "leave": the waiting line
             boolean duel = dev.ryaan.ezgamble.duel.Duel.onChat(line);   // a challenge counts even while a game is open (it waits for the menu to close)
             if (dev.ryaan.ezgamble.duel.TableChat.onChat(line) || duel) return;
             var tx = dev.ryaan.ezgamble.data.Detector.detect(line, System.currentTimeMillis());

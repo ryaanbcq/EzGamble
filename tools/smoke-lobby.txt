@@ -1,0 +1,49 @@
+# Lobby queue smoke test: ./tools/smoke.sh tools/smoke-lobby.txt
+# Three players pay, then whisper their way into the line (DonutSMP whisper form); the Games header shows "Lobby 3", the
+# list shows the line, lobbyseat seats the first (Alpha, Blackjack 5M: his hand is dealt), the felt shows the next in line.
+size 1280 800
+gui 2
+mode on
+paid Alpha 50M
+paid Bravo 20M
+paid Charlie 8M
+wait 20
+chat Alpha whispers to you: join blackjack 5M
+wait 10
+shot lobby-hud-join
+chat Bravo whispers to you: queue coinflip
+chat Charlie whispers to you: sit blackjack 2M
+wait 10
+lobby
+open
+tab games
+wait 20
+shot lobby-button
+sub lobby
+wait 20
+shot lobby-list
+lobbyseat
+wait 30
+shot lobby-seated
+lobby
+close
+# a whisper "leave" steps out; a seat an unknown game or a player without chips never enters the line
+chat Bravo whispers to you: leave
+chat Delta whispers to you: join mines 1M
+lobby
+# Auto-seat: the coin lands, the next in line for Coinflip (Bravo joins again) sits down by himself 2.5 s later
+autoseat on
+chat Bravo whispers to you: join coinflip 3M
+open
+sub coinflip
+wait 10
+shot lobby-next-pill
+cfbet Charlie 1M
+wait 70
+shot lobby-countdown
+wait 60
+lobby
+shot lobby-autoseated
+autoseat off
+close
+quit

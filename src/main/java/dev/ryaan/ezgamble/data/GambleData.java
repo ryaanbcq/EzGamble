@@ -39,6 +39,7 @@ public final class GambleData {
     public static double winX, winY, winZoom = 1;
     public static boolean autoUpdate = false;   // "Auto update": download new versions by itself (off = the Update button asks)
     public static boolean houseGuard = true;   // "House guard": a bet the house could not pay at its top multiplier is refused (house.House)
+    public static boolean autoSeat = false;   // "Auto-seat": the next player in the lobby line sits down 2.5 s after the round on the open felt (lobby.Lobby)
     public static boolean crateFast = false;   // Crates "Fast": the reel spins in 1.5 s instead of 8 (Ryan: roll quickly)
     public static boolean lens = true;   // "Liquid glass": the lens on the tabs and the period selector (off = the sliding pill)   // what the mod calls the player (asked on the first opening)
     private static long dirtyAt;
@@ -53,6 +54,7 @@ public final class GambleData {
                 if (o.has("lens")) lens = o.get("lens").getAsBoolean();
                 if (o.has("crateFast")) crateFast = o.get("crateFast").getAsBoolean();
                 if (o.has("houseGuard")) houseGuard = o.get("houseGuard").getAsBoolean();
+                if (o.has("autoSeat")) autoSeat = o.get("autoSeat").getAsBoolean();
                 if (o.has("autoUpdate")) autoUpdate = o.get("autoUpdate").getAsBoolean();
                 if (o.has("winX")) winX = o.get("winX").getAsDouble();
                 if (o.has("winY")) winY = o.get("winY").getAsDouble();
@@ -158,6 +160,7 @@ public final class GambleData {
     public static void setLens(boolean on) { lens = on; saveConfig(); }
     public static void setCrateFast(boolean on) { crateFast = on; saveConfig(); }
     public static void setHouseGuard(boolean on) { houseGuard = on; saveConfig(); }
+    public static void setAutoSeat(boolean on) { autoSeat = on; saveConfig(); }
     public static void setAutoUpdate(boolean on) { autoUpdate = on; saveConfig(); if (on) dev.ryaan.ezgamble.Updater.download(); }
 
     private static void newSession() {
@@ -180,6 +183,7 @@ public final class GambleData {
         o.addProperty("lens", lens);
         o.addProperty("crateFast", crateFast);
         o.addProperty("houseGuard", houseGuard);
+        o.addProperty("autoSeat", autoSeat);
         o.addProperty("autoUpdate", autoUpdate);
         o.addProperty("winX", winX); o.addProperty("winY", winY); o.addProperty("winZoom", winZoom);
         JsonObject fg = new JsonObject();

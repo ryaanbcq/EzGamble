@@ -111,6 +111,9 @@ public final class DebugRun {
             case "cratefast" -> GambleData.setCrateFast(arg.equals("on"));
             case "house" -> EzGambleMod.LOG.info("[ezgamble] debug: house {}", dev.ryaan.ezgamble.house.House.describe());
             case "houseguard" -> GambleData.setHouseGuard(arg.equals("on"));
+            case "lobby" -> EzGambleMod.LOG.info("[ezgamble] debug: {}", dev.ryaan.ezgamble.lobby.Lobby.describe());   // the waiting line, one entry per seat
+            case "lobbyseat" -> { var q = dev.ryaan.ezgamble.lobby.Lobby.seats(); EzGambleMod.LOG.info("[ezgamble] debug: lobbyseat {} -> {}", q.isEmpty() ? null : q.get(0).name(), dev.ryaan.ezgamble.lobby.Lobby.seat(q.isEmpty() ? null : q.get(0))); }   // seat the first in line (null = done)
+            case "autoseat" -> GambleData.setAutoSeat(arg.equals("on"));
             case "cfbet" -> { var cf = dev.ryaan.ezgamble.games.coinflip.CoinTable.CF; cf.backer = n[0]; cf.bet = dev.ryaan.ezgamble.Money.parse(n[1]); cf.betChips.clear(); EzGambleMod.LOG.info("[ezgamble] debug: coinflip start {} warn {}", cf.start(), cf.warn == null ? null : cf.warn.text()); }   // cfbet NAME BET
             case "crateopen" -> { var cr = dev.ryaan.ezgamble.games.crates.CrateTable.CR; cr.backer = n[0]; cr.bet = dev.ryaan.ezgamble.Money.parse(n[1]); EzGambleMod.LOG.info("[ezgamble] debug: crate open {} fast={}", cr.open(), GambleData.crateFast); }   // crateopen NAME BET
             case "cratestage" -> EzGambleMod.LOG.info("[ezgamble] debug: crate stage {}", dev.ryaan.ezgamble.games.crates.CrateTable.CR.stage);

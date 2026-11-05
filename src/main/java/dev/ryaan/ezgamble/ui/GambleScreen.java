@@ -174,8 +174,11 @@ public final class GambleScreen extends ProtoScreen {
             String lbl = n > 0 ? "Requests " + n : "Requests";
             double bw = F.width(lbl) + 16;
             add(new GlassButton(rx - bw, y0 + 34, bw, 16, lbl, n > 0 && !"duels".equals(sub) ? "PRIMARY" : "GHOST", () -> { sub = "duels".equals(sub) ? null : "duels"; rebuild(); }));
-            if (sub == null) { double fw = F.width("Provably fair") + 16; add(new GlassButton(rx - bw - 6 - fw, y0 + 34, fw, 16, "Provably fair", "GHOST", () -> { P.play("click"); sub = "fair"; rebuild(); })); }
+            if (sub == null) { double fw = F.width("Fair") + 16; add(new GlassButton(rx - bw - 6 - fw, y0 + 34, fw, 16, "Fair", "GHOST", () -> { P.play("click"); sub = "fair"; rebuild(); })); }
+            // Lobby: the waiting line (lobby.Lobby), lit while somebody waits; "Fair" was shortened from "Provably fair" to leave it room
+            if (sub == null) { int ln = dev.ryaan.ezgamble.lobby.Lobby.size(); String ll = ln > 0 ? "Lobby " + ln : "Lobby"; double lw2 = F.width(ll) + 12; add(new GlassButton(rx - bw - 6 - F.width("Fair") - 16 - 6 - lw2, y0 + 34, lw2, 16, ll, ln > 0 ? "PRIMARY" : "GHOST", () -> { P.play("click"); sub = "lobby"; rebuild(); })); }
         }
+        if (tab.equals("games") && sub != null && GAME_SUBS.contains(sub)) dev.ryaan.ezgamble.lobby.LobbyPill.add(this);   // "Next in line" pill, top right of the felt header
         if (tab.equals("games") && sub != null) view(sub).init();
         if (tab.equals("hud")) dev.ryaan.ezgamble.hud.HudTab.init(this);
     }
@@ -215,8 +218,10 @@ public final class GambleScreen extends ProtoScreen {
         if (Updater.state() != shownUpdate) { shownUpdate = Updater.state(); rebuild(); }
         if (shownArmed != P.now() < restartArmedUntil) { shownArmed = !shownArmed; rebuild(); }   // back to "Restart" after 3 s
         if (duelVer != dev.ryaan.ezgamble.duel.Duel.ver()) { duelVer = dev.ryaan.ezgamble.duel.Duel.ver(); if (tab.equals("games") && (sub == null || sub.equals("duels"))) rebuild(); }
+        if (lobbyVer != dev.ryaan.ezgamble.lobby.Lobby.ver()) { lobbyVer = dev.ryaan.ezgamble.lobby.Lobby.ver(); if (tab.equals("games") && sub == null) rebuild(); }   // the "Lobby N" button follows the line
     }
     private int duelVer = -1;
+    private int lobbyVer = -1;
 
     // ---- drawing
 
