@@ -364,13 +364,17 @@ public final class GambleScreen extends ProtoScreen {
         var st = dev.ryaan.ezgamble.house.House.state();
         int col = dev.ryaan.ezgamble.house.House.color(st);
         P.dot(g, lx + 2, y + 6, st == dev.ryaan.ezgamble.house.House.State.UNDER ? P.alpha(col, 0.55 + 0.45 * P.pulse(P.now())) : col);
-        g.drawText("House", lx + 12, y + 4, P.MUTE, false);
-        g.drawText(dev.ryaan.ezgamble.house.House.word(st), lx + 12 + F.width("House") + 5, y + 4, col, false);
         long bank = dev.ryaan.ezgamble.house.House.bankroll(), owed = dev.ryaan.ezgamble.house.House.owed();
-        P.pillsRight(g, rx, y, new Object[][]{
+        Object[][] pills = {
                 {"Bankroll", bank < 0 ? "-" : Money.format(bank), bank < 0 ? P.DIM : P.WHITE},
                 {"Owed", Money.format(owed), bank >= 0 && owed > bank ? P.RED : P.WHITE},
-                {"Cover", dev.ryaan.ezgamble.house.House.coverText(), col}});
+                {"Cover", dev.ryaan.ezgamble.house.House.coverText(), col}};
+        double pw = -4;
+        for (Object[] p : pills) pw += P.pillW((String) p[0], (String) p[1]) + 4;
+        g.drawText("House", lx + 12, y + 4, P.MUTE, false);
+        double wx = lx + 12 + F.width("House") + 5;
+        g.drawText(F.trimToWidth(dev.ryaan.ezgamble.house.House.word(st), rx - pw - 6 - wx), wx, y + 4, col, false);   // the word never runs under the pills
+        P.pillsRight(g, rx, y, pills);
     }
 
     /** Where the house dot sits (left of "Gambling mode"), or null when there is nothing to say or an Update button takes the place. */

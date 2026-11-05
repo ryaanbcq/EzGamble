@@ -107,6 +107,9 @@ public final class Vip {
 
     public static void invalidate() { dirty = true; ver++; }
 
+    /** GambleData.forget: he restarts from zero, the cashback already paid is forgotten with the rest (else it would eat his new earnings). */
+    public static void forget(String name) { st().paid.remove(Payouts.norm(name)); save(); invalidate(); }
+
     private static Standing of(String name) { return name == null ? null : standings().get(Payouts.norm(name)); }
 
     /** His tier, or null when he never wagered. */
@@ -139,15 +142,29 @@ public final class Vip {
     public static Awaiting awaiting() { return awaiting; }
     public static boolean paying(String name) { return awaiting != null && Payouts.same(awaiting.name(), name); }
 
-    /** One /pay of everything owed: counted as paid only once the server confirms it (tick). Never touches his chips. */
+    /**
+     * One /pay of everything owed. Payouts tells us what became of it: confirmed() marks it paid (even a confirmation that
+     * comes after Payouts' own timeout, through its `late` list), refused() frees the button. Never touches his chips.
+     */
     public static boolean pay(String name) {
         long o = owed(name);
         if (o <= 0 || awaiting != null) return false;
-        if (Payouts.pending.stream().anyMatch(p -> Payouts.same(p.name(), name))) return false;
+        if (!Payouts.send(name, o, true)) return false;   // another /pay to him is on its way
         awaiting = new Awaiting(name, o, P.now());
-        Payouts.send(name, o, true);
         ver++;
         return true;
+    }
+
+    /** Payouts: the server confirmed a cashback /pay (ours or one typed by hand while one waited). */
+    public static void confirmed(String name, long amount) {
+        markPaid(name, amount);
+        if (awaiting != null && Payouts.same(awaiting.name(), name)) awaiting = null;
+        ver++;
+    }
+
+    /** Payouts: the server refused the cashback /pay, nothing was paid. */
+    public static void refused(String name) {
+        if (awaiting != null && Payouts.same(awaiting.name(), name)) { awaiting = null; ver++; }
     }
 
     /** Debug / tests: as if the server had confirmed a cashback. */
@@ -158,16 +175,12 @@ public final class Vip {
         save(); ver++;
     }
 
+    /** Payouts keeps a timed-out /pay in its `late` list for 60 s: a confirmation inside that window still counts, so we wait as long. */
+    private static final long GIVE_UP_MS = 65_000;
+
     public static void tick() {
         Awaiting a = awaiting;
-        if (a != null) {
-            Payouts.Recent r = Payouts.recent.get(a.name());
-            boolean pend = Payouts.pending.stream().anyMatch(p -> Payouts.same(p.name(), a.name()));
-            if (r != null && r.at() >= a.at() && !pend) {   // answered: paid for real, or refused (nothing changes)
-                if (r.ok()) markPaid(a.name(), a.amount());
-                awaiting = null; ver++;
-            } else if (!pend && P.now() - a.at() > 20_000) { awaiting = null; ver++; }
-        }
+        if (a != null && P.now() - a.at() > GIVE_UP_MS) { awaiting = null; ver++; }   // never answered: the button comes back, nothing marked paid
         if (lastTierUp != null && P.now() - lastTierUp.at() > 3200) lastTierUp = null;
     }
 

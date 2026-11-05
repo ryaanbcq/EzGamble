@@ -111,7 +111,7 @@ public final class ChipsView implements GameView {
     /** Where the Chips / All players list scrolls: under the title row, down to the footer pill (or the bottom). */
     private Widget.Clip clip() {
         double top = s.y0 + 102;
-        return new Widget.Clip(lx(s), top, GambleScreen.W - 2 * GambleScreen.PAD, s.y0 + GambleScreen.H - GambleScreen.PAD - (who.equals("session") ? 18 : 0) - top);
+        return new Widget.Clip(lx(s), top, GambleScreen.W - 2 * GambleScreen.PAD, s.y0 + GambleScreen.H - GambleScreen.PAD - (who.equals("all") ? 0 : 18) - top);   // Session and VIP keep a footer line of pills
     }
 
     /** Also used by the duel requests list (prototype chipsClip). */
@@ -264,18 +264,15 @@ public final class ChipsView implements GameView {
     /** The loyalty ladder: the five tiers as a legend, then everyone who ever wagered, Diamond first. */
     private void renderVip(G g, double mx, double my) {
         int lx = lx(s), rx = rx(s); double y = s.y0 + 80;
-        P.pillsRight(g, rx, y, pills());
-        // the legend where the search sits for the other lists: a gem and its threshold per tier
-        double legW = 0;
-        for (Object[] p : pills()) legW += P.pillW((String) p[0], (String) p[1]) + 4;
-        double lgx = lx + 24, lgw = rx - legW - 6 - lgx, step = Math.floor(lgw / Vip.TIERS.length);
+        // the legend takes the whole header row (the Players / Owed pills sit in the footer): a gem, the tier, its threshold and rate
+        double lgx = lx + 24, step = Math.floor((rx - lgx) / Vip.TIERS.length);
         for (int i = 0; i < Vip.TIERS.length; i++) {
             Vip.Tier t = Vip.TIERS[i];
-            String th = t.from() == 0 ? t.name() : Money.format(t.from()).substring(1);
             double tx = lgx + i * step;
             VipBadge.draw(g, t, tx, y + 1);
-            g.drawText(F.trimToWidth(th, step - 12), tx + 10, y + 1, t.color(), false);
-            g.drawText(F.trimToWidth(t.rateText(), step - 4), tx, y + 10, P.DIM, false);
+            g.drawText(F.trimToWidth(t.name(), step - 12), tx + 10, y + 1, t.color(), false);
+            String sub = (t.from() == 0 ? "start" : Money.format(t.from()).substring(1)) + (t.rate() > 0 ? " · " + shortRate(t) : "");
+            g.drawText(F.trimToWidth(sub, step - 4), tx, y + 11, P.DIM, false);
         }
         List<Vip.Standing> rows = Vip.ladder();
         if (rows.isEmpty()) {
@@ -311,7 +308,13 @@ public final class ChipsView implements GameView {
             if (fw > 0) g.fill(bx, by, bx + fw, by + 3, nx == null ? t.color() : P.lerp(t.color(), nx.color(), 0.5));
         }
         s.endList(g, id, ch);
+        double fy = s.y0 + GambleScreen.H - GambleScreen.PAD - 10;   // the footer: how many players have a tier, the cashback owed in all
+        double px = lx;
+        for (Object[] p : pills()) { P.pill(g, px, fy - 4, (String) p[0], (String) p[1], p.length > 2 ? (int) p[2] : P.WHITE); px += P.pillW((String) p[0], (String) p[1]) + 4; }
     }
+
+    /** "0.5%", "2%". */
+    private static String shortRate(Vip.Tier t) { double r = t.rate() * 100; return (r == Math.rint(r) ? String.valueOf((long) r) : String.valueOf(r)) + "%"; }
 
     @Override
     public boolean key(Key e) {

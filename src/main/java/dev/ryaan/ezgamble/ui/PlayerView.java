@@ -55,7 +55,10 @@ public final class PlayerView implements GameView {
     /** The XP row sits under the stats card (and under the Blackjack line when there is one). */
     private double vipRowY() { return s.y0 + 80 + 22 + 38 + (dev.ryaan.ezgamble.data.PlayerStats.of(player).bj.hands() > 0 ? 19 : 0); }
 
-    @Override public void tick() { if (vipVer != Vip.ver) { vipVer = Vip.ver; s.rebuild(); } }
+    private static int payVer = dev.ryaan.ezgamble.data.Payouts.ver;
+    @Override public void tick() {   // a cashback or a chips /pay to him changes the button
+        if (vipVer != Vip.ver || payVer != dev.ryaan.ezgamble.data.Payouts.ver) { vipVer = Vip.ver; payVer = dev.ryaan.ezgamble.data.Payouts.ver; s.rebuild(); }
+    }
     @Override public void leave() {}
 
     @Override
@@ -67,11 +70,7 @@ public final class PlayerView implements GameView {
         double y = s.y0 + 80;
         g.drawHead(P.skinOf(st.name), lx + 24, y, 16);
         P.gradientText(g, st.name, lx + 45, y + 4, true);
-        Vip.Tier tier = Vip.tier(player);
-        if (tier != null && removeBtn != null) {   // his tier after the Remove button
-            double tx = removeBtn.x + removeBtn.w + 8;
-            VipBadge.draw(g, tier, tx, y + 4); g.drawText(tier.name(), tx + 10, y + 4, tier.color(), false);
-        }
+        Vip.Tier tier = Vip.tier(player);   // named on the loyalty row below (the header has the Remove button and the pills)
         P.pillsRight(g, rx, y, new Object[][]{{"Sessions", String.valueOf(st.sessions)}, {"Since", st.first != null ? P.DATE(st.first).substring(0, 5) : "-"}});
         y += 22;
         P.card(g, lx, y, rx - lx, 34, "soft");
@@ -90,7 +89,8 @@ public final class PlayerView implements GameView {
         if (tier != null) {   // the loyalty row: tier, wagered, the bar to the next tier, the cashback
             Vip.Tier nx = Vip.next(player);
             String line = tier.name() + " · " + Money.format(Vip.xp(player)) + " wagered" + (nx == null ? ", top tier" : " · " + Money.format(nx.from() - Vip.xp(player)) + " to " + nx.name());
-            VipBadge.draw(g, tier, lx + 8, y + 2); g.drawText(line, lx + 18, y + 2, P.TEXT, false);
+            double lineW = (payBtn != null ? payBtn.x : rx) - 8 - (lx + 18);
+            VipBadge.draw(g, tier, lx + 8, y + 2); g.drawText(F.trimToWidth(line, lineW), lx + 18, y + 2, P.TEXT, false);   // never under the cashback button
             double bx = lx + 8, bw2 = (payBtn != null ? payBtn.x - 8 : rx - 8) - bx;
             g.fill(bx, y + 12, bx + bw2, y + 15, 0x1AFFFFFF);
             int fw = (int) Math.round(bw2 * Vip.progress(player));

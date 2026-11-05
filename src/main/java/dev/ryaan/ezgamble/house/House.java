@@ -38,8 +38,16 @@ public final class House {
     /** The gambler's own money, -1 while the server has not shown it. */
     public static long bankroll() { return Balance.value(); }
 
-    /** Every chip on the table, plus what other modules registered. Never negative. */
+    /** Every chip on the table, plus what other modules registered. Never negative. Summed at most every 50 ms: the HUD, the menu and the tick all ask. */
+    private static long owedCache, owedAt = -1;
     public static long owed() {
+        long t = P.now();
+        if (owedAt >= 0 && t - owedAt < 50) return owedCache;
+        owedAt = t; owedCache = sumOwed();
+        return owedCache;
+    }
+
+    private static long sumOwed() {
         long o = 0;
         for (Payouts.Row r : Payouts.rows()) o += r.bal();
         for (LongSupplier s : extraOwed) o += Math.max(0, s.getAsLong());
@@ -76,7 +84,7 @@ public final class House {
         return bankroll() < 0 || maxWin <= f;
     }
 
-    public static String reason(long maxWin) { return "House can't cover " + Money.format(maxWin); }
+    public static String reason(long maxWin) { return "House can't cover a " + Money.format(maxWin) + " win"; }
 
     /** The biggest bet whose top win (bet x mult) stays under a quarter of the free bankroll; -1 unknown, 0 none. */
     public static long safeMax(double mult) {

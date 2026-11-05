@@ -65,8 +65,8 @@ public final class MinesTable extends Host {   // the player, the chips and the 
         if (backer == null) return fail("Pick a player first");
         if (bet <= 0) return fail("Place a bet");
         if (bet > balance()) return fail("Not enough chips");
-        if (!covered((long) Math.min(MINES_MAX_WIN, Math.floor(bet * minesMult(MINES_N - mines, mines))))) return false;   // house guard: every safe tile cleared
-        settle();
+        settle();   // the previous board is in his chips before the house counts what it owes
+        if (!covered((long) Math.min(MINES_MAX_WIN, Math.floor(bet * minesMult(MINES_N - mines, mines))) - bet)) return false;   // house guard, net win with every safe tile cleared
         int[] idx = new int[MINES_N];
         for (int i = 0; i < MINES_N; i++) idx[i] = i;
         var fr = dev.ryaan.ezgamble.data.Fair.round("Mines");   // the bombs are the first `mines` tiles of a Fisher-Yates shuffle

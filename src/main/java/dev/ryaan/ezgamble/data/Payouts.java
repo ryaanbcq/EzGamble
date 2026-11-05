@@ -68,7 +68,7 @@ public final class Payouts {
         names.addAll(s.won.keySet());
         for (String n : names) {
             long recv = s.credit.getOrDefault(n, 0L), sent = s.sent.getOrDefault(n, 0L), won = s.won.getOrDefault(n, 0L);
-            Pending pend = pending.stream().filter(p -> p.name.equals(n)).findFirst().orElse(null);
+            Pending pend = pending.stream().filter(p -> p.name.equals(n) && !p.cashback).findFirst().orElse(null);   // a cashback on its way is not chips going back
             out.add(new Row(n, recv, sent, won, Math.max(0, recv + won - sent), pend, recent.get(n)));
         }
         out.sort(Comparator.comparingLong((Row r) -> -r.recv).thenComparing(Row::name));
@@ -81,15 +81,20 @@ public final class Payouts {
         return 0;
     }
 
-    public static void send(String name, long amount) { send(name, amount, false); }
+    public static boolean send(String name, long amount) { return send(name, amount, false); }
 
-    /** cashback = a VIP cashback: the /pay is confirmed the same way, but it is his reward, not his chips coming back. */
-    public static void send(String name, long amount, boolean cashback) {
-        if (amount <= 0 || pending.stream().anyMatch(p -> p.name.equals(name))) return;
+    /**
+     * cashback = a VIP cashback: the /pay is confirmed the same way, but it is his reward, not his chips coming back, and
+     * its outcome goes to vip.Vip (confirmed / refused), never into `recent`.
+     * @return false when nothing was sent (one /pay at a time per player): the caller must not count it as sent.
+     */
+    public static boolean send(String name, long amount, boolean cashback) {
+        if (amount <= 0 || pending.stream().anyMatch(p -> p.name.equals(name))) return false;
         pending.add(new Pending(name, amount, P.now(), 0, false, cashback));   // before the command: typed() sees our own /pay go out and must find it already waiting
         var nh = MinecraftClient.getInstance().getNetworkHandler();
         if (nh != null) nh.sendChatCommand("pay " + name + " " + amount);   // whole dollars: no K/M rounding on the server
         ver++;
+        return true;
     }
 
     /** A /pay typed by hand to a player of the session: counted like one sent from the menu (exact amount from the command). */
@@ -114,8 +119,14 @@ public final class Payouts {
         if (p == null) p = late.stream().filter(q -> same(q.name, w)).findFirst().orElse(null);
         if (p == null) return true;   // a /pay typed by hand: not ours to count
         pending.remove(p); late.remove(p);
+        if (p.cashback) {   // a cashback: vip.json records it (even when the confirmation came after our timeout), the chips lists never see it
+            dev.ryaan.ezgamble.vip.Vip.confirmed(p.name, p.amount);
+            ver++;
+            P.play("cash", 1, 0.6);
+            return true;
+        }
         Session s = session();
-        if (s != null && !p.cashback) {   // a cashback is recorded by vip.json, never as chips sent back
+        if (s != null) {   // a cashback is recorded by vip.json, never as chips sent back
             // only what he had counts as chips sent back: anything above is a gift, never a debt that would eat his next payments
             long counted = Math.min(p.amount, balance(p.name));
             if (counted > 0) s.sent.merge(p.name, counted, Long::sum);
@@ -142,6 +153,7 @@ public final class Payouts {
         String low = line.toLowerCase(Locale.ROOT);
         for (String[] r : REFUSED) if (low.contains(r[0])) {
             pending.remove(p);
+            if (p.cashback) { dev.ryaan.ezgamble.vip.Vip.refused(p.name); ver++; return false; }   // the Pay cashback button comes back, nothing was paid
             recent.put(p.name, new Recent(false, 0, t, r[1]));
             ver++;
             return false;
@@ -157,7 +169,7 @@ public final class Payouts {
                 if (nh != null) nh.sendChatCommand("pay " + p.name + " " + p.amount);
                 pending.set(pending.indexOf(p), new Pending(p.name, p.amount, t, 0, true, p.cashback));
             } else if (p.resendAt == 0 && t - p.at > TIMEOUT) {
-                pending.remove(p); late.add(p); recent.put(p.name, new Recent(false, 0, t)); ver++;
+                pending.remove(p); late.add(p); if (!p.cashback) recent.put(p.name, new Recent(false, 0, t)); ver++;   // a late cashback confirmation still reaches Vip through `late`
             }
         }
         late.removeIf(p -> t - p.at > 60000);

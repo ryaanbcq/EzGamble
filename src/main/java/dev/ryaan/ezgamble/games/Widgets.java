@@ -42,8 +42,8 @@ public final class Widgets {
         if (st == null || !st.active() || (round.paid != null && !st.retry())) return;
         settle.run();
         long amount = st.retry() ? round.paid.amount() : st.amount();
+        if (!Payouts.send(backer, amount)) return;   // another /pay to him is on its way (a cashback...): nothing left, the button stays
         round.paid = new Paid(P.now(), amount);
-        Payouts.send(backer, amount);
         P.play("click");
     }
 
@@ -249,8 +249,8 @@ public final class Widgets {
             settle.run();
             long amount = st != null && st.retry ? sent.amount() : host.balance();
             if (amount <= 0) return;
+            if (!Payouts.send(host.backer, amount)) return;   // another /pay to him is on its way: the pill stays open
             open = false; sent = new Paid(P.now(), amount);
-            Payouts.send(host.backer, amount);
             P.play("click");
         }
 

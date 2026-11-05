@@ -79,8 +79,8 @@ public final class BlackjackTable extends Host {
         if (backer == null) return fail("Pick a player first");
         if (bet <= 0) return fail("Place a bet");
         if (bet > balance()) return fail("Not enough chips");
-        if (!covered(bet * 4)) return false;   // house guard: a split or a double down commits twice the bet, each paid up to 3:2
-        apply();
+        apply();   // the previous hand is in his chips before the house counts what it owes
+        if (!covered(bet * 4)) return false;   // house guard, net win: two split hands, both doubled, both won at 1:1
         lastBacker = backer;
         game = new BlackjackGame(shoe);
         game.deal(bet);

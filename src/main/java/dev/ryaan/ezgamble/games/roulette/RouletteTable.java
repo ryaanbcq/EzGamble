@@ -140,7 +140,7 @@ public final class RouletteTable extends Host {
         if (placed() + amount > balance()) return fail("Not enough chips");
         Bet b = BETS.get(key); if (b == null) return false;
         if ((bets.getOrDefault(key, 0L) + amount) * b.ret() > MAX_WIN) return fail("Max " + Money.format(MAX_WIN / b.ret()) + " on " + b.label());
-        if (!covered(worstCase(key, amount))) return false;   // house guard: the number that would pay the most of everything placed
+        if (!covered(worstCase(key, amount) - placed() - amount)) return false;   // house guard, net: the number that would pay the most of everything placed, minus the stakes
         bets.merge(key, amount, Long::sum); order.add(Map.entry(key, amount));
         P.play("ui_kcollide_open", 1, 0.5);
         return true;
@@ -163,8 +163,8 @@ public final class RouletteTable extends Host {
         long total = placed();
         if (total <= 0) return fail("Click a cell to bet");
         if (total > balance()) return fail("Not enough chips");
-        if (!covered(worstCase(null, 0))) return false;   // house guard, again: the bankroll may have moved since the bets were placed
-        settle();
+        settle();   // the previous spin is in his chips before the house counts what it owes
+        if (!covered(worstCase(null, 0) - total)) return false;   // house guard, again: the bankroll may have moved since the bets were placed
         var fr = dev.ryaan.ezgamble.data.Fair.round("Roulette");   // provably fair: the number (the landing jitter stays cosmetic)
         int n = (int) Math.floor(fr.next() * 37), idx = LAPS * 37 + indexOf(n);
         fr.result(String.valueOf(n));
