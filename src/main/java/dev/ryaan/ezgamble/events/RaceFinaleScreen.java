@@ -43,7 +43,13 @@ public final class RaceFinaleScreen extends ProtoScreen {
     private boolean results() { return resultsAt >= 0; }
     /** 0 on the podium, 1 once the results card has settled. */
     private double moveK() { return results() ? easeOut((now() - resultsAt) / (double) MOVE_MS) : 0; }
-    private double cardTop() { return SH / 2 - 30; }
+    /** The shrunken podium's chibi scale: 2, or 1.5 on a short screen (1080p at GUI scale 4 is 270 px high). */
+    private double smallScale() { return SH >= 320 ? 2 : 1.5; }
+    /**
+     * The card sits mid-screen, or lower when the shrunken podium needs the room above it: title at y 6 (18 above the
+     * name), the name, 12 to the crowned chibi (CHIBI_H + 3 texels), the first step, 14 to the card.
+     */
+    private double cardTop() { return Math.max(SH / 2 - 30, 24 + 12 + (CHIBI_H + 3) * smallScale() + 1 + STEP_SMALL[0] + 14); }
     private double cardH() { return 40 + ev.top.size() * ROW_H + 6; }
 
     @Override
@@ -54,8 +60,9 @@ public final class RaceFinaleScreen extends ProtoScreen {
             Events.Winner w = ev.top.get(i);
             Events.PayState ps = Events.payState(w);
             if (ps == null || ps.done()) continue;
-            double bw = F.width(ps.label()) + 14;
-            GlassButton b = add(new GlassButton(x + CARD_W - 8 - bw, y + 40 + i * ROW_H + 2, bw, 16, ps.label(), ps.retry() ? "DANGER" : "PRIMARY", () -> { if (!Events.pay(w)) play("fail", 1, 0.5); rebuild(); }));
+            String label = ps.retry() ? "Retry" : ps.label();   // the reason is drawn under the name: the long label would cover the share column
+            double bw = F.width(label) + 14;
+            GlassButton b = add(new GlassButton(x + CARD_W - 8 - bw, y + 40 + i * ROW_H + 2, bw, 16, label, ps.retry() ? "DANGER" : "PRIMARY", () -> { if (!Events.pay(w)) play("fail", 1, 0.5); rebuild(); }));
             b.active = ps.active();
         }
         add(new GlassButton(cx - 32, y + cardH() + 10, 64, 20, "Close", "GHOST", this::close));
@@ -125,7 +132,7 @@ public final class RaceFinaleScreen extends ProtoScreen {
         if (results()) card(g, mx, my);
         renderChildren(g, mx, my);
         String hint = results() ? "Esc to close" : "Click to see the results · Esc to close";
-        g.drawText(hint, SW / 2 - F.width(hint) / 2.0, SH - 11, alpha(DIM, 0.8), false);
+        if (!results() || SH - 11 >= cardTop() + cardH() + 32) g.drawText(hint, SW / 2 - F.width(hint) / 2.0, SH - 11, alpha(DIM, 0.8), false);   // never under the Close button
         g.pop();
     }
 
@@ -133,7 +140,7 @@ public final class RaceFinaleScreen extends ProtoScreen {
     private void podium(G g) {
         double cx = SW / 2, cy = SH / 2; long t = now(), e = t - openedAt;
         double mk = moveK();
-        double pBig = SH >= 500 ? 5 : SH >= 400 ? 4 : 3, pSmall = 2;
+        double pBig = SH >= 500 ? 5 : SH >= 400 ? 4 : 3, pSmall = smallScale();
         double p = pBig + (pSmall - pBig) * mk, ps = Math.max(1.5, Math.min(Math.max(2, p - 2), p - 0.5));   // the winner's chibi a little bigger than the others
         double stepW = (Math.min(120, (SW - 40) / 3.2)) * (1 - 0.35 * mk), gap = 8;
         double baseBig = Math.min(SH - 70, cy + 92), baseSmall = cardTop() - 14, base = baseBig + (baseSmall - baseBig) * mk;
@@ -181,6 +188,9 @@ public final class RaceFinaleScreen extends ProtoScreen {
         }
     }
 
+    /** "Not confirmed, retry" -> "Not confirmed": the reason alone, the button says Retry. */
+    private static String reason(Events.PayState ps) { String l = ps.label(); return l.endsWith(", retry") ? l.substring(0, l.length() - 7) : l; }
+
     /** The results card: rank, head, gem, name, wagered, share, and a Pay button per unpaid winner (widgets). */
     private void card(G g, double mx, double my) {
         double k = moveK();
@@ -206,6 +216,7 @@ public final class RaceFinaleScreen extends ProtoScreen {
             if (i == 0) gradientText(g, sh, x + 172, ry + 6, true, k); else g.drawText(sh, x + 172, ry + 6, alpha(WHITE, k), false);
             Events.PayState ps = Events.payState(w);
             if (ps != null && ps.done()) g.drawText(ps.label(), x + CARD_W - 8 - F.width(ps.label()), ry + 6, alpha(GREEN, k), false);   // else the Pay button is there
+            else if (ps != null && ps.retry()) g.drawText(reason(ps), x + 36, ry + 14, alpha(RED, k), false);   // the Retry button only says "Retry"
             else if (ps == null) g.drawText("-", x + CARD_W - 8 - F.width("-"), ry + 6, alpha(DIM, k), false);
         }
         g.pop();

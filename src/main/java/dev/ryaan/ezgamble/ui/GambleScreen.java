@@ -458,7 +458,7 @@ public final class GambleScreen extends ProtoScreen {
             {"Crates", "Open crates", "game/crates"}, {"Roulette", "Red, black", "game/roulette"}, {"Crash", "Cash out", "game/crash"}, {"Coinflip", "Heads, tails", "game/coinflip"},
             {"Rain", "Win the pot", "game/rain"},
             {"High rollers", "Top wagers", "game/highrollers"},
-            {"Events", "Timed races", "fill:events"}};
+            {"Events", "Timed events", "fill:events"}};
     // Provably fair left the grid for a button by Requests; past 9 tiles the grid scrolls, the tiles keep the height of 3 rows
     private static final String[] GAME_IDS = {"blackjack", "auction", "mines", "crates", "roulette", "crash", "coinflip", "rain", "rollers",
             "events"};

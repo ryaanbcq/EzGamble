@@ -235,7 +235,7 @@ public final class Events {
         if (Payouts.pending.stream().anyMatch(p -> Payouts.same(p.name(), w.name))) return new PayState("Sending...", false, false, false);
         Payouts.Recent r = Payouts.recent.get(w.name);
         if (r != null && r.at() >= w.payAt && !r.ok()) return new PayState((r.why() != null ? r.why() : "Not confirmed") + ", retry", true, false, true);
-        if (r == null && System.currentTimeMillis() - w.payAt > TIMEOUT) return new PayState("Not confirmed, retry", true, false, true);
+        if (r == null && P.now() - w.payAt > TIMEOUT) return new PayState("Not confirmed, retry", true, false, true);
         return new PayState("Sending...", false, false, false);
     }
 
@@ -250,7 +250,7 @@ public final class Events {
         Session sess = GambleData.last();
         if (!s.retry() && sess != null) sess.addWon(w.name, w.share);
         if (!Payouts.send(w.name, w.share)) { if (!s.retry() && sess != null) sess.addWon(w.name, -w.share); return false; }
-        w.payAt = System.currentTimeMillis(); w.payAmount = w.share;
+        w.payAt = P.now(); w.payAmount = w.share;   // P.now like Payouts.Recent.at, the two are compared (the demo recorder freezes that clock)
         save(); ver++;
         P.play("click");
         return true;
