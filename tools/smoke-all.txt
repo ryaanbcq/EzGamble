@@ -1,0 +1,136 @@
+# Whole-GUI tour: ./tools/smoke.sh tools/smoke-all.txt 420
+# Seeds a session with players, chips, bets, a VIP, badges, a race, a jackpot pot and the lobby, then screenshots every screen
+# of the menu, the HUD and the HUD tab, with a perf sample on the heavy ones. Expect ezgamble-all-*.png and "[ezgamble] debug: perf" lines.
+size 1280 800
+gui 2
+mode on
+balance 900M
+paid Alice 40M
+paid Bob 30M
+paid Charlie_Longname99 25M
+wager Alice 2M 30
+wager Bob 1M 20
+wager Charlie_Longname99 500K 10
+wagerwin Alice 1M 5
+demo 40
+jackpotset 12.4M
+event race 15 10M
+chat [Bob -> me] join blackjack 5M
+chat [Charlie_Longname99 -> me] join coinflip
+wait 40
+shot all-hud
+open
+tab dashboard
+wait 20
+perf all-dashboard
+wait 60
+shot all-dashboard
+tab transactions
+wait 20
+perf all-history
+wait 60
+shot all-history
+tab games
+wait 20
+shot all-games
+scroll @190 @200 -3
+wait 10
+shot all-games-scrolled
+sub chips
+wait 20
+shot all-chips-session
+chipswho all
+wait 10
+perf all-chips-all
+wait 60
+shot all-chips-all
+chipswho vip
+wait 10
+shot all-chips-vip
+sub lobby
+wait 20
+shot all-lobby
+sub events
+wait 20
+perf all-events
+wait 60
+shot all-events
+sub books
+wait 20
+bookstab tables
+wait 10
+perf all-books-tables
+wait 60
+shot all-books-tables
+bookstab hours
+wait 10
+shot all-books-hours
+bookstab days
+wait 10
+shot all-books-days
+bookstab sessions
+wait 10
+shot all-books-log
+sub jackpot
+wait 20
+shot all-jackpot
+sub fair
+wait 20
+shot all-fair
+sub rollers
+wait 20
+shot all-rollers
+sub blackjack
+wait 20
+perf all-blackjack
+wait 60
+shot all-blackjack
+sub coinflip
+wait 20
+shot all-coinflip
+sub crash
+wait 20
+shot all-crash
+sub mines
+wait 20
+shot all-mines
+sub roulette
+wait 20
+shot all-roulette
+sub crates
+wait 20
+shot all-crates
+sub rain
+wait 20
+shot all-rain
+sub auction
+wait 20
+shot all-auction
+tab hud
+wait 20
+shot all-hudtab
+close
+wait 20
+perf all-hud
+wait 60
+shot all-hud-event
+eventend
+wait 60
+shot all-race-finale
+key 256
+wait 20
+jackpothit Alice
+wait 50
+shot all-jackpot-finale
+wait 120
+mode off
+wait 30
+shot all-recap-hint
+recap
+wait 40
+shot all-recap-1
+recapslide 4
+wait 20
+shot all-recap-4
+key 256
+quit
