@@ -85,8 +85,8 @@ shot theme-mono-games
 tab hud
 wait 5
 shot theme-mono-hud
-# a click on the first swatch (Lavender), the theme row sits at y0 + 224 and its swatches start at x0 + 296: Lavender back in the config
-click @301 @235
+# a click on the first swatch (Lavender): the theme row is the ninth 20 px row (y0 + 240), its 10 px swatches sit at y0 + 245..255 from x0 + 296: Lavender back in the config
+click @301 @250
 wait 5
 shot theme-click-lavender
 theme lavender
