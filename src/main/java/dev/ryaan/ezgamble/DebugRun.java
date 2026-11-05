@@ -21,7 +21,8 @@ import java.util.List;
  * Unattended smoke test: when config/ezgamble-debug exists, its lines are run one by one once a world is loaded,
  * then the game quits. Commands (GUI coordinates):
  *   size W H, gui N, wait T, open, close, tab ID, sub ID, range ID, mode on|off, demo N, chat LINE, recap, recapslide N, recapsave,
- *   mouse X Y, click X Y, rclick X Y, key CODE, type TEXT, scroll X Y AMOUNT, shot NAME, perf NAME, run JAVA_HOOK, quit
+ *   mouse X Y, click X Y, rclick X Y, key CODE, type TEXT, scroll X Y AMOUNT, shot NAME, perf NAME, run JAVA_HOOK, quit,
+ *   event race|xp|hour MINUTES [PRIZE], eventend, eventstate (timed events)
  * Every step is logged "[ezgamble] debug: ...". perf = average render time of the current screen over 60 frames.
  */
 public final class DebugRun {
@@ -149,6 +150,9 @@ public final class DebugRun {
             case "vipstate" -> EzGambleMod.LOG.info("[ezgamble] debug: vip {} = {}", arg, dev.ryaan.ezgamble.vip.Vip.describe(arg));   // vipstate NAME
             case "vippaid" -> dev.ryaan.ezgamble.vip.Vip.markPaid(n[0], dev.ryaan.ezgamble.Money.parse(n[1]));   // vippaid NAME AMT: as if a cashback /pay had been confirmed
             case "chipswho" -> { dev.ryaan.ezgamble.ui.ChipsView.who = arg; GambleScreen.debug("sub", "chips"); }   // chipswho session|all|vip
+            case "event" -> EzGambleMod.LOG.info("[ezgamble] debug: event start {}", dev.ryaan.ezgamble.events.Events.start(dev.ryaan.ezgamble.events.Events.Kind.of(n[0]), Integer.parseInt(n[1]), n.length > 2 ? dev.ryaan.ezgamble.Money.parse(n[2]) : 0));   // event race|xp|hour MINUTES [PRIZE]
+            case "eventend" -> dev.ryaan.ezgamble.events.Events.endNow();   // the running event ends now (a race's finale opens once no screen is up)
+            case "eventstate" -> EzGambleMod.LOG.info("[ezgamble] debug: event {}", dev.ryaan.ezgamble.events.Events.describe());
             case "skindirect" -> dev.ryaan.ezgamble.proto.Faces.forceDirect = true;
             case "txn" -> GambleData.record(new dev.ryaan.ezgamble.data.Txn(System.currentTimeMillis(), n[0], dev.ryaan.ezgamble.Money.parse(n[1]), n[2].startsWith("-") ? -dev.ryaan.ezgamble.Money.parse(n[2].substring(1)) : dev.ryaan.ezgamble.Money.parse(n[2]), null, "debug"));   // txn GAME BET DELTA
             case "demo" -> EzGambleMod.demoBets(Integer.parseInt(arg));

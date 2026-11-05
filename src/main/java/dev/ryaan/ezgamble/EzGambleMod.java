@@ -54,6 +54,7 @@ public final class EzGambleMod implements ClientModInitializer {
             dev.ryaan.ezgamble.games.Ticks.tick();
             dev.ryaan.ezgamble.vip.Vip.tick();   // cashback confirmations, the tier-up banner
             dev.ryaan.ezgamble.house.House.tick();   // bankroll vs chips owed, debounced
+            dev.ryaan.ezgamble.events.Events.tick();   // timed events: the end, the race finale, the winners' /pay confirmations
             DebugRun.tick(client);
             dev.ryaan.ezgamble.recap.RecapScreen.tickOpen(client);   // /ezgamble recap opens once the chat screen has gone
             while (menuKey.wasPressed()) if (client.currentScreen == null) client.setScreen(new GambleScreen());

@@ -10,11 +10,12 @@ Client-side Fabric mod for Minecraft 1.21.11 by ZKR5: host gambling games on an 
 - **VIP**: players earn XP by wagering at your tables. Bronze, Silver (25M), Gold (100M), Platinum (500M) and Diamond (2B) tiers, a gem next to their name everywhere, a cashback rate per tier (0 to 2 %) that you owe and pay in one click from their profile. The ladder is under Games, chips card, VIP.
 - **House guard**: a bet whose top win you could not pay on top of what you already owe is refused at the table (HUD tab to turn it off).
 - **Recap**: when a session closes (or from the Dashboard, or `/ezgamble recap`), a full-screen story of the session: profit and curve, hottest table, the high roller on a podium, best and worst moments, who sat at the table, and a share card saved as a PNG or copied as text.
+- **Events**: timed events from a Games tile, 5 to 60 minutes, one at a time. A **Wager race** ranks the players who wager the most on a live leaderboard and ends on a podium; the prize pool goes 50 / 30 / 20 to the top three, one Pay click per winner. **Double XP** counts VIP XP twice, **Happy hour** adds 1 % cashback to every tier. A banner at the top of the HUD counts down while one runs.
 - **HUD**: a session card (curve, win rate, all-time, house cover), a toast per bet, the payments card, placed and styled in the HUD editor.
 
 ## Smoke tests
 
-`tools/smoke.sh <script>` runs a script of `DebugRun` commands in the EzTest instance and saves screenshots: `tools/smoke-vip.txt`, `tools/smoke-house.txt`, `tools/smoke-recap.txt`.
+`tools/smoke.sh <script>` runs a script of `DebugRun` commands in the EzTest instance and saves screenshots: `tools/smoke-vip.txt`, `tools/smoke-house.txt`, `tools/smoke-recap.txt`, `tools/smoke-events.txt`.
 
 ## Install
 

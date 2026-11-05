@@ -457,19 +457,21 @@ public final class GambleScreen extends ProtoScreen {
             {"Blackjack", "Hit or stand", "game/blackjack"}, {"Auction", "Highest bid", "game/auction"}, {"Mines", "Avoid bombs", "game/mines"},
             {"Crates", "Open crates", "game/crates"}, {"Roulette", "Red, black", "game/roulette"}, {"Crash", "Cash out", "game/crash"}, {"Coinflip", "Heads, tails", "game/coinflip"},
             {"Rain", "Win the pot", "game/rain"},
-            {"High rollers", "Top wagers", "game/highrollers"}};
-    // Provably fair left the grid for a button by Requests: 9 tiles stay 3 x 3 under the credit card, nothing scrolls
-    private static final String[] GAME_IDS = {"blackjack", "auction", "mines", "crates", "roulette", "crash", "coinflip", "rain", "rollers"};
+            {"High rollers", "Top wagers", "game/highrollers"},
+            {"Events", "Timed races", "fill:events"}};
+    // Provably fair left the grid for a button by Requests; past 9 tiles the grid scrolls, the tiles keep the height of 3 rows
+    private static final String[] GAME_IDS = {"blackjack", "auction", "mines", "crates", "roulette", "crash", "coinflip", "rain", "rollers",
+            "events"};
 
     /** The credit card, one line high: the 3 rows of tiles fit under it, nothing scrolls or gets cut. */
     private static final int CARD_H = 40, TILE_GAP = 6;
 
     public double[] gamesClip() { double top = y0 + 80 + CARD_H + TILE_GAP; return new double[]{x0 + PAD, top, W - 2 * PAD, y0 + H - PAD - top}; }
 
-    /** x, y, w, h, index: 3 per row, the rows share the height left under the card. */
+    /** x, y, w, h, index: 3 per row, the rows share the height left under the card as a 3-row grid (more rows scroll, same tile height). */
     private List<double[]> gameTilesRects() {
         double[] gc = gamesClip();
-        int rows = (GAMES.length + 2) / 3;
+        int rows = 3;
         double lx = x0 + PAD, rx = x0 + W - PAD, tw = (int) ((rx - lx - 2 * TILE_GAP) / 3), th = Math.floor((gc[3] - (rows - 1) * TILE_GAP) / rows), y = gc[1];
         List<double[]> out = new ArrayList<>();
         for (int i = 0; i < GAMES.length; i++) out.add(new double[]{lx + (i % 3) * (tw + TILE_GAP), y + Math.floor(i / 3.0) * (th + TILE_GAP), tw, th, i});
@@ -537,7 +539,7 @@ public final class GambleScreen extends ProtoScreen {
             boolean h2 = inGrid && mx >= tx2 && mx < tx2 + tw && my >= ty && my < ty + th;
             P.smooth(g, tx2, ty, tw, th, 8, h2 ? 0x17FFFFFF : 0x0DFFFFFF, h2 ? 0x80A18CD1 : 0x14FFFFFF);
             double iy = ty + Math.round((th - 32) / 2);
-            g.drawSprite(gm[2], tx2 + 8, iy, 32, 32);
+            if (gm[2].startsWith("fill:")) Icons.drawGameIcon(g, gm[2].substring(5), tx2 + 8, iy, 32); else g.drawSprite(gm[2], tx2 + 8, iy, 32, 32);   // "fill:<id>" = drawn with fills, no sprite
             double room = tw - 50;
             int sp = gm[0].lastIndexOf(' ');
             if (F.width(gm[0]) > room && sp > 0) {   // a title too long for one line ("Provably fair" ran out of the tile): two lines, no subtitle
