@@ -35,6 +35,7 @@ public final class EzGambleMod implements ClientModInitializer {
         CASH = dev.ryaan.ezgamble.proto.Snd.event("cash"); FAIL = dev.ryaan.ezgamble.proto.Snd.event("fail");
         GambleData.load();
         dev.ryaan.ezgamble.duel.Duel.register();
+        dev.ryaan.ezgamble.house.House.addOwed(dev.ryaan.ezgamble.vip.Vip::totalOwed);   // the cashback owed to VIPs counts against the bankroll too
         Updater.check();
         menuKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.ezgamble.menu", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_K, CATEGORY));
