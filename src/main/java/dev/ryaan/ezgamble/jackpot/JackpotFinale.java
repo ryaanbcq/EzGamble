@@ -11,9 +11,9 @@ import static dev.ryaan.ezgamble.proto.P.*;
 
 /**
  * The jackpot's finale, over the whole screen for 7 s after a hit: the screen dims, "JACKPOT" in gradient at scale 4
- * shakes in, the winner's head and name, the amount counting up, a fountain of gold coins (small ellipses, each on a
- * fixed per-particle hash like hud.RainFinale.h, so the scene is the same at every frame). Sounds: the level-up, then
- * the chime. Drawn by the HUD (drawHud) or, while the menu is open, on top of the menu (drawOver), never both.
+ * shakes in, the winner's head and name, the amount counting up, a fountain of gold coins (the rain's coin sprite,
+ * tinted, each on a fixed per-particle hash like hud.RainFinale.h, so the scene is the same at every frame). Sounds:
+ * the level-up, then the chime. Drawn by the HUD (drawHud) or, while the menu is open, on top of the menu (drawOver), never both.
  */
 public final class JackpotFinale {
     private JackpotFinale() {}
@@ -130,10 +130,10 @@ public final class JackpotFinale {
             if (el < 0) continue;
             double vx = (h(j, 2) - 0.5) * W * 0.6, vy = -(H * 0.55 + h(j, 3) * H * 0.4);
             double x = W / 2 + vx * el, y = hy + vy * el + 0.5 * H * 1.5 * el * el;
-            if (y > H + 10) continue;
+            if (y > H + 10 || x < -10 || x > W + 10) continue;
             double s2 = 5 + 4 * h(j, 4), spin = Math.cos(el * 10 + j), w = s2 * Math.max(0.15, Math.abs(spin));
-            int col = spin < 0 ? 0xFFD9A62E : h(j, 5) < 0.3 ? 0xFFFFF0B0 : Jackpot.GOLD;
-            smooth(g, x - w / 2, y - s2 / 2, w, s2, Math.min(w, s2) / 2, alpha(col, gf), alpha(0xFF8A5A14, 0.6 * gf));
+            // one sprite per coin (the rain's, tinted: the dark edge is in the sprite), not the dozen fills of a smooth ellipse
+            g.drawSprite("rain/coin", x - w / 2, y - s2 / 2, w, s2, alpha(spin < 0 ? 0xFFD9A62E : h(j, 5) < 0.3 ? 0xFFFFF0B0 : Jackpot.GOLD, gf));
         }
     }
 }

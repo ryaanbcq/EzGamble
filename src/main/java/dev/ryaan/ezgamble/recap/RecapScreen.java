@@ -228,7 +228,7 @@ public final class RecapScreen extends ProtoScreen {
     private void title(G g) {
         double cx = SW / 2, cy = SH / 2;
         double k1 = k(0, 700), k2 = k(500, 600), k3 = k(900, 600);
-        glow(g, cx, cy - 10, Math.min(SW, SH) * 0.95, 0xFFB9A4FF, 0.5 * smoothstep(e() / 900.0));
+        glow(g, cx, cy - 10, Math.min(SW, SH) * 0.95, lerp(LAV, WHITE, 0.3), 0.5 * smoothstep(e() / 900.0));   // the theme's lavender, lifted: the halo must match the gradient title
         double sc = Math.min(3, SW * 0.85 / F.width("SESSION RECAP"));
         grad(g, "SESSION RECAP", cx, cy - 26 - 4 * sc, sc, k1);
         String when = r.dateText() + "  ·  " + r.durationText() + (r.live() ? "  ·  still running" : "");
@@ -276,10 +276,10 @@ public final class RecapScreen extends ProtoScreen {
                 String pk = "Peak " + Money.signed(r.peak), tr = "Low " + Money.signed(r.trough);
                 g.drawText(pk, x + 6, y + 4, alpha(GREEN, 0.8 * reveal), false);
                 g.drawText(tr, x + w - 6 - F.width(tr), y + 4, alpha(RED, 0.8 * reveal), false);
-            } else g.drawText("Nothing to draw.", x + 8, y + h / 2 - 4, DIM, false);
+            } else g.drawText("Nothing to draw", x + 8, y + h / 2 - 4, DIM, false);
             g.pop();
         }
-        pillsCentred(g, cx, y + h + 8, new Object[][]{{"Bets", String.valueOf(r.bets)}, {"Volume", Money.format(r.stats.volume())}, {"Win rate", pct(r)}}, k(1500, 500));
+        pillsCentred(g, cx, y + h + 8, new Object[][]{{"Bets", String.valueOf(r.bets)}, {"Wagered", Money.format(r.stats.volume())}, {"Win rate", pct(r)}}, k(1500, 500));
     }
 
     // ---- 3 hottest table
@@ -290,7 +290,7 @@ public final class RecapScreen extends ProtoScreen {
         text(g, "Hottest table", cx, cy - 104, 1, MUTE, k(0, 500));
         if (h == null) { text(g, "No table was played.", cx, cy - 20, 1, TEXT, k(300, 500)); return; }
         double ki = k(200, 700);
-        glow(g, cx, cy - 56, 160, 0xFFFBC2EB, 0.35 * ki);
+        glow(g, cx, cy - 56, 160, PINK, 0.35 * ki);
         g.push(); g.translate(cx, cy - 56); double sc = 0.6 + 0.4 * ki; g.scale(sc, sc);
         Icons.drawGameIcon(g, h.game(), -24, -24, 48);
         g.pop();
@@ -325,8 +325,8 @@ public final class RecapScreen extends ProtoScreen {
 
     private void podium(G g) {
         double cx = SW / 2, cy = SH / 2; long t = now();
-        text(g, "High roller", cx, cy - 110, 1, MUTE, k(0, 500));
         if (r.rollers.isEmpty()) {
+            text(g, "High roller", cx, cy - 110, 1, MUTE, k(0, 500));
             chibiGhost(g, cx, cy + 30, 4);
             text(g, "No table player this session", cx, cy + 44, 1, TEXT, k(300, 500));
             text(g, "Bets placed with a player's chips put him here.", cx, cy + 58, 1, DIM, k(600, 500));
@@ -336,6 +336,7 @@ public final class RecapScreen extends ProtoScreen {
         double stepW = Math.min(120, (SW - 40) / 3.2), gap = 8, base = Math.min(SH - 70, cy + 92);
         double[] stepH = {48, 36, 28};
         long[] delay = {500, 250, 0};
+        double topName = Double.MAX_VALUE;   // where the highest name rests once landed: the caption sits above it
         for (int col = 0; col < 3; col++) {
             int rank = ORDER[col], m = MEDAL[rank];
             if (rank >= r.rollers.size()) continue;
@@ -354,6 +355,9 @@ public final class RecapScreen extends ProtoScreen {
             if (sh > 32) { if (rank == 0) gradientText(g, v, scx - F.width(v) / 2.0, top + 24, true); else g.drawText(v, scx - F.width(v) / 2.0, top + 24, WHITE, true); }
             String bets = ro.bets() + (ro.bets() == 1 ? " bet" : " bets");
             if (sh > 44) g.drawText(bets, scx - F.width(bets) / 2.0, top + 36, MUTE, false);
+            // the name sits 12 above the chibi, plus the crown (3 texels) and the hop (4 texels) of the winner, who always has both
+            double lift = CHIBI_H * pp + (rank == 0 ? 7 * pp : 0) + 12;
+            topName = Math.min(topName, top - 1 - lift);
             // the chibi drops onto his step once it has grown
             double land = k(delay[rank] + 600, 380);
             if (land <= 0.01) continue;
@@ -363,9 +367,12 @@ public final class RecapScreen extends ProtoScreen {
             chibi(g, ro.name(), scx, feet, pp, t, rank == 0 && down, rank == 0 && down);
             if (rank == 0 && down) sparkles(g, scx, feet, pp, t);
             String nm = F.trimToWidth(ro.name(), stepW - 6);
-            double ny = feet - CHIBI_H * pp - (rank == 0 && down ? 3 * pp : 0) - 12;
+            double ny = feet - lift;
             if (rank == 0) gradientText(g, nm, scx - F.width(nm) / 2.0, ny, true, land); else g.drawText(nm, scx - F.width(nm) / 2.0, ny, alpha(TEXT, land), true);
         }
+        // the caption above the tallest name (the crowned winner's at 108 on 960 x 540), never inside the crown
+        double ty = topName == Double.MAX_VALUE ? cy - 110 : topName - 18;
+        text(g, "High roller", cx, Math.max(6, ty), 1, MUTE, k(0, 500));
         Recap.Roller m = r.rollers.get(0);
         String line = m.name() + " wagered " + Money.format(m.wagered()) + " in " + m.bets() + (m.bets() == 1 ? " bet" : " bets");
         text(g, line, cx, base + 10, 1, TEXT, k(1500, 500));
@@ -428,7 +435,7 @@ public final class RecapScreen extends ProtoScreen {
         pillsCentred(g, cx, cy - 50, pills, kt);
         if (n == 0) { text(g, "Players who /pay you during a session land here.", cx, cy - 10, 1, DIM, k(900, 500)); return; }
         // up to 8 heads in a row, biggest payer first
-        List<String> heads = r.players.stream().sorted((a, b) -> Long.compare(r.session.credit.getOrDefault(b, 0L), r.session.credit.getOrDefault(a, 0L))).limit(8).toList();
+        List<String> heads = r.heads;
         double sp = Math.min(52, (SW - 40) / Math.max(1, heads.size())), size = 20, x0 = cx - (heads.size() * sp) / 2 + sp / 2, hy = cy - 16;
         for (int i = 0; i < heads.size(); i++) {
             double kh = k(900 + i * 110, 450);
@@ -474,30 +481,34 @@ public final class RecapScreen extends ProtoScreen {
         g.drawText("Profit", x + 12, y + 26, alpha(MUTE, a), false);
         long profit = r.stats.profit();
         String pr = Money.signed(profit);
-        g.push(); g.translate(x + 12, y + 36); g.scale(2, 2); g.drawText(pr, 0, 0, alpha(profit > 0 ? GREEN : profit < 0 ? RED : WHITE, a), true); g.pop();
-        double px = x + 12 + F.width(pr) * 2 + 12, py = y + 36;
-        for (Object[] it : new Object[][]{{"Bets", String.valueOf(r.bets)}, {"Volume", Money.format(r.stats.volume())}, {"Win", pct(r)}}) {
-            int w = pillW((String) it[0], (String) it[1]);
-            if (px + w > x + CW - 10) break;
-            pill(g, px, py, (String) it[0], (String) it[1], alpha(WHITE, a));
-            px += w + 4;
-        }
+        // the three pills right-aligned (the card never loses its win rate), the profit at scale 2 or smaller to fit the room left
+        Object[][] pills = {{"Bets", String.valueOf(r.bets), alpha(WHITE, a)}, {"Wagered", Money.format(r.stats.volume()), alpha(WHITE, a)}, {"Win", pct(r), alpha(WHITE, a)}};
+        int pw = -4;
+        for (Object[] it : pills) pw += pillW((String) it[0], (String) it[1]) + 4;
+        double pillsX = x + CW - 12 - pw;
+        double sc = Math.min(2, (pillsX - 10 - (x + 12)) / Math.max(1, F.width(pr)));
+        g.push(); g.translate(x + 12, y + 36 + (2 - sc) * 4); g.scale(sc, sc); g.drawText(pr, 0, 0, alpha(profit > 0 ? GREEN : profit < 0 ? RED : WHITE, a), true); g.pop();
+        pillsRight(g, x + CW - 12, y + 36, pills);
         double chy = y + 60, chh = 62;
         card(g, x + 12, chy, CW - 24, chh, "chart");
         if (r.bets > 0) ProfitChart.draw(g.d, r.deltas, (int) (x + 12), (int) chy, CW - 24, (int) chh, -1, -1, false, 0, true, 1f);
-        else g.drawText("No bet.", x + 20, chy + chh / 2 - 4, alpha(DIM, a), false);
+        else g.drawText("No bet", x + 20, chy + chh / 2 - 4, alpha(DIM, a), false);
         Recap.Roller m = r.mvp();
         double ly = y + CH - 20;
+        String by = "by " + (GambleData.name != null ? GambleData.name : MinecraftClient.getInstance().getSession().getUsername());
+        double byX = x + CW - 12 - F.width(by);
         if (m != null) {
             g.drawHead(m.name(), x + 12, ly - 2, 12);
             g.drawText("High roller", x + 28, ly, alpha(MUTE, a), false);
-            String s = F.trimToWidth(m.name(), 90) + "  " + Money.format(m.wagered());
-            g.drawText(s, x + 28 + F.width("High roller") + 6, ly, alpha(WHITE, a), true);
+            // the name takes what is left between the label and "by <host>": a long name and a long amount share one line
+            double lx2 = x + 28 + F.width("High roller") + 6;
+            String amt = Money.format(m.wagered());
+            String s = F.trimToWidth(m.name(), byX - 8 - lx2 - 8 - F.width(amt)) + "  " + amt;
+            g.drawText(s, lx2, ly, alpha(WHITE, a), true);
         } else {
             String s = r.players.size() + (r.players.size() == 1 ? " player" : " players") + " at the table";
             g.drawText(s, x + 12, ly, alpha(MUTE, a), false);
         }
-        String by = "by " + (GambleData.name != null ? GambleData.name : MinecraftClient.getInstance().getSession().getUsername());
-        g.drawText(by, x + CW - 12 - F.width(by), ly, alpha(DIM, a), false);
+        g.drawText(by, byX, ly, alpha(DIM, a), false);
     }
 }
