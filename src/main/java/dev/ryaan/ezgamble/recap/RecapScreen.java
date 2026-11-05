@@ -270,7 +270,7 @@ public final class RecapScreen extends ProtoScreen {
                 if (res.hover() > 0) {
                     var t = r.session.txns.get(res.hover() - 1);
                     ProfitChart.tooltip(g.d, t.game(), Money.signed(t.delta()), t.delta() >= 0 ? GREEN : RED, res.px()[res.hover()], (int) y, (int) x, (int) (x + w),
-                            DATE_S(t.t()), t.bet() != null ? "Bet " + Money.format(t.bet()) : "");
+                            DATE_S(t.t()), t.bet() != null && t.bet() > 0 ? "Bet " + Money.format(t.bet()) : "");
                 }
                 // peak and trough, small, at the card's corners
                 String pk = "Peak " + Money.signed(r.peak), tr = "Low " + Money.signed(r.trough);

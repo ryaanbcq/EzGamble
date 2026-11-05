@@ -53,13 +53,21 @@ public final class JackpotFinale {
     private static double clamp01(double v) { return Math.max(0, Math.min(1, v)); }
     private static double smoothstep(double v) { v = clamp01(v); return v * v * (3 - 2 * v); }
 
+    /**
+     * Text alpha below this is not drawn at all: the text renderer treats an ARGB alpha under 4 as opaque, so a fading
+     * text at a = 0.002..0.014 would flash back fully bright for a frame (GambleScreen.renderTitle clamps the same way).
+     */
+    private static final double MIN_A = 0.02;
+
     /** Text in the mod's gradient, centred on cx, `sc` times the font size. */
     private static void gradText(G g, String s, double cx, double y, double sc, double a) {
+        if (a < MIN_A) return;
         g.push(); g.translate(cx - F.width(s) * sc / 2, y); g.scale(sc, sc); gradientText(g, s, 0, 0, true, a); g.pop();
     }
 
-    private static void centred(G g, String s, double cx, double y, double sc, int color) {
-        g.push(); g.translate(cx - F.width(s) * sc / 2, y); g.scale(sc, sc); g.drawText(s, 0, 0, color, true); g.pop();
+    private static void centred(G g, String s, double cx, double y, double sc, int color, double a) {
+        if (a < MIN_A) return;
+        g.push(); g.translate(cx - F.width(s) * sc / 2, y); g.scale(sc, sc); g.drawText(s, 0, 0, alpha(color, a), true); g.pop();
     }
 
     private static void sounds(long e) {
@@ -87,10 +95,12 @@ public final class JackpotFinale {
         double shake = 3 * (1 - clamp01(e / 900.0)), sx = Math.sin(e * 0.9) * shake, sy = Math.cos(e * 1.3) * shake;
         double sc = 4 * (1 + 0.35 * (1 - easeOut(clamp01(e / 350.0))));
         double titleY = H * 0.2;
-        g.push(); g.translate(W / 2 + sx, titleY + sy); g.scale(sc, sc);
-        g.drawText("JACKPOT", -F.width("JACKPOT") / 2.0 + 0.5, -3.5, alpha(0xFF3A2200, 0.6 * ta), false);   // a warm shadow under the gradient
-        gradientText(g, "JACKPOT", -F.width("JACKPOT") / 2.0, -4, false, ta);
-        g.pop();
+        if (ta >= MIN_A) {
+            g.push(); g.translate(W / 2 + sx, titleY + sy); g.scale(sc, sc);
+            if (0.6 * ta >= MIN_A) g.drawText("JACKPOT", -F.width("JACKPOT") / 2.0 + 0.5, -3.5, alpha(0xFF3A2200, 0.6 * ta), false);   // a warm shadow under the gradient
+            gradientText(g, "JACKPOT", -F.width("JACKPOT") / 2.0, -4, false, ta);
+            g.pop();
+        }
 
         // ---- the winner: his head in a white frame, his name under it, the pot counting up
         double hy = H * 0.47, size = 40;
@@ -111,7 +121,7 @@ public final class JackpotFinale {
             double s = Math.min(3, W * 0.5 / Math.max(1, F.width(Money.format(r.amount()))));
             s *= 1 + (c >= 1 ? 0.08 * Math.max(0, 1 - (e - 2200) / 300.0) : 0);   // a beat when the count lands
             gradText(g, amt, W / 2, hy + size / 2 + 36, s, ca);
-            centred(g, "goes to " + r.name() + "'s chips", W / 2, hy + size / 2 + 36 + 9 * s + 6, 1, alpha(0xFFF4EEFF, ca));
+            centred(g, "goes to " + r.name() + "'s chips", W / 2, hy + size / 2 + 36 + 9 * s + 6, 1, 0xFFF4EEFF, ca);
         }
 
         // ---- the fountain: coins thrown up out of the winner over three seconds, falling under gravity, spinning

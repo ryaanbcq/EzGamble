@@ -88,7 +88,7 @@ public final class JackpotView implements GameView {
         if (seedField != null && seedField.focused) {
             if (e.is("Enter")) { applySeed(); return true; }
             if (e.is("Escape")) { seedField.focused = false; return true; }
-            return seedField.type(e);
+            seedField.type(e); return true;   // a refused character (width or length) must not fall through to the menu's hotkeys: k closes it
         }
         return false;
     }
