@@ -208,5 +208,5 @@ public final class RainTable {
         return r == null ? "" : "Rain winner: " + r.winner + " takes " + Money.format(r.prize) + " (ticket " + (r.ticket + 1) + " of " + r.total + "). Check it: " + Fair.VERIFY_URL;
     }
 
-    public static void copy(String text) { Fair.copy(text); P.play("click"); }
+    public static void copy(String text) { Fair.copy(text); }   // the button already played the click
 }
