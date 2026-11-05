@@ -8,6 +8,8 @@ import dev.ryaan.ezgamble.data.GambleData;
 import dev.ryaan.ezgamble.data.Payouts;
 import dev.ryaan.ezgamble.data.Session;
 import dev.ryaan.ezgamble.data.Txn;
+import dev.ryaan.ezgamble.hud.Banners;
+import dev.ryaan.ezgamble.proto.F;
 import dev.ryaan.ezgamble.proto.P;
 import dev.ryaan.ezgamble.vip.Vip;
 import net.fabricmc.loader.api.FabricLoader;
@@ -19,6 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -130,6 +133,7 @@ public final class Events {
         Vip.invalidate();
         P.play("mc_chime", 1, 0.8);
         overlay(kind.label + " started: " + minutes + " min" + (kind == Kind.RACE ? ", " + Money.format(prize) + " prize pool" : ""), kind.color);
+        Banners.show(new Banners.Toast(null, List.of(Banners.seg(kind.label, kind.color), Banners.seg(" started, " + minutes + " min", P.WHITE)), kind.color, 3000, null));
         return true;
     }
 
@@ -142,6 +146,7 @@ public final class Events {
         Vip.invalidate();
         P.play("fail", 1, 0.5);
         overlay(e.kind().label + " cancelled", P.RED);
+        Banners.show(new Banners.Toast(null, List.of(Banners.seg(e.kind().label + " cancelled", P.WHITE)), P.RED, 3000, null));
         return true;
     }
 
@@ -174,6 +179,10 @@ public final class Events {
         st().current = null; st().past.add(e); board = null; save(); ver++;
         Vip.invalidate();
         endedAt = P.now(); lastEnded = e;
+        // the HUD's toast column: "Wager race is over, X wins" (the name trimmed: the pill must fit a 640 px screen)
+        Banners.show(new Banners.Toast(null, List.of(Banners.seg(e.kind().label, e.kind().color),
+                Banners.seg(" is over" + (e.kind() == Kind.RACE && !e.top.isEmpty() ? ", " + F.trimToWidth(e.top.get(0).name, 80) + " wins" : ""), P.WHITE)),
+                e.kind().color, 3000, null));
         if (e.kind() == Kind.RACE && !e.top.isEmpty()) pendingFinale = e;   // the podium opens when no screen is up (the menu closing included)
         else { P.play("mc_chime", 0.7, 0.8); overlay(e.kind().label + " is over" + (e.kind() == Kind.RACE ? ", nobody wagered" : ""), e.kind().color); }
     }
@@ -210,11 +219,33 @@ public final class Events {
 
     // ---- Vip hooks: the history replays the same way, event or not
 
+    // the past events as sorted intervals per kind, rebuilt when ver moves: Vip asks for every bet it folds, thousands at a time
+    private static int ivVer = -1;
+    private static long[][] ivStart, ivEnd;
+
+    private static void intervals() {
+        if (ivVer == ver && ivStart != null) return;
+        ivVer = ver;
+        Kind[] kinds = Kind.values();
+        ivStart = new long[kinds.length][]; ivEnd = new long[kinds.length][];
+        for (Kind k : kinds) {
+            List<Event> l = new ArrayList<>();
+            for (Event e : st().past) if (e.kind() == k) l.add(e);
+            l.sort(Comparator.comparingLong(e -> e.start));   // one event at a time: sorted by start, they never overlap
+            long[] a = new long[l.size()], b = new long[l.size()];
+            for (int i = 0; i < a.length; i++) { a[i] = l.get(i).start; b[i] = l.get(i).end; }
+            ivStart[k.ordinal()] = a; ivEnd[k.ordinal()] = b;
+        }
+    }
+
     private static boolean covers(Kind k, long t) {
         Event c = current();
         if (c != null && c.kind() == k && c.live(t)) return true;
-        for (Event e : st().past) if (e.kind() == k && e.live(t)) return true;   // a cancelled event ends at the cancel: it still covered the bets before it
-        return false;
+        intervals();
+        long[] a = ivStart[k.ordinal()];
+        int i = Arrays.binarySearch(a, t);
+        if (i < 0) i = -i - 2;   // the last event of that kind started at or before t
+        return i >= 0 && t <= ivEnd[k.ordinal()][i];   // a cancelled event ends at the cancel: it still covered the bets before it
     }
 
     /** 2 during a Double XP, else 1. */
@@ -252,8 +283,7 @@ public final class Events {
         if (!Payouts.send(w.name, w.share)) { if (!s.retry() && sess != null) sess.addWon(w.name, -w.share); return false; }
         w.payAt = P.now(); w.payAmount = w.share;   // P.now like Payouts.Recent.at, the two are compared (the demo recorder freezes that clock)
         save(); ver++;
-        P.play("click");
-        return true;
+        return true;   // no click here: the GlassButton that calls this already played it
     }
 
     /** Payouts changed: a winner's /pay the server confirmed is marked paid. */

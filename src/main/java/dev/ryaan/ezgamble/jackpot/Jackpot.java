@@ -55,6 +55,7 @@ public final class Jackpot {
     /** The last hit (the finale, the HUD): when it landed, 0 = none this run. */
     private static Hit last;
     private static long lastAt;
+    private static long dirtyAt;
 
     private static State st() {
         if (st != null) return st;
@@ -69,8 +70,16 @@ public final class Jackpot {
         return st;
     }
 
-    private static void save() {
-        ver++;
+    /** A change: the views and the HUD redraw now, the file follows 2 s later (onTxn runs for every bet: never one write per bet). */
+    private static void save() { ver++; dirtyAt = System.currentTimeMillis(); }
+
+    /** Client tick: jackpot.json 2 s after its last change. */
+    public static void tick() { if (dirtyAt != 0 && System.currentTimeMillis() - dirtyAt > 2000) { dirtyAt = 0; write(); } }
+
+    /** Whatever waits goes to disk now (GambleData.setMode off: a session end never leaves the pot unsaved). */
+    public static void flush() { if (dirtyAt != 0) { dirtyAt = 0; write(); } }
+
+    private static void write() {
         try {
             Files.createDirectories(FILE.getParent());
             Path tmp = FILE.resolveSibling(FILE.getFileName() + ".tmp");
