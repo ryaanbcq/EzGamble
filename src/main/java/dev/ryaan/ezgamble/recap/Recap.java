@@ -45,6 +45,8 @@ public final class Recap {
     public final List<Roller> rollers;
     /** Players who paid chips in this session (in the order they first paid), and the money between you and them. */
     public final List<String> players;
+    /** The first eight players by chips paid in (the heads row of the table slide). */
+    public final List<String> heads;
     public final long paidIn, sentBack, owed;
     /** Longest run of house wins and of house losses, in bets. */
     public final int winStreak, lossStreak;
@@ -89,6 +91,7 @@ public final class Recap {
         List<String> pl = new ArrayList<>(s.credit.keySet());
         for (String n : s.won.keySet()) if (!pl.contains(n)) pl.add(n);
         players = List.copyOf(pl);
+        heads = pl.stream().sorted((a, b) -> Long.compare(s.credit.getOrDefault(b, 0L), s.credit.getOrDefault(a, 0L))).limit(8).toList();
         long in = 0, back = 0, ow = 0;
         for (String n : pl) {
             long c = s.credit.getOrDefault(n, 0L), w = s.won.getOrDefault(n, 0L), st = s.sent.getOrDefault(n, 0L);
@@ -126,7 +129,7 @@ public final class Recap {
         StringBuilder b = new StringBuilder();
         b.append("EzGamble session recap, ").append(dateText()).append(", ").append(durationText());
         b.append(" · Profit ").append(Money.signed(stats.profit()));
-        b.append(" · ").append(bets).append(bets == 1 ? " bet, " : " bets, ").append(Money.format(stats.volume())).append(" volume");
+        b.append(" · ").append(bets).append(bets == 1 ? " bet, " : " bets, ").append(Money.format(stats.volume())).append(" wagered");
         if (bets > 0) b.append(", ").append(Math.round(stats.rate() * 100)).append("% win rate");
         GameRow h = hottest();
         if (h != null) b.append(" · Hottest table ").append(h.game());

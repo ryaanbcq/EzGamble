@@ -47,9 +47,9 @@ public final class RaceFinaleScreen extends ProtoScreen {
     private double smallScale() { return SH >= 320 ? 2 : 1.5; }
     /**
      * The card sits mid-screen, or lower when the shrunken podium needs the room above it: title at y 6 (18 above the
-     * name), the name, 12 to the crowned chibi (CHIBI_H + 3 texels), the first step, 14 to the card.
+     * name), the name, 12 to the crowned, hopping chibi (CHIBI_H + 3 + 4 texels), the first step, 14 to the card.
      */
-    private double cardTop() { return Math.max(SH / 2 - 30, 24 + 12 + (CHIBI_H + 3) * smallScale() + 1 + STEP_SMALL[0] + 14); }
+    private double cardTop() { return Math.max(SH / 2 - 30, 24 + 12 + (CHIBI_H + 7) * smallScale() + 1 + STEP_SMALL[0] + 14); }
     private double cardH() { return 40 + ev.top.size() * ROW_H + 6; }
 
     @Override
@@ -60,7 +60,7 @@ public final class RaceFinaleScreen extends ProtoScreen {
             Events.Winner w = ev.top.get(i);
             Events.PayState ps = Events.payState(w);
             if (ps == null || ps.done()) continue;
-            String label = ps.retry() ? "Retry" : ps.label();   // the reason is drawn under the name: the long label would cover the share column
+            String label = ps.retry() ? "Retry" : "Pay";   // the share column already shows the amount; a long label would run into it (the reason is drawn under the name)
             double bw = F.width(label) + 14;
             GlassButton b = add(new GlassButton(x + CARD_W - 8 - bw, y + 40 + i * ROW_H + 2, bw, 16, label, ps.retry() ? "DANGER" : "PRIMARY", () -> { if (!Events.pay(w)) play("fail", 1, 0.5); rebuild(); }));
             b.active = ps.active();
@@ -163,6 +163,10 @@ public final class RaceFinaleScreen extends ProtoScreen {
             String v = Money.format(w.wagered);
             if (sh > 32) { if (rank == 0) gradientText(g, v, scx - F.width(v) / 2.0, top + 24, true); else g.drawText(v, scx - F.width(v) / 2.0, top + 24, WHITE, true); }
             if (sh > 44 && w.share > 0) g.drawText("wins " + Money.format(w.share), scx - F.width("wins " + Money.format(w.share)) / 2.0, top + 36, m, false);
+            // the name sits 12 above the chibi, plus the crown (3 texels) and the hop (4 texels) of the winner, who always has both;
+            // the title tracks where the names rest, not the falling chibis
+            double lift = CHIBI_H * pp + (rank == 0 ? 7 * pp : 0) + 12;
+            topName = Math.min(topName, top - 1 - lift);
             // the chibi drops onto his step once it has grown
             double land = easeOut((e - DELAY[rank] - 600) / 380.0);
             if (land <= 0.01) continue;
@@ -172,8 +176,7 @@ public final class RaceFinaleScreen extends ProtoScreen {
             chibi(g, w.name, scx, feet, pp, t, rank == 0 && down, rank == 0 && down);
             if (rank == 0 && down && mk < 1) sparkles(g, scx, feet, pp, t);
             String nm = F.trimToWidth(w.name, stepW - 6);
-            double ny = feet - CHIBI_H * pp - (rank == 0 && down ? 3 * pp : 0) - 12;
-            topName = Math.min(topName, ny);
+            double ny = feet - lift;
             if (rank == 0) gradientText(g, nm, scx - F.width(nm) / 2.0, ny, true, land); else g.drawText(nm, scx - F.width(nm) / 2.0, ny, alpha(TEXT, land), true);
         }
         // the title above the tallest name, the pool under the podium (until the card takes that place)
@@ -210,10 +213,10 @@ public final class RaceFinaleScreen extends ProtoScreen {
             g.drawText(String.valueOf(i + 1), x + 12, ry + 6, alpha(m, k), true);
             g.drawHead(w.name, x + 22, ry + 4, 10);
             int bw = VipBadge.w(w.name); VipBadge.draw(g, w.name, x + 36, ry + 6);
-            g.drawText(F.trimToWidth(w.name, 84 - bw), x + 36 + bw, ry + 6, alpha(i == 0 ? WHITE : TEXT, k), i == 0);
-            g.drawText(Money.format(w.wagered), x + 126, ry + 6, alpha(MUTE, k), false);
+            g.drawText(F.trimToWidth(w.name, 82 - bw), x + 36 + bw, ry + 6, alpha(i == 0 ? WHITE : TEXT, k), i == 0);   // columns 4 px apart: name, wagered at 122, share at 170, Pay at 260
+            g.drawText(Money.format(w.wagered), x + 122, ry + 6, alpha(MUTE, k), false);
             String sh = Money.format(w.share);
-            if (i == 0) gradientText(g, sh, x + 172, ry + 6, true, k); else g.drawText(sh, x + 172, ry + 6, alpha(WHITE, k), false);
+            if (i == 0) gradientText(g, sh, x + 170, ry + 6, true, k); else g.drawText(sh, x + 170, ry + 6, alpha(WHITE, k), false);
             Events.PayState ps = Events.payState(w);
             if (ps != null && ps.done()) g.drawText(ps.label(), x + CARD_W - 8 - F.width(ps.label()), ry + 6, alpha(GREEN, k), false);   // else the Pay button is there
             else if (ps != null && ps.retry()) g.drawText(reason(ps), x + 36, ry + 14, alpha(RED, k), false);   // the Retry button only says "Retry"
