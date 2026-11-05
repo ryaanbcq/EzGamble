@@ -118,6 +118,7 @@ public final class GambleData {
         mode = on;
         if (on) newSession();
         else { Session s = current(); if (s != null) { s.end = System.currentTimeMillis(); save(s); if (!s.txns.isEmpty()) dev.ryaan.ezgamble.recap.Recap.readyAt = System.currentTimeMillis(); } }   // the HUD hints at the recap
+        if (!on) dev.ryaan.ezgamble.achievements.Achievements.onSessionEnd(last());   // badges the closed session unlocks (Even Steven, Settled, Comeback)
         saveConfig();
         MinecraftClient mc = MinecraftClient.getInstance();
         dev.ryaan.ezgamble.proto.Snd.play(on ? "open" : "close", 0.8, 0.6);
@@ -132,6 +133,7 @@ public final class GambleData {
         s.txns.add(tx);
         dev.ryaan.ezgamble.vip.Vip.onTxn(tx);   // XP and tier-ups
         dev.ryaan.ezgamble.events.Events.onTxn(tx);   // the running event's live leaderboard
+        dev.ryaan.ezgamble.achievements.Achievements.onTxn(tx);   // badges this bet unlocks
         dirtyAt = System.currentTimeMillis();
         lastTxAt = System.currentTimeMillis();
         if (tx.delta() > 0) dev.ryaan.ezgamble.proto.Snd.play("pay", 1, 0.35);

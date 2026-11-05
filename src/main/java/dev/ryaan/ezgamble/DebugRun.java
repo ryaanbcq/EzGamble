@@ -156,6 +156,11 @@ public final class DebugRun {
             case "event" -> EzGambleMod.LOG.info("[ezgamble] debug: event start {}", dev.ryaan.ezgamble.events.Events.start(dev.ryaan.ezgamble.events.Events.Kind.of(n[0]), Integer.parseInt(n[1]), n.length > 2 ? dev.ryaan.ezgamble.Money.parse(n[2]) : 0));   // event race|xp|hour MINUTES [PRIZE]
             case "eventend" -> dev.ryaan.ezgamble.events.Events.endNow();   // the running event ends now (a race's finale opens once no screen is up)
             case "eventstate" -> EzGambleMod.LOG.info("[ezgamble] debug: event {}", dev.ryaan.ezgamble.events.Events.describe());
+            case "badges" -> EzGambleMod.LOG.info("[ezgamble] debug: badges {} = {}", arg, dev.ryaan.ezgamble.achievements.Achievements.describe(arg));   // badges NAME
+            case "wagerwin" -> {   // wagerwin NAME AMT N: N Coinflip wins in a row for NAME (the streak badges), recorded like wager
+                int k = n.length > 2 ? Integer.parseInt(n[2]) : 1; long amt = dev.ryaan.ezgamble.Money.parse(n[1]);
+                for (int i = 0; i < k; i++) GambleData.record(new dev.ryaan.ezgamble.data.Txn(System.currentTimeMillis() + i, "Coinflip", amt, -amt, n[0], "debug win " + n[0] + " " + i));
+            }
             case "skindirect" -> dev.ryaan.ezgamble.proto.Faces.forceDirect = true;
             case "txn" -> GambleData.record(new dev.ryaan.ezgamble.data.Txn(System.currentTimeMillis(), n[0], dev.ryaan.ezgamble.Money.parse(n[1]), n[2].startsWith("-") ? -dev.ryaan.ezgamble.Money.parse(n[2].substring(1)) : dev.ryaan.ezgamble.Money.parse(n[2]), null, "debug"));   // txn GAME BET DELTA
             case "demo" -> EzGambleMod.demoBets(Integer.parseInt(arg));

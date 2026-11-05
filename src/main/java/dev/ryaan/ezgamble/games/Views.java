@@ -23,6 +23,7 @@ public final class Views {
             case "fair" -> new dev.ryaan.ezgamble.ui.FairView(s);
             case "lobby" -> new dev.ryaan.ezgamble.lobby.LobbyView(s);
             case "events" -> new dev.ryaan.ezgamble.events.EventsView(s);
+            case "badges" -> new dev.ryaan.ezgamble.achievements.BadgesView(s);
             default -> new Stub(s, id);
         };
     }

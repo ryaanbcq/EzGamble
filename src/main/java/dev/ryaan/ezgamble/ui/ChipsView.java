@@ -254,6 +254,8 @@ public final class ChipsView implements GameView {
             g.drawText(F.trimToWidth(r.name, 110 - bw), lx + 26 + bw, ry + 4, P.WHITE, false);
             g.drawText("Paid " + Money.format(r.paid), lx + 26, ry + 15, P.MUTE, false);
             String v = Money.signed(r.made), lbl = "You made";
+            int nb = dev.ryaan.ezgamble.achievements.Achievements.count(r.name);   // his badges, a small pill left of "You made"
+            if (nb > 0) { String bv = nb + (nb == 1 ? " badge" : " badges"); P.pill(g, rx - 18 - Math.max(F.width(lbl), F.width(v)) - 8 - P.pillW("", bv), ry + 6, "", bv, P.LAV); }
             g.drawText(lbl, rx - 18 - F.width(lbl), ry + 4, P.MUTE, false);
             g.drawText(v, rx - 18 - F.width(v), ry + 15, r.made >= 0 ? P.GREEN : P.RED, false);
             g.drawText("›", rx - 10, ry + 10, P.DIM, false);
