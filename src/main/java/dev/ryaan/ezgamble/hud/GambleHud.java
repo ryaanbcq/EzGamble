@@ -24,7 +24,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import static dev.ryaan.ezgamble.hud.HudConfig.*;
 import static dev.ryaan.ezgamble.proto.P.*;
 
-/** The in-game HUD (prototype GambleHud + widgets): session card, last-bet toast, payments card. */
+/** The in-game HUD (prototype GambleHud + widgets): session card, last-bet toast, payments card; the top-centre column is hud.Banners. */
 public final class GambleHud implements HudElement {
     private static boolean logged;
 
@@ -32,21 +32,18 @@ public final class GambleHud implements HudElement {
     public void render(DrawContext d, RenderTickCounter t) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.options.hudHidden || mc.currentScreen instanceof HudEditorScreen) return;   // F1, or the editor draws its own copy
-        if (!GambleData.mode) { dev.ryaan.ezgamble.recap.RecapHint.draw(new G(d)); return; }   // gambling mode off: no HUD, only the "Session over" hint for a few seconds
         G g = new G(d);
+        try { Banners.draw(g); } catch (Throwable e) { fail(e); }   // the top-centre toasts, BEFORE the mode check: the "Session over" hint shows with the mode off
+        if (!GambleData.mode) { g.closeAll(); return; }   // gambling mode off: no HUD
         long t0 = System.nanoTime();
         try {
             drawToast(g, toastK());
             for (String id : new String[]{"session", "pay"}) if (HUD.get(id).visible) { Rect r = wrect(id); drawWidget(g, id, r.x(), r.y()); }
-            drawTierUp(g);   // "X reached Gold", 3 s under the top of the screen
-            dev.ryaan.ezgamble.lobby.LobbyHud.drawJoin(g);   // "X joined the line for Blackjack", 2.5 s
-            dev.ryaan.ezgamble.events.EventHud.draw(g);   // the running event's banner, top centre (under the tier-up while it shows)
-            dev.ryaan.ezgamble.achievements.Achievements.drawSlide(g);   // "X unlocked Whale", 3 s, under the tier-up pill when both show
-            dev.ryaan.ezgamble.jackpot.JackpotHud.draw(g);   // the jackpot counter, top centre under the banner spot (when enabled)
+            Banners.drawPersistent(g);   // the event banner and the jackpot counter, side by side at y 30
             drawRain(g);   // last: its finale covers the whole screen
             dev.ryaan.ezgamble.jackpot.JackpotFinale.drawHud(g);   // a jackpot hit: its finale over everything for 7 s (the menu draws its own copy when open)
         } catch (Throwable e) {
-            if (!logged) { logged = true; EzGambleMod.LOG.error("[ezgamble] HUD render failed (not logged again)", e); }
+            fail(e);
         } finally {
             g.closeAll();
             if (dev.ryaan.ezgamble.DebugRun.ON && mc.currentScreen == null) { dev.ryaan.ezgamble.DebugRun.renderNanos += System.nanoTime() - t0; dev.ryaan.ezgamble.DebugRun.renderFrames++; }
@@ -54,6 +51,8 @@ public final class GambleHud implements HudElement {
     }
 
     // ---- helpers
+
+    private static void fail(Throwable e) { if (!logged) { logged = true; EzGambleMod.LOG.error("[ezgamble] HUD render failed (not logged again)", e); } }
 
     private static void valueText(G g, String s, double x, double y, Style c, long v, boolean signed) {
         if (signed && c.autoSignColor) g.drawText(s, x, y, v >= 0 ? GREEN : RED, true);
@@ -75,19 +74,27 @@ public final class GambleHud implements HudElement {
         return null;
     }
 
+    // every transaction ever, summed again only when one is recorded or a session opens (thousands of them: never per frame)
+    private static long apVal, apTxAt = -1; private static int apSessions = -1;
     private static long allProfit() {
-        long p = 0;
-        for (Session s : GambleData.sessions) for (Txn t : s.txns) p += t.delta();
-        return p;
+        if (GambleData.lastTxAt != apTxAt || GambleData.sessions.size() != apSessions) {
+            apTxAt = GambleData.lastTxAt; apSessions = GambleData.sessions.size();
+            long p = 0;
+            for (Session s : GambleData.sessions) for (Txn t : s.txns) p += t.delta();
+            apVal = p;
+        }
+        return apVal;
     }
 
-    // the session's deltas as an array, rebuilt only when the list changes (the chart caches its texture by content)
+    // the session's deltas as an array and its Stats, rebuilt only when the list changes (the chart caches its texture by content)
     private static Session dSess; private static int dN = -1; private static long[] dArr = new long[0];
+    private static Stats dSt = Stats.of(List.of());
     private static long[] deltas(Session s, List<Txn> tx) {
         if (s != dSess || tx.size() != dN) {
             dSess = s; dN = tx.size();
             dArr = new long[dN];
             for (int i = 0; i < dN; i++) dArr[i] = tx.get(i).delta();
+            dSt = Stats.of(tx);
         }
         return dArr;
     }
@@ -112,7 +119,7 @@ public final class GambleHud implements HudElement {
         List<Txn> sTx = sess != null ? sess.txns : List.of();
         switch (id) {
             case "session" -> {
-                Stats st = Stats.of(sTx);
+                deltas(sess, sTx); Stats st = sess == null ? Stats.of(List.of()) : dSt;
                 g.drawText("Session", 7, 6, MUTE, true);
                 Session cur = GambleData.current();
                 if (cur != null) right(g, W, clock(t - cur.start), 6, WHITE); else right(g, W, "OFF", 6, RED);
@@ -181,12 +188,12 @@ public final class GambleHud implements HudElement {
             }
             case "last" -> {   // the toast
                 Txn last = lastTx();
-                if (last == null) { g.drawText("No bet yet.", 7, 8, DIM, true); break; }
+                if (last == null) { g.drawText("No bet yet", 7, 8, DIM, true); break; }
                 if (t - GambleData.lastTxAt < 1500) ring(g, 0, 0, W, H, 8, alpha(last.delta() >= 0 ? GREEN : RED, 0.7), 1.4);
                 Icons.drawGameIcon(g, last.game(), 4, 4, 16);
                 String v = money(last.delta(), c, true);
                 int vw = F.width(v);
-                g.drawText(last.game(), 24, 8, WHITE, true);
+                g.drawText(F.trimToWidth(last.game(), W - 7 - vw - 6 - 24), 24, 8, WHITE, true);   // the name stops 6 px short of the amount
                 if (c.autoSignColor) right(g, W, v, 8, last.delta() >= 0 ? GREEN : RED); else valueText(g, v, W - 7 - vw, 8, c, last.delta(), false);
             }
             case "pay" -> {
@@ -314,19 +321,23 @@ public final class GambleHud implements HudElement {
     /** Fill 0..1 to the surface's height in the 76 x 74 box: the bottom lobes (72) to the top one (2). */
     private static double levelOf(double k) { return 72 - 70 * k; }
 
-    /** The cloud alone (glass, liquid under its wave, bubbles), no label: the HUD, the menu, and the finale's big sky. */
-    public static void drawCloudBody(G g, double k, double fade) {
+    /** The cloud alone (glass, liquid under its wave, bubbles), no label: the HUD and the menu, one liquid column per GUI px. */
+    public static void drawCloudBody(G g, double k, double fade) { drawCloudBody(g, k, fade, 4); }
+
+    /** `step` texels per liquid column (4 = one per GUI px at scale 1; the finale's big sky passes 2): two draws a column. */
+    public static void drawCloudBody(G g, double k, double fade, int step) {
         int tint = alpha(0xFFFFFFFF, fade);
         double t = now() / 1000.0;
         g.drawSprite("rain/back", 0, 0, BW, BH, tint);
         if (k > 0.004) {
             double level = levelOf(k), a = Math.min(amp, 1 + 6 * k) * (k > 0.97 ? 0.4 : 1);   // a nearly full cloud barely moves
-            for (int c = 0; c < TW; c += 2) {
-                double wy = waveY((c + 1) / TK, level, t, a) + tilt * ((c + 1) / TK - BW / 2.0);
+            for (int c = 0; c < TW; c += step) {
+                int cw = Math.min(step, TW - c);
+                double wy = waveY((c + cw / 2.0) / TK, level, t, a) + tilt * ((c + cw / 2.0) / TK - BW / 2.0);
                 int top = Math.max(0, (int) Math.round(wy * TK));
                 if (top >= TH) continue;
-                g.drawSpritePart("rain/liquid", c / TK, top / TK, c, top, 2, TH - top, TW, TH, 1 / TK, tint);
-                g.drawSpritePart("rain/surface", c / TK, top / TK, c, top, 2, Math.min(5, TH - top), TW, TH, 1 / TK, tint);
+                g.drawSpritePart("rain/liquid", c / TK, top / TK, c, top, cw, TH - top, TW, TH, 1 / TK, tint);
+                g.drawSpritePart("rain/surface", c / TK, top / TK, c, top, cw, Math.min(5, TH - top), TW, TH, 1 / TK, tint);
             }
             // bubbles rising through the liquid, never above its surface
             for (int i = 0; i < 4; i++) {
@@ -497,23 +508,6 @@ public final class GambleHud implements HudElement {
                 g.pop();
             }
         }
-    }
-
-    /** A player crossed a tier: a glass pill slides down from the top of the screen, his gem and the news, 3 s. */
-    private static void drawTierUp(G g) {
-        var up = dev.ryaan.ezgamble.vip.Vip.lastTierUp();
-        if (up == null) return;
-        long e = now() - up.at();
-        double k = e < 250 ? easeOut(e / 250.0) : e < 2750 ? 1 : e < 3000 ? 1 - easeIn((e - 2750) / 250.0) : 0;
-        if (k <= 0) return;
-        String a = up.name() + " reached ", b = up.tier().name();
-        int w = 9 + 6 + F.width(a) + F.width(b) + 14, h = 17;
-        double x = Math.round((sw() - w) / 2.0), y = Math.round(8 - (1 - k) * (h + 10));
-        glass(g, x, y, w, h, 8, 0.75, 0.6);
-        ring(g, x, y, w, h, 8, alpha(up.tier().color(), 0.55 * k), 1);
-        dev.ryaan.ezgamble.vip.VipBadge.draw(g, up.tier(), x + 7, y + 5);
-        g.drawText(a, x + 7 + 9 + 4, y + 5, WHITE, true);
-        g.drawText(b, x + 7 + 9 + 4 + F.width(a), y + 5, up.tier().color(), true);
     }
 
     /** 0..1: how far the toast is out of the card. In 250 ms, stays 3.5 s, back in 250 ms. */

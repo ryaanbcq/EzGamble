@@ -109,6 +109,12 @@ public final class AuctionHud implements HudElement {
 
     static String me() { return MinecraftClient.getInstance().getSession().getUsername(); }
 
+    /** The card is up (running, or the result for SHOW_MS): hud.Banners steps aside, the card covers its whole column. */
+    public static boolean showing() {
+        long t = P.now();
+        return Auction.state == Auction.State.RUNNING || (Auction.state == Auction.State.ENDED && t - Auction.endedAt < SHOW_MS);
+    }
+
     /** Full bar dimmed, a bright band sweeping across it: "still counting" without a number. */
     private static void shimmer(G g, double x, double y, double w, long t) {
         P.accentBar(g, x, y, w, 3, 0.35);

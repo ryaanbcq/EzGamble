@@ -12,7 +12,7 @@ import static dev.ryaan.ezgamble.proto.P.*;
 
 /**
  * The HUD tab of the menu: a switch per widget, the presets, then the options (Liquid glass, Auto update, House guard,
- * Auto-seat, Theme) and the bottom buttons EDIT LAYOUT / Reset / Export. Nine rows of title + caption share one 20 px
+ * Auto-seat, Theme) and the bottom buttons Edit layout / Reset / Export (all 24 high, the bottom-row rule). Nine rows of title + caption share one 20 px
  * pitch between y0 + 80 and the buttons at y0 + 262 (9 x 20 = 180 px): every row has the same rhythm whatever it holds.
  */
 public final class HudTab {
@@ -44,9 +44,9 @@ public final class HudTab {
         s.add(new GlassSwitch(rx - 28, rowY(s, r + 4) + 3, 28, 14, () -> GambleData.autoSeat, GambleData::setAutoSeat));
         swatches = s.add(new ThemeSwatches(rx - ThemeSwatches.width(), rowY(s, r + 5) + 5));   // theme: six two-tone swatches, applied at once
         double by = s.y0 + GambleScreen.H - GambleScreen.PAD - 24;
-        s.add(new GlassButton(lx, by, GambleScreen.W - 2 * GambleScreen.PAD - 74 - 60 - 8, 24, "EDIT LAYOUT", "PRIMARY",
+        s.add(new GlassButton(lx, by, GambleScreen.W - 2 * GambleScreen.PAD - 74 - 60 - 8, 24, "Edit layout", "PRIMARY",
                 () -> MinecraftClient.getInstance().setScreen(new HudEditorScreen())));
-        resetBtn = s.add(new GlassButton(rx - 74 - 4 - 60, by + 3, 60, 18, resetArmed > now() ? "Sure?" : "Reset", "DANGER", HudTab::reset));
+        resetBtn = s.add(new GlassButton(rx - 74 - 4 - 60, by, 60, 24, resetArmed > now() ? "Sure?" : "Reset", "DANGER", HudTab::reset));
         s.add(new GlassButton(rx - 74, by, 74, 24, "Export", "GHOST", HudEditorScreen::export));
     }
 

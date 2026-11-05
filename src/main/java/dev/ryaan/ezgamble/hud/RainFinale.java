@@ -112,18 +112,21 @@ final class RainFinale {
 
         // ---- the downpour: three depths (far = thin, slow, landing high on screen), a little wind, a crown where
         // each lands; then a drizzle until the winner is shown
+        // the particle budget follows the screen's area (960 x 540 = the full counts): the same density, not the same count, at 640 x 360
+        double area = Math.min(1, W * H / (960.0 * 540));
+        int drops = (int) (DROPS * area), drizzle = (int) (DRIZZLE * area), coins = (int) (COINS * area);
         long drawEnd = land - start + 1200;
-        for (int i = 0; i < DROPS + DRIZZLE; i++) {
-            boolean drizzle = i >= DROPS;
+        for (int i = 0; i < drops + drizzle; i++) {
+            boolean dz = i >= drops;
             double d = h(i, 1);
-            double t0 = drizzle ? RAIN1 - 400 + h(i, 3) * Math.max(0, drawEnd - RAIN1) : RAIN0 + h(i, 3) * (RAIN1 - RAIN0 - 400), el = e - t0;
+            double t0 = dz ? RAIN1 - 400 + h(i, 3) * Math.max(0, drawEnd - RAIN1) : RAIN0 + h(i, 3) * (RAIN1 - RAIN0 - 400), el = e - t0;
             if (el < 0) continue;
             double x = h(i, 2) * W;
-            double y0 = !drizzle && Math.abs(x - W / 2) < cloudHalf * 0.85 && e < RAIN1 ? cloudBottom - h(i, 4) * 26 : -14 - h(i, 4) * 50;
+            double y0 = !dz && Math.abs(x - W / 2) < cloudHalf * 0.85 && e < RAIN1 ? cloudBottom - h(i, 4) * 26 : -14 - h(i, 4) * 50;
             double speed = H * (0.7 + 0.9 * d), y = y0 + speed * el / 1000, ground = H * (0.78 + 0.19 * d);
             x += el / 1000 * W * 0.04;
             int tint = TINTS[(int) (h(i, 5) * TINTS.length)];
-            double a = (0.5 + 0.5 * d) * gf * (drizzle ? 0.7 : 1);
+            double a = (0.5 + 0.5 * d) * gf * (dz ? 0.7 : 1);
             if (y < ground) {
                 double len = 8 + 26 * d, w = d < 0.4 ? 1 : d < 0.8 ? 2 : 3;
                 g.drawSprite("rain/streak", x - w / 2, y - len, w, len, alpha(tint, a));
@@ -135,7 +138,7 @@ final class RainFinale {
             }
         }
         // gold coins coming out of the cloud's belly (drawn behind it), spread over its width, spinning
-        for (int j = 0; j < COINS; j++) {
+        for (int j = 0; j < coins; j++) {
             double t0 = RAIN0 + 200 + h(j, 13) * (RAIN1 - RAIN0 - 900), el = (e - t0) / 1000.0;
             if (el < 0) continue;
             double x = W / 2 + (h(j, 12) - 0.5) * cloudHalf * 1.5 + (h(j, 15) - 0.5) * 30 * el;
@@ -147,7 +150,7 @@ final class RainFinale {
         }
         if (ca > 0.01) {
             g.push(); g.translate(cx, cy); g.scale(sc, sc); g.translate(-38, -37);
-            GambleHud.drawCloudBody(g, k, ca * gf);
+            GambleHud.drawCloudBody(g, k, ca * gf, 2);   // the sky-sized cloud: two texels a column
             g.pop();
         }
         // ---- the pot, counting up while it rains
