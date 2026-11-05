@@ -51,14 +51,14 @@ public final class JackpotView implements GameView {
         // the slice: a segmented control, the change is immediate
         if (sliceSeg == null) sliceSeg = new GlassSegmented(0, 0, 18, new String[][]{{"half", "0.5%"}, {"one", "1%"}, {"two", "2%"}},
                 () -> sliceId(Jackpot.slice()), v -> { Jackpot.setSlice(sliceOf(v)); GambleScreen cur = GambleScreen.current(); if (cur != null) cur.rebuild(); });
-        sliceSeg.place(lx + 8, sy + 19);
+        sliceSeg.place(lx + 8, sy + 17);
         s.add(sliceSeg);
         // the seed: a field and Apply (Enter applies too)
         double fw = 64, aw = F.width("Apply") + 16;
         if (seedField == null) { seedField = new GlassField(0, 0, fw, 18, Money.format(Jackpot.seed()).replace("$", ""), "Seed", 8); seedField.allowed = "[0-9.KMBkmb]"; seedField.focused = false; }
-        seedField.x = rx - 8 - aw - 4 - fw; seedField.y = sy + 19; seedField.w = fw;
+        seedField.x = rx - 8 - aw - 4 - fw; seedField.y = sy + 17; seedField.w = fw;
         s.add(seedField);
-        apply = s.add(new GlassButton(rx - 8 - aw, sy + 20, aw, 16, "Apply", "PRIMARY", this::applySeed));
+        apply = s.add(new GlassButton(rx - 8 - aw, sy + 18, aw, 16, "Apply", "PRIMARY", this::applySeed));
         // the hits, newest first: a row opens the player's profile
         List<Jackpot.Hit> hits = Jackpot.hits();
         Widget.Clip clip = listClip();
@@ -115,17 +115,17 @@ public final class JackpotView implements GameView {
         g.pop();
         if (!on) g.drawText("off", lx + 48 + F.width(pot) * 2 + 6, y + 48, RED, false);
         // the odds line: in two lines on the right, never under the amount
-        String o1 = "Each $1M bet has a " + Jackpot.oddsText(1_000_000L) + " chance", o2 = "the house pays " + Jackpot.sliceText() + " of every bet";
+        String o1 = "A $1M bet: " + Jackpot.oddsText(1_000_000L), o2 = "the house pays " + Jackpot.sliceText() + " of each bet";   // short: the room right of "$123.45M" is about 170 px
         double left = lx + 48 + F.width(pot) * 2 + (on ? 14 : 14 + F.width("off") + 6);
         g.drawText(F.trimToWidth(o1, rx - 10 - left), rx - 10 - F.width(F.trimToWidth(o1, rx - 10 - left)), y + 36, TEXT, false);
         g.drawText(F.trimToWidth(o2, rx - 10 - left), rx - 10 - F.width(F.trimToWidth(o2, rx - 10 - left)), y + 48, MUTE, false);
 
         // the settings: slice, then seed
-        card(g, lx, sy, rx - lx, 44, "soft");
+        card(g, lx, sy, rx - lx, 40, "soft");   // 40: ends 6 px above the Hits pills, the same gap as every other section
         g.drawText("House slice", lx + 8, sy + 7, MUTE, false);
         String sh = "of every bet feeds the pot";
         g.drawText(sh, lx + 8 + F.width("House slice") + 6, sy + 7, DIM, false);
-        String seedL = "Seed", seedH = "the pot restarts here after a hit";
+        String seedL = "Seed", seedH = "after a hit";   // reads "Seed after a hit", the long sentence never fit
         double sx = seedField.x;
         g.drawText(seedL, sx, sy + 7, MUTE, false);
         if (F.width(seedH) <= rx - 8 - (sx + F.width(seedL) + 6)) g.drawText(seedH, sx + F.width(seedL) + 6, sy + 7, DIM, false);
@@ -140,7 +140,7 @@ public final class JackpotView implements GameView {
         for (Jackpot.Hit h : hits) total += h.amount();
         pillsRight(g, rx, titleY - 4, new Object[][]{{"Hits", String.valueOf(hits.size())}, {"Paid out", Money.format(total)}});
         if (hits.isEmpty()) {
-            String a = "No hit yet. Every bet placed with a player's chips has a shot at the pot.";
+            String a = "No hit yet, every bet with a player's chips has a shot at the pot";
             g.drawText(F.trimToWidth(a, rx - lx), lx + (rx - lx - F.width(F.trimToWidth(a, rx - lx))) / 2, clip.y() + 12, DIM, false);
         } else {
             double hh = hits.size() * ROW_H, off = s.beginList(g, "jackpot", clip.x(), clip.y(), clip.w(), clip.h(), hh);
@@ -162,7 +162,7 @@ public final class JackpotView implements GameView {
             s.endList(g, "jackpot", hh);
         }
         // the provably fair note, one line at the bottom
-        String note = "Provably fair: every draw is a round of the Fair log, the reveal lets anyone recompute it.";
+        String note = "Provably fair: every draw is a Fair round anyone can recompute";
         double ny = s.y0 + GambleScreen.H - GambleScreen.PAD - 10;
         g.drawText(F.trimToWidth(note, rx - lx), lx, ny, DIM, false);
     }
