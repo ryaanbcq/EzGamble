@@ -13,11 +13,16 @@ import java.time.ZoneId;
 public final class P {
     private P() {}
 
-    // ---- colours (glass mode: the vibrant greys and red of the prototype)
-    public static final int LAV = 0xFFA18CD1, PINK = 0xFFFBC2EB, TEXT = 0xFFCFC8DE, WHITE = 0xFFFFFFFF;
-    public static final int MUTE = 0xFFB8AFCC, DIM = 0xFF9C93B5, GREEN = 0xFF4BE07A, INK = 0xFF1A1226, RED = 0xFFFF8A8A;
-    public static final int PANEL_TOP = 0xF6161022, PANEL_BOT = 0xF80C0A14, HUD_TOP = 0xDC161022, HUD_BOT = 0xE60C0A14;
-    public static final int BORDER = 0x4DFBC2EB, BORDER_SOFT = 0x1AFFFFFF, FILL_SOFT = 0x0AFFFFFF, SOFT_GREY = 0xFFA79FB8;
+    // ---- colours (glass mode: the vibrant greys and red of the prototype). The palette (LAV, PINK, TEXT, MUTE, DIM, the
+    // panel tints, BORDER) is NOT final: themes.Themes.apply writes a theme into it, every use site reads it each frame.
+    // Never copy one into a static final (it would freeze the Lavender value). GREEN, RED, WHITE, INK stay constants.
+    public static int LAV = 0xFFA18CD1, PINK = 0xFFFBC2EB, TEXT = 0xFFCFC8DE;
+    public static final int WHITE = 0xFFFFFFFF;
+    public static int MUTE = 0xFFB8AFCC, DIM = 0xFF9C93B5;
+    public static final int GREEN = 0xFF4BE07A, INK = 0xFF1A1226, RED = 0xFFFF8A8A;
+    public static int PANEL_TOP = 0xF6221836, PANEL_BOT = 0xF80C0A14, HUD_TOP = 0xDC221836, HUD_BOT = 0xE60C0A14;
+    public static int BORDER = 0x4DFBC2EB;
+    public static final int BORDER_SOFT = 0x1AFFFFFF, FILL_SOFT = 0x0AFFFFFF, SOFT_GREY = 0xFFA79FB8;
 
     /** A frozen clock for the demo recording (DebugRun rec): every animation steps 1/30 s per captured frame. -1 = real time. */
     public static long clock = -1;
@@ -167,7 +172,7 @@ public final class P {
 
     public static void card(G g, double x, double y, double w, double h, String kind) {
         switch (kind) {
-            case "accent" -> smooth(g, x, y, w, h, 7, h(0x24A18CD1, 0x14FBC2EB), 0x4DFBC2EB);
+            case "accent" -> smooth(g, x, y, w, h, 7, h(alpha(LAV, 0.14), alpha(PINK, 0.08)), alpha(PINK, 0.3));
             case "red" -> smooth(g, x, y, w, h, h / 2, 0x26FF5C5C, 0x80FF5C5C);
             case "row" -> smooth(g, x, y, w, h, 6, 0x0DFFFFFF, 0x0FFFFFFF);
             case "chart" -> smooth(g, x, y, w, h, 7, 0x0AFFFFFF, 0x0DFFFFFF);
@@ -185,7 +190,7 @@ public final class P {
     public static void pill(G g, double x, double y, String label, String value, int vc) { pill(g, x, y, label, value, vc, "ghost"); }
     public static void pill(G g, double x, double y, String label, String value, int vc, String kind) {
         int w = pillW(label, value);
-        smooth(g, x, y, w, 15, 7.5, kind.equals("selected") ? 0x2EA18CD1 : 0x10FFFFFF, 0);
+        smooth(g, x, y, w, 15, 7.5, kind.equals("selected") ? alpha(LAV, 0.18) : 0x10FFFFFF, 0);
         double tx = x + 7;
         if (label != null && !label.isEmpty()) { g.drawText(label, tx, y + 4, MUTE, false); tx += F.width(label) + 4; }
         g.drawText(value, tx, y + 4, vc, false);
@@ -206,7 +211,7 @@ public final class P {
         int w = seatTagW(name, value);
         double x = Math.round(cx - w / 2.0);
         boolean sel = kind.equals("selected");
-        if (sel) smooth(g, x, y, w, 15, 7.5, h(0x40A18CD1, 0x33FBC2EB), 0x66FBC2EB); else smooth(g, x, y, w, 15, 7.5, 0x10FFFFFF, 0);
+        if (sel) smooth(g, x, y, w, 15, 7.5, h(alpha(LAV, 0.25), alpha(PINK, 0.2)), alpha(PINK, 0.4)); else smooth(g, x, y, w, 15, 7.5, 0x10FFFFFF, 0);
         g.drawHead(skin, x + 5, y + 4, 8);
         g.drawText(name, x + 17, y + 4, sel ? WHITE : TEXT, false);
         g.drawText(value, x + 17 + F.width(name) + 6, y + 4, vc, false);

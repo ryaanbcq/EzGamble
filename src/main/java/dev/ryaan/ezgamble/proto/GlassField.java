@@ -27,7 +27,7 @@ public class GlassField extends Widget {
             g.fill(mx0 + 5, my0 + 5, mx0 + 6, my0 + 6, c); g.fill(mx0 + 6, my0 + 6, mx0 + 7, my0 + 7, c);
             if (!value.isEmpty()) g.drawText("×", x + w - 12, ty, overClear(mx, my) ? P.WHITE : P.MUTE, false);
         }
-        if (selectAll && !value.isEmpty()) g.fill(tx - 1, ty - 1, tx + F.width(value) + 1, ty + 9, 0x66A18CD1);
+        if (selectAll && !value.isEmpty()) g.fill(tx - 1, ty - 1, tx + F.width(value) + 1, ty + 9, P.alpha(P.LAV, 0.4));
         if (!value.isEmpty()) g.drawText(value, tx, ty, P.WHITE, true); else g.drawText(placeholder, tx, ty, P.DIM, false);
         if (focused && ((P.now() - typedAt) % 1060) < 530) {
             double cx = tx + F.width(value) + 1;

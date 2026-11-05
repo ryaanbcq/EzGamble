@@ -192,8 +192,8 @@ public final class CoinflipView implements GameView {
         for (String side : new String[]{"heads", "tails"}) {
             R q = sideRect(side);
             boolean sel = CF.side.equals(side), hov = mx >= q.x && mx < q.x + q.w && my >= q.y && my < q.y + q.h;
-            int stroke = sel ? 0xCCFBC2EB : hov ? 0x40FFFFFF : 0x18FFFFFF;
-            if (sel) P.smooth(g, q.x, q.y, q.w, q.h, 8, P.h(0x33A18CD1, 0x26FBC2EB), stroke);
+            int stroke = sel ? P.alpha(P.PINK, 0.8) : hov ? 0x40FFFFFF : 0x18FFFFFF;
+            if (sel) P.smooth(g, q.x, q.y, q.w, q.h, 8, P.h(P.alpha(P.LAV, 0.2), P.alpha(P.PINK, 0.15)), stroke);
             else P.smooth(g, q.x, q.y, q.w, q.h, 8, hov ? 0x14FFFFFF : 0x0AFFFFFF, stroke);
             drawCoin(g, q.x + 20, q.y + q.h / 2, 12, side.equals("heads") ? 0 : Math.PI, skin);
             g.drawText(cfName(side), q.x + 40, q.y + 16, sel ? P.WHITE : P.TEXT, sel);

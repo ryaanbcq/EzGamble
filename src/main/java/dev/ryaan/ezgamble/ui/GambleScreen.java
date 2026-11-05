@@ -555,7 +555,7 @@ public final class GambleScreen extends ProtoScreen {
             double tx2 = tl[0], tw = tl[2], th = tl[3], ty = tl[1] - goff;
             if (ty + th < gc[1] || ty > gc[1] + gc[3]) continue;
             boolean h2 = inGrid && mx >= tx2 && mx < tx2 + tw && my >= ty && my < ty + th;
-            P.smooth(g, tx2, ty, tw, th, 8, h2 ? 0x17FFFFFF : 0x0DFFFFFF, h2 ? 0x80A18CD1 : 0x14FFFFFF);
+            P.smooth(g, tx2, ty, tw, th, 8, h2 ? 0x17FFFFFF : 0x0DFFFFFF, h2 ? P.alpha(P.LAV, 0.5) : 0x14FFFFFF);
             double iy = ty + Math.round((th - 32) / 2);
             if (gm[2].startsWith("fill:")) Icons.drawGameIcon(g, gm[2].substring(5), tx2 + 8, iy, 32); else g.drawSprite(gm[2], tx2 + 8, iy, 32, 32);   // "fill:<id>" = drawn with fills, no sprite
             double room = tw - 50;
@@ -647,7 +647,7 @@ public final class GambleScreen extends ProtoScreen {
     private void renderGrip(G g, double mx, double my) {
         if (welcome) return;
         boolean h = overGrip(mx, my) || resizing;
-        int c = h ? 0xB0FBC2EB : 0x30FFFFFF;
+        int c = h ? P.alpha(P.PINK, 0.69) : 0x30FFFFFF;
         double x = x0 + W - 4, y = y0 + H - 4;
         for (int i = 0; i < 3; i++) for (int j = 0; j <= i; j++) g.fill(x - (i - j) * 3 - 1, y - j * 3 - 1, x - (i - j) * 3, y - j * 3, c);   // three dots on a diagonal, like a resize corner
     }

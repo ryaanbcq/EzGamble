@@ -1,0 +1,75 @@
+# Themes smoke test: every preset on the dashboard, the games grid and the HUD tab (theme row with the swatches).
+# Run: ./tools/smoke.sh tools/smoke-themes.txt ; expect 19 screenshots: ezgamble-theme-<id>-{dash,games,hud}.png for the six themes plus ezgamble-theme-click-lavender.png,
+# and no "step failed" line. The config keeps the last theme applied (mono): the last block puts Lavender back.
+mode on
+demo 20
+open
+wait 20
+theme lavender
+tab dashboard
+wait 5
+shot theme-lavender-dash
+tab games
+wait 5
+shot theme-lavender-games
+tab hud
+wait 5
+shot theme-lavender-hud
+theme emerald
+tab dashboard
+wait 5
+shot theme-emerald-dash
+tab games
+wait 5
+shot theme-emerald-games
+tab hud
+wait 5
+shot theme-emerald-hud
+theme gold
+tab dashboard
+wait 5
+shot theme-gold-dash
+tab games
+wait 5
+shot theme-gold-games
+tab hud
+wait 5
+shot theme-gold-hud
+theme crimson
+tab dashboard
+wait 5
+shot theme-crimson-dash
+tab games
+wait 5
+shot theme-crimson-games
+tab hud
+wait 5
+shot theme-crimson-hud
+theme ocean
+tab dashboard
+wait 5
+shot theme-ocean-dash
+tab games
+wait 5
+shot theme-ocean-games
+tab hud
+wait 5
+shot theme-ocean-hud
+theme mono
+tab dashboard
+wait 5
+shot theme-mono-dash
+tab games
+wait 5
+shot theme-mono-games
+tab hud
+wait 5
+shot theme-mono-hud
+# a click on the first swatch (Lavender), the theme row sits at y0 + 224 and its swatches start at x0 + 296: Lavender back in the config
+click @301 @235
+wait 5
+shot theme-click-lavender
+theme lavender
+close
+wait 5
+quit

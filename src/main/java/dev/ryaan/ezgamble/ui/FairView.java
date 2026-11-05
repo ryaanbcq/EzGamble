@@ -93,7 +93,7 @@ public final class FairView implements GameView {
             boolean done = i + 1 < now || revealed, on = i + 1 == now && !revealed;
             String t = (done ? "✔ " : (i + 1) + " ") + steps[i];
             double w = F.width(t) + 16;
-            if (on) { smooth(g, px, sy, w, 15, 7.5, h(0x3DA18CD1, 0x30FBC2EB), 0x80FBC2EB); }
+            if (on) { smooth(g, px, sy, w, 15, 7.5, h(alpha(LAV, 0.24), alpha(PINK, 0.19)), alpha(PINK, 0.5)); }
             else smooth(g, px, sy, w, 15, 7.5, done ? 0x1A4BE07A : 0x0CFFFFFF, done ? 0x404BE07A : 0x14FFFFFF);
             g.drawText(t, px + 8, sy + 4, on ? WHITE : done ? GREEN : DIM, false);
             px += w;

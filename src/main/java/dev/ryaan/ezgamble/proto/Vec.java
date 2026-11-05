@@ -30,7 +30,7 @@ public final class Vec {
         float k = (float) (MinecraftClient.getInstance().getWindow().getScaleFactor() * P.zoom);
         int iw = (int) Math.ceil((w + 2 * pad) * k), ih = (int) Math.ceil((h + 2 * pad) * k);
         if (iw <= 0 || ih <= 0) return;
-        String full = key + "@" + k + "/" + iw + "x" + ih;
+        String full = key + "@" + k + "/" + iw + "x" + ih + "#" + dev.ryaan.ezgamble.themes.Themes.ver;   // a theme switch repaints everything
         Identifier id = CACHE.get(full);
         if (id == null) {
             BufferedImage bi = new BufferedImage(iw, ih, BufferedImage.TYPE_INT_ARGB);
@@ -58,6 +58,13 @@ public final class Vec {
         g.scale(1 / k, 1 / k);
         g.d.drawTexture(RenderPipelines.GUI_TEXTURED, id, 0, 0, 0, 0, iw, ih, iw, ih, iw, ih);
         g.pop();
+    }
+
+    /** Drops every cached sprite (a theme switch): the textures are freed, the next draw repaints. Safe before the texture manager exists (nothing cached then). */
+    public static void clear() {
+        if (CACHE.isEmpty()) return;
+        for (Identifier id : CACHE.values()) MinecraftClient.getInstance().getTextureManager().destroyTexture(id);
+        CACHE.clear();
     }
 
     /** java.awt.Color from 0xAARRGGBB. */

@@ -306,7 +306,7 @@ public final class AuctionView implements GameView {
             double ry = y + i * 24 - off;
             if (ry + 22 < y || ry > y + lh) continue;
             boolean isLead = b == lead, under = b.total < Auction.min;
-            if (isLead) smooth(g, lx, ry, rx - lx, 22, 6, 0x1FFBC2EB, 0x80FBC2EB); else card(g, lx, ry, rx - lx, 22, "row");
+            if (isLead) smooth(g, lx, ry, rx - lx, 22, 6, alpha(PINK, 0.12), alpha(PINK, 0.5)); else card(g, lx, ry, rx - lx, 22, "row");
             g.drawText("#" + (i + 1), lx + 6, ry + 7, isLead ? PINK : DIM, false);
             g.drawHead(skinOf(b.name), lx + 24, ry + 3, 16);
             g.drawText(F.trimToWidth(b.name, 100), lx + 45, ry + 7, under ? MUTE : WHITE, false);
@@ -349,7 +349,7 @@ public final class AuctionView implements GameView {
             var it = items.get(i);
             double x = G[5] + c * 20, y = G[1] + r * 20 - off;
             boolean sel = it.id().equals(Auction.item), hov = inGrid && mx >= x && mx < x + 20 && my >= y && my < y + 20;
-            if (sel) smooth(g, x, y, 20, 20, 5, 0x33FBC2EB, 0xCCFBC2EB);
+            if (sel) smooth(g, x, y, 20, 20, 5, alpha(PINK, 0.2), alpha(PINK, 0.8));
             else if (hov) smooth(g, x, y, 20, 20, 5, 0x1FFFFFFF, 0x40FFFFFF);
             g.drawItem(it.id(), x + 2, y + 2, true);   // every reward is shown enchanted (EzAuction's glint override)
             if (hov) { hovered = it; hx = x; hy = y; }

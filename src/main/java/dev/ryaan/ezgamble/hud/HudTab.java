@@ -1,38 +1,48 @@
 package dev.ryaan.ezgamble.hud;
 
+import dev.ryaan.ezgamble.data.GambleData;
 import dev.ryaan.ezgamble.proto.*;
+import dev.ryaan.ezgamble.themes.ThemeSwatches;
+import dev.ryaan.ezgamble.themes.Themes;
 import dev.ryaan.ezgamble.ui.GambleScreen;
 import net.minecraft.client.MinecraftClient;
 
 import static dev.ryaan.ezgamble.hud.HudConfig.*;
 import static dev.ryaan.ezgamble.proto.P.*;
 
-/** The HUD tab of the menu: a switch per widget, the presets, EDIT LAYOUT / Reset / Export. */
+/**
+ * The HUD tab of the menu: a switch per widget, the presets, then the options (Liquid glass, Auto update, House guard,
+ * Auto-seat, Theme) and the bottom buttons EDIT LAYOUT / Reset / Export. Nine rows of title + caption share one 20 px
+ * pitch between y0 + 80 and the buttons at y0 + 262 (9 x 20 = 180 px): every row has the same rhythm whatever it holds.
+ */
 public final class HudTab {
     private HudTab() {}
 
+    /** Row pitch: title at +1, caption at +11, a 14 px switch at +3, the 10 px swatches at +5. */
+    private static final int ROW = 20;
     private static GlassSegmented presets;
     private static GlassButton resetBtn;
+    private static ThemeSwatches swatches;
     private static long resetArmed;
-    /** A widget row (switch + two lines of text) and an option row under the presets (title and hint, tighter). */
-    private static final int ROW = 24, OPT = 19;
+
+    private static double rowY(GambleScreen s, int i) { return s.y0 + 80 + i * ROW; }
 
     public static void init(GambleScreen s) {
         double lx = s.x0 + GambleScreen.PAD, rx = s.x0 + GambleScreen.W - GambleScreen.PAD;
         for (int i = 0; i < ORDER.length; i++) {
             String id = ORDER[i];
-            s.add(new GlassSwitch(rx - 28, s.y0 + 80 + i * ROW + 4, 28, 14, () -> HUD.get(id).visible, v -> { HUD.get(id).visible = v; save(); }));
+            s.add(new GlassSwitch(rx - 28, rowY(s, i) + 3, 28, 14, () -> HUD.get(id).visible, v -> { HUD.get(id).visible = v; save(); }));
         }
+        int r = ORDER.length;
         if (presets == null) presets = new GlassSegmented(0, 0, 18, new String[][]{{"minimal", "Minimal"}, {"standard", "Standard"}, {"streamer", "Streamer"}},
                 HudConfig::presetOf, HudConfig::applyPreset);
-        presets.place(rx - presets.w, s.y0 + 80 + ORDER.length * ROW + 6);
+        presets.place(rx - presets.w, rowY(s, r) + 1);
         s.add(presets);
-        // four option rows under the presets, OPT px each (compact: widget rows shrank to ROW so Auto-seat fits under House guard, above the bottom buttons)
-        double oy = s.y0 + 80 + ORDER.length * ROW + 6 + 24;
-        s.add(new GlassSwitch(rx - 28, oy + 3, 28, 14, () -> dev.ryaan.ezgamble.data.GambleData.lens, dev.ryaan.ezgamble.data.GambleData::setLens));
-        s.add(new GlassSwitch(rx - 28, oy + OPT + 3, 28, 14, () -> dev.ryaan.ezgamble.data.GambleData.autoUpdate, dev.ryaan.ezgamble.data.GambleData::setAutoUpdate));
-        s.add(new GlassSwitch(rx - 28, oy + 2 * OPT + 3, 28, 14, () -> dev.ryaan.ezgamble.data.GambleData.houseGuard, dev.ryaan.ezgamble.data.GambleData::setHouseGuard));
-        s.add(new GlassSwitch(rx - 28, oy + 3 * OPT + 3, 28, 14, () -> dev.ryaan.ezgamble.data.GambleData.autoSeat, dev.ryaan.ezgamble.data.GambleData::setAutoSeat));
+        s.add(new GlassSwitch(rx - 28, rowY(s, r + 1) + 3, 28, 14, () -> GambleData.lens, GambleData::setLens));
+        s.add(new GlassSwitch(rx - 28, rowY(s, r + 2) + 3, 28, 14, () -> GambleData.autoUpdate, GambleData::setAutoUpdate));
+        s.add(new GlassSwitch(rx - 28, rowY(s, r + 3) + 3, 28, 14, () -> GambleData.houseGuard, GambleData::setHouseGuard));
+        s.add(new GlassSwitch(rx - 28, rowY(s, r + 4) + 3, 28, 14, () -> GambleData.autoSeat, GambleData::setAutoSeat));
+        swatches = s.add(new ThemeSwatches(rx - ThemeSwatches.width(), rowY(s, r + 5) + 5));   // theme: six two-tone swatches, applied at once
         double by = s.y0 + GambleScreen.H - GambleScreen.PAD - 24;
         s.add(new GlassButton(lx, by, GambleScreen.W - 2 * GambleScreen.PAD - 74 - 60 - 8, 24, "EDIT LAYOUT", "PRIMARY",
                 () -> MinecraftClient.getInstance().setScreen(new HudEditorScreen())));
@@ -46,29 +56,24 @@ public final class HudTab {
         else { resetArmed = now() + 3000; resetBtn.label = "Sure?"; }
     }
 
+    /** One row: the title, the caption under it; the caption is trimmed so it never runs under the control at the right. */
+    private static void row(G g, double lx, double y, double room, String title, String desc) {
+        g.drawText(title, lx, y + 1, TEXT, false);
+        g.drawText(F.trimToWidth(desc, room), lx, y + 11, DIM, false);
+    }
+
     public static void render(GambleScreen s, G g) {
         if (resetArmed != 0 && now() > resetArmed) { resetArmed = 0; if (resetBtn != null) resetBtn.label = "Reset"; }
-        double lx = s.x0 + GambleScreen.PAD;
-        for (int i = 0; i < ORDER.length; i++) {   // SettingsScreen.row
-            String id = ORDER[i];
-            double y = s.y0 + 80 + i * ROW;
-            g.drawText(DEF.get(id).name(), lx, y + 2, TEXT, false);
-            g.drawText(DEF.get(id).desc(), lx, y + 12, DIM, false);
-        }
-        double y = s.y0 + 80 + ORDER.length * ROW + 6;
-        g.drawText("Layout", lx, y + 1, TEXT, false);
-        g.drawText(presetOf().equals("custom") ? "Your own mix" : "One-click presets", lx, y + 12, DIM, false);
-        y += 24;
-        g.drawText("Liquid glass", lx, y + 1, TEXT, false);
-        g.drawText("a lens on the tabs, drag it", lx, y + 11, DIM, false);
-        y += OPT;
-        g.drawText("Auto update", lx, y + 1, TEXT, false);
-        g.drawText("installed when the game closes", lx, y + 11, DIM, false);
-        y += OPT;
-        g.drawText("House guard", lx, y + 1, TEXT, false);
-        g.drawText("refuse bets the house can't cover", lx, y + 11, DIM, false);
-        y += OPT;
-        g.drawText("Auto-seat", lx, y + 1, TEXT, false);
-        g.drawText("the next in line sits down after a round", lx, y + 11, DIM, false);
+        double lx = s.x0 + GambleScreen.PAD, rx = s.x0 + GambleScreen.W - GambleScreen.PAD;
+        double sw = rx - 28 - 6 - lx;   // the room left of a switch
+        for (int i = 0; i < ORDER.length; i++) row(g, lx, rowY(s, i), sw, DEF.get(ORDER[i]).name(), DEF.get(ORDER[i]).desc());   // SettingsScreen.row
+        int r = ORDER.length;
+        row(g, lx, rowY(s, r), presets == null ? sw : presets.x - 6 - lx, "Layout", presetOf().equals("custom") ? "Your own mix" : "One-click presets");
+        row(g, lx, rowY(s, r + 1), sw, "Liquid glass", "a lens on the tabs, drag it");
+        row(g, lx, rowY(s, r + 2), sw, "Auto update", "installed when the game closes");
+        row(g, lx, rowY(s, r + 3), sw, "House guard", "refuse bets the house can't cover");
+        row(g, lx, rowY(s, r + 4), sw, "Auto-seat", "the next in line sits down after a round");
+        // the caption names the swatch under the pointer, else the theme in use
+        row(g, lx, rowY(s, r + 5), rx - ThemeSwatches.width() - 6 - lx, "Theme", (swatches == null ? Themes.current() : swatches.shown()).name() + ", colours of the whole mod");
     }
 }

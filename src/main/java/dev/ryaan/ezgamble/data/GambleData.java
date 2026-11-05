@@ -42,6 +42,7 @@ public final class GambleData {
     public static boolean autoSeat = false;   // "Auto-seat": the next player in the lobby line sits down 2.5 s after the round on the open felt (lobby.Lobby)
     public static boolean crateFast = false;   // Crates "Fast": the reel spins in 1.5 s instead of 8 (Ryan: roll quickly)
     public static boolean lens = true;   // "Liquid glass": the lens on the tabs and the period selector (off = the sliding pill)   // what the mod calls the player (asked on the first opening)
+    public static String theme = "lavender";   // colour theme id (themes.Themes), applied in load() before anything draws
     private static long dirtyAt;
 
     public static void load() {
@@ -52,6 +53,7 @@ public final class GambleData {
                 if (o.has("name")) name = o.get("name").getAsString();
                 if (o.has("mode")) mode = o.get("mode").getAsBoolean();
                 if (o.has("lens")) lens = o.get("lens").getAsBoolean();
+                if (o.has("theme")) theme = o.get("theme").getAsString();
                 if (o.has("crateFast")) crateFast = o.get("crateFast").getAsBoolean();
                 if (o.has("houseGuard")) houseGuard = o.get("houseGuard").getAsBoolean();
                 if (o.has("autoSeat")) autoSeat = o.get("autoSeat").getAsBoolean();
@@ -83,6 +85,7 @@ public final class GambleData {
         } catch (Exception e) {
             EzGambleMod.LOG.warn("[ezgamble] load failed: {}", e.toString());
         }
+        dev.ryaan.ezgamble.themes.Themes.apply(theme);   // outside the try: an unreadable config still gets a palette
     }
 
     public static Session current() {
@@ -162,6 +165,7 @@ public final class GambleData {
 
     public static void setWindow(double x, double y, double zoom) { winX = x; winY = y; winZoom = zoom; saveConfig(); }
     public static void setLens(boolean on) { lens = on; saveConfig(); }
+    public static void setTheme(String id) { theme = dev.ryaan.ezgamble.themes.Themes.byId(id).id(); dev.ryaan.ezgamble.themes.Themes.apply(theme); saveConfig(); }
     public static void setCrateFast(boolean on) { crateFast = on; saveConfig(); }
     public static void setHouseGuard(boolean on) { houseGuard = on; saveConfig(); }
     public static void setAutoSeat(boolean on) { autoSeat = on; saveConfig(); }
@@ -185,6 +189,7 @@ public final class GambleData {
         if (name != null) o.addProperty("name", name);
         o.addProperty("mode", mode);
         o.addProperty("lens", lens);
+        o.addProperty("theme", theme);
         o.addProperty("crateFast", crateFast);
         o.addProperty("houseGuard", houseGuard);
         o.addProperty("autoSeat", autoSeat);

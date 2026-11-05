@@ -270,7 +270,7 @@ public final class Liquid {
             float X = x * k, Y = y * k, W = w * k, H = h * k, R = Math.min(r * k, Math.min(W, H) / 2);
             if (shadowStrength > 0) shadow(g, X, Y, W, H, R, k, shadowStrength);
             float aa = Math.min(0.94f, a);
-            shape(g, X, Y, W, H, R, vgrad(argb(aa * 0.88f, 34, 24, 54), argb(aa, 12, 10, 20)), 1);
+            shape(g, X, Y, W, H, R, vgrad(Glass.alpha(Glass.PANEL_TOP, aa * 0.88f), Glass.alpha(Glass.PANEL_BOT, aa)), 1);   // the theme's tints (Lavender: 221836 over 0C0A14)
             float gx = W, gy = H, len2 = gx * gx + gy * gy;
             int w0 = Glass.alpha(Glass.LAV, 0.13f), w1 = Glass.alpha(Glass.PINK, 0.07f);
             shape(g, X, Y, W, H, R, new Paint() {

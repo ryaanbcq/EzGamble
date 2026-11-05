@@ -240,7 +240,7 @@ public final class MinesView implements GameView {
             boolean shown = open || (done && t - r.endAt >= 250 + i * 30L);
             boolean hov = !done && !open && mx >= q[0] && mx < q[0] + q[2] && my >= q[1] && my < q[1] + q[3];
             if (!shown) {
-                smooth(g, q[0], q[1], q[2], q[3], 5, hov ? h(0x33A18CD1, 0x33FBC2EB) : Liquid.solid(0x14FFFFFF), hov ? 0xCCFBC2EB : 0x26FFFFFF);
+                smooth(g, q[0], q[1], q[2], q[3], 5, hov ? h(alpha(LAV, 0.2), alpha(PINK, 0.2)) : Liquid.solid(0x14FFFFFF), hov ? alpha(PINK, 0.8) : 0x26FFFFFF);
                 continue;
             }
             double k = open ? easeOut(Math.min(1, (t - r.pickedAt[i]) / 200.0)) : 1;

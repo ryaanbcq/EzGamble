@@ -222,7 +222,7 @@ public final class TableChat {
             double inK = easeOut(Math.min(1, (t - m.at) / 220.0));
             boolean mine = host.backer != null && same(host.backer, m.name);
             g.push(); g.translate((1 - inK) * 16, 0);
-            if (mine) smooth(g, x + 4, ry, PW - 8, rowH - 3, 6, 0x14A18CD1, 0x33A18CD1);
+            if (mine) smooth(g, x + 4, ry, PW - 8, rowH - 3, 6, alpha(LAV, 0.08), alpha(LAV, 0.2));
             g.drawHead(skinOf(m.name), x + 9, ry + 4, 8);
             int bw = dev.ryaan.ezgamble.vip.VipBadge.w(m.name); dev.ryaan.ezgamble.vip.VipBadge.draw(g, m.name, x + 21, ry + 4);   // his tier gem
             String nm = F.trimToWidth(m.name, PW - 30 - bw);
