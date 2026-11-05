@@ -69,7 +69,9 @@ public final class BadgesView implements GameView {
             double tx = x + 27, maxW = tw - 30;
             g.drawText(F.trimToWidth(a.name(), maxW), tx, ty + 6, lit ? P.WHITE : P.DIM, false);
             g.drawText(a.rarityName(), tx, ty + 16, lit ? c : P.alpha(c, 0.55), false);
-            g.drawText(F.trimToWidth(lit ? P.DATE(at) : a.desc(), maxW), tx, ty + 26, lit ? P.MUTE : P.alpha(P.DIM, 0.7), false);
+            // locked: the description when it fits, else a hint (the tooltip has the full text: no mid-word fragments such as "Reached Gold V")
+            String l3 = lit ? P.DATE(at) : (F.width(a.desc()) <= maxW ? a.desc() : "Locked, hover");
+            g.drawText(l3, tx, ty + 26, lit ? P.MUTE : P.alpha(P.DIM, 0.7), false);
             if (over) { hover = a; hoverAt = at; }
         }
         s.endList(g, "badges", content);

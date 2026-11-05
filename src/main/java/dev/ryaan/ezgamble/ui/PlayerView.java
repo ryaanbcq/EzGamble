@@ -19,6 +19,8 @@ public final class PlayerView implements GameView {
     public static String backTo = "chips";
     private static long removeArmed;
     private static GlassButton removeBtn;
+    /** The name as drawn in the header: trimmed to the room the Remove button and the pills leave. */
+    private static String shown;
 
     private final GambleScreen s;
 
@@ -30,7 +32,11 @@ public final class PlayerView implements GameView {
         s.add(new GlassButton(s.x0 + GambleScreen.PAD, s.y0 + 80, 18, 16, "‹", "GHOST", () -> { GambleScreen.sub = backTo; backTo = "chips"; s.rebuild(); }));
         // Remove from the player database: first click arms for 3 s, the second removes (he comes back fresh if he pays again)
         if (player != null) {
-            double nx = s.x0 + GambleScreen.PAD + 45 + F.width(player) + 8;
+            // the header: head, name, Remove, then the Sessions / Since pills right-aligned; the name yields to the rest
+            PlayerStats st = PlayerStats.of(player);
+            double lx = s.x0 + GambleScreen.PAD, nameMax = pillsLeft(headerPills(st)) - 8 - 52 - 8 - (lx + 45);
+            shown = F.trimToWidth(player, nameMax);
+            double nx = lx + 45 + F.width(shown) + 8;
             removeBtn = s.add(new GlassButton(nx, s.y0 + 81, 52, 14, removeArmed > P.now() ? "Sure?" : "Remove", "DANGER", () -> {
                 if (P.now() < removeArmed) {
                     removeArmed = 0;
@@ -48,8 +54,20 @@ public final class PlayerView implements GameView {
                 payBtn.active = !Vip.paying(player) && dev.ryaan.ezgamble.data.Payouts.pending.stream().noneMatch(p -> dev.ryaan.ezgamble.data.Payouts.same(p.name(), player));
             }
             // the badges row (under the loyalty row) opens the whole catalogue, the player kept (achievements.BadgesView)
-            s.add(dev.ryaan.ezgamble.games.Widgets.area(s.x0 + GambleScreen.PAD, badgesRowY(), GambleScreen.W - 2 * GambleScreen.PAD, 16, () -> { P.play("click"); GambleScreen.sub = "badges"; s.rebuild(); }));
+            s.add(dev.ryaan.ezgamble.games.Widgets.area(s.x0 + GambleScreen.PAD, badgesRowY(), GambleScreen.W - 2 * GambleScreen.PAD, 16, () -> { P.play("open", 1.2, 0.5); GambleScreen.sub = "badges"; s.rebuild(); }));
         }
+    }
+
+    /** The header pills, the same for init (room for the name) and render. */
+    private Object[][] headerPills(PlayerStats st) {
+        return new Object[][]{{"Sessions", String.valueOf(st.sessions)}, {"Since", st.first != null ? P.DATE(st.first).substring(0, 5) : "-"}};
+    }
+
+    /** The left edge of right-aligned pills (P.pillsRight's layout). */
+    private double pillsLeft(Object[][] pills) {
+        double x = s.x0 + GambleScreen.W - GambleScreen.PAD + 4;
+        for (Object[] p : pills) x -= P.pillW((String) p[0], (String) p[1]) + 4;
+        return x;
     }
 
     /** The badges row sits under the loyalty row (or where it would be when he has no tier). */
@@ -74,9 +92,9 @@ public final class PlayerView implements GameView {
         PlayerStats st = PlayerStats.of(player);
         double y = s.y0 + 80;
         g.drawHead(P.skinOf(st.name), lx + 24, y, 16);
-        P.gradientText(g, st.name, lx + 45, y + 4, true);
+        P.gradientText(g, shown != null ? shown : st.name, lx + 45, y + 4, true);
         Vip.Tier tier = Vip.tier(player);   // named on the loyalty row below (the header has the Remove button and the pills)
-        P.pillsRight(g, rx, y, new Object[][]{{"Sessions", String.valueOf(st.sessions)}, {"Since", st.first != null ? P.DATE(st.first).substring(0, 5) : "-"}});
+        P.pillsRight(g, rx, y, headerPills(st));
         y += 22;
         P.card(g, lx, y, rx - lx, 34, "soft");
         double q = (int) ((rx - lx - 10) / 4);
@@ -93,22 +111,29 @@ public final class PlayerView implements GameView {
         }
         if (tier != null) {   // the loyalty row: tier, wagered, the bar to the next tier, the cashback
             Vip.Tier nx = Vip.next(player);
-            String line = tier.name() + " · " + Money.format(Vip.xp(player)) + " wagered" + (nx == null ? ", top tier" : " · " + Money.format(nx.from() - Vip.xp(player)) + " to " + nx.name());
-            double lineW = (payBtn != null ? payBtn.x : rx) - 8 - (lx + 18);
-            VipBadge.draw(g, tier, lx + 8, y + 2); g.drawText(F.trimToWidth(line, lineW), lx + 18, y + 2, P.TEXT, false);   // never under the cashback button
-            double bx = lx + 8, bw2 = (payBtn != null ? payBtn.x - 8 : rx - 8) - bx;
+            // the row ends at the Pay cashback button, or at "Cashback paid $X" once it is paid, or at the edge
+            String pd = payBtn == null && Vip.paidCashback(player) > 0 ? "Cashback paid " + Money.format(Vip.paidCashback(player)) : null;
+            double rightEdge = payBtn != null ? payBtn.x : pd != null ? rx - 8 - F.width(pd) : rx;
+            double lineW = rightEdge - 8 - (lx + 18);
+            // whole clauses only: "... to Diamond" is dropped before anything is cut, so a trimmed line never reads as a second figure
+            String a = tier.name() + " · " + Money.format(Vip.xp(player)) + " wagered";
+            String b = nx == null ? ", top tier" : " · " + Money.format(nx.from() - Vip.xp(player)) + " to " + nx.name();
+            String line = F.width(a + b) <= lineW ? a + b : F.width(a) <= lineW ? a : F.trimToWidth(tier.name() + " · " + Money.format(Vip.xp(player)), lineW);
+            VipBadge.draw(g, tier, lx + 8, y + 2); g.drawText(line, lx + 18, y + 2, P.TEXT, false);
+            double bx = lx + 8, bw2 = rightEdge - 8 - bx;
             g.fill(bx, y + 12, bx + bw2, y + 15, 0x1AFFFFFF);
             int fw = (int) Math.round(bw2 * Vip.progress(player));
             if (fw > 0) g.fill(bx, y + 12, bx + fw, y + 15, nx == null ? tier.color() : P.lerp(tier.color(), nx.color(), 0.5));
-            if (payBtn == null && Vip.paidCashback(player) > 0) { String pd = "Cashback paid " + Money.format(Vip.paidCashback(player)); g.drawText(pd, rx - 8 - F.width(pd), y + 2, P.MUTE, false); }
+            if (pd != null) g.drawText(pd, rx - 8 - F.width(pd), y + 2, P.MUTE, false);
             y += 19;
         }
         // the badges row: "Badges N / 24" and the 24 icons (earned lit, locked faint); hovering one names it in a tooltip drawn last
         dev.ryaan.ezgamble.achievements.Achievement badgeHover = dev.ryaan.ezgamble.achievements.BadgeIcons.row(g, player, lx, rx, y, mx, my);
         y += 16;
-        // what you made with him over time: each payment in goes up, each send back goes down. The badges row takes its 16 px
-        // from the history list below, not from this card: ProfitChart's 14 px vertical margins need the full height
-        double ch = (st.bj.hands() > 0 ? 44 : 54) - (tier != null ? 14 : 0);
+        // what you made with him over time: each payment in goes up, each send back goes down. The loyalty row takes 8 px
+        // from the chart (ProfitChart's vertical margins adapt to the height) and the rest from the history list below,
+        // which keeps exactly 3 rows at the full stack (Blackjack line + tier)
+        double ch = (st.bj.hands() > 0 ? 44 : 54) - (tier != null ? 8 : 0);
         P.card(g, lx, y, rx - lx, ch, "chart");
         if (!st.ev.isEmpty()) {
             long[] d = new long[st.ev.size()];
