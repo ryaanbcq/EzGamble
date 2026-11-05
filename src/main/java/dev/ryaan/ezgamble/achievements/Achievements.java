@@ -127,10 +127,15 @@ public final class Achievements {
 
     private static State st() {
         if (st != null) return st;
-        try { if (Files.exists(FILE)) st = GSON.fromJson(Files.readString(FILE), State.class); } catch (Exception e) { EzGambleMod.LOG.warn("[ezgamble] achievements.json unreadable: {}", e.toString()); }
+        boolean bad = false;
+        try { if (Files.exists(FILE)) st = GSON.fromJson(Files.readString(FILE), State.class); } catch (Exception e) { bad = true; EzGambleMod.LOG.warn("[ezgamble] achievements.json unreadable: {}", e.toString()); }
+        if (bad) {   // kept aside as achievements.json.bad: the next save() would otherwise overwrite every seen set with an empty one
+            try { Files.move(FILE, FILE.resolveSibling(FILE.getFileName() + ".bad"), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE); } catch (Exception e) { EzGambleMod.LOG.warn("[ezgamble] achievements.json not set aside: {}", e.toString()); }
+        }
         if (st == null) st = new State();
         if (st.players == null) st.players = new LinkedHashMap<>();
-        for (Player p : st.players.values()) if (p.unlocked == null) p.unlocked = new LinkedHashMap<>();
+        st.players.values().removeIf(p -> p == null);   // a hand-edited file: a null player or a null unlock time would throw outside the try
+        for (Player p : st.players.values()) { if (p.unlocked == null) p.unlocked = new LinkedHashMap<>(); p.unlocked.values().removeIf(v -> v == null); }
         return st;
     }
 
@@ -176,7 +181,7 @@ public final class Achievements {
             for (Session.Pay q : s.payments) if (q.t() > cut && Payouts.same(q.name(), name)) { payments++; any = true; }
             if (any) sessions++;
             if (n >= 100) marathon = true;
-            if (low <= -COMEBACK && run > 0) comeback = true;
+            if (s.end != null && low <= -COMEBACK && run > 0) comeback = true;   // a closed session: positive at its end, as the description says
             if (s.end != null && n >= 2 && run == 0) even = true;   // a closed session: an open one at 0 is only a moment
             if (s.end != null && s.end > cut) {   // chips fully sent back: paid in plus his net, minus what went back, nothing left
                 long credit = 0, won = 0, sent = 0;
@@ -291,6 +296,16 @@ public final class Achievements {
     public static void onPaid(String name) {
         cache.remove(Payouts.norm(name));
         check(name, true);
+    }
+
+    /** GambleData.setMode(false), once s.end is set: the badges that need a closed session (Even Steven, Settled, Comeback) get their show now, not at his next bet. */
+    public static void onSessionEnd(Session s) {
+        if (s == null || s.end == null) return;
+        cache.clear();
+        Map<String, String> names = new LinkedHashMap<>();   // norm -> display name: every player of the session once (paid in or played)
+        for (String n : s.credit.keySet()) if (n != null) names.putIfAbsent(Payouts.norm(n), n);
+        for (Txn t : s.txns) if (t.player() != null) names.putIfAbsent(Payouts.norm(t.player()), t.player());
+        for (String n : names.values()) check(n, true);
     }
 
     // ---- celebrations: one slide at a time, 3 s each

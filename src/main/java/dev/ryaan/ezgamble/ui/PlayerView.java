@@ -106,8 +106,9 @@ public final class PlayerView implements GameView {
         // the badges row: "Badges N / 24" and the 24 icons (earned lit, locked faint); hovering one names it in a tooltip drawn last
         dev.ryaan.ezgamble.achievements.Achievement badgeHover = dev.ryaan.ezgamble.achievements.BadgeIcons.row(g, player, lx, rx, y, mx, my);
         y += 16;
-        // what you made with him over time: each payment in goes up, each send back goes down (16 px shorter: the badges row)
-        double ch = (st.bj.hands() > 0 ? 44 : 54) - (tier != null ? 14 : 0) - 16;
+        // what you made with him over time: each payment in goes up, each send back goes down. The badges row takes its 16 px
+        // from the history list below, not from this card: ProfitChart's 14 px vertical margins need the full height
+        double ch = (st.bj.hands() > 0 ? 44 : 54) - (tier != null ? 14 : 0);
         P.card(g, lx, y, rx - lx, ch, "chart");
         if (!st.ev.isEmpty()) {
             long[] d = new long[st.ev.size()];

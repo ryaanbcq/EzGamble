@@ -11,12 +11,12 @@ import dev.ryaan.ezgamble.ui.PlayerView;
 import java.util.List;
 
 /**
- * Games > player profile > Badges: the whole catalogue for PlayerView.player as a 4 x 6 grid of tiles (icon x2, name,
+ * Games > player profile > Badges: the whole catalogue for PlayerView.player as a 3 x 8 grid of tiles (icon x2, name,
  * rarity, a rarity-coloured border), earned ones lit with the unlock date, locked ones dim with the description; a header
  * with his head, name, count and the rarest earned; ‹ goes back to the profile. The grid scrolls (list "badges").
  */
 public final class BadgesView implements GameView {
-    private static final int COLS = 4, GAP = 4, TILE_H = 40, STRIDE = TILE_H + GAP;
+    private static final int COLS = 3, GAP = 4, TILE_H = 40, STRIDE = TILE_H + GAP;   // 3 columns: 84 px of text, the unlock date (60) and Weekend Warrior fit
 
     private final GambleScreen s;
 
@@ -43,9 +43,12 @@ public final class BadgesView implements GameView {
         List<Achievements.Earned> earned = Achievements.of(name);
         Achievement rarest = Achievements.rarest(name);
         g.drawHead(P.skinOf(name), lx + 24, y, 16);
-        P.gradientText(g, name, lx + 45, y + 4, true);
-        P.pillsRight(g, rx, y, rarest == null ? new Object[][]{{"Badges", earned.size() + " / " + Achievements.TOTAL}}
-                : new Object[][]{{"Badges", earned.size() + " / " + Achievements.TOTAL}, {"Rarest", rarest.name(), rarest.color()}});
+        Object[][] pills = rarest == null ? new Object[][]{{"Badges", earned.size() + " / " + Achievements.TOTAL}}
+                : new Object[][]{{"Badges", earned.size() + " / " + Achievements.TOTAL}, {"Rarest", rarest.name(), rarest.color()}};
+        double pillsX = rx + 4;   // the left edge of the pills (P.pillsRight's layout): the name never runs under them
+        for (Object[] p : pills) pillsX -= P.pillW((String) p[0], (String) p[1]) + 4;
+        P.gradientText(g, F.trimToWidth(name, pillsX - 8 - (lx + 45)), lx + 45, y + 4, true);
+        P.pillsRight(g, rx, y, pills);
         List<Achievement> cat = Achievements.catalogue();
         double top = top(), lh = s.y0 + GambleScreen.H - GambleScreen.PAD - top, tw = tileW();
         int rows = (cat.size() + COLS - 1) / COLS;
@@ -63,7 +66,7 @@ public final class BadgesView implements GameView {
             // earned: a tint of its rarity behind a bright border; locked: plain glass, a faint border
             P.smooth(g, x, ty, tw, TILE_H, 6, lit ? P.alpha(c, over ? 0.2 : 0.12) : (over ? 0x14FFFFFF : 0x0AFFFFFF), P.alpha(c, lit ? 0.75 : 0.22));
             BadgeIcons.draw(g, a, x + 5, ty + (TILE_H - 18) / 2.0, 2, lit);
-            double tx = x + 27, maxW = tw - 31;
+            double tx = x + 27, maxW = tw - 30;
             g.drawText(F.trimToWidth(a.name(), maxW), tx, ty + 6, lit ? P.WHITE : P.DIM, false);
             g.drawText(a.rarityName(), tx, ty + 16, lit ? c : P.alpha(c, 0.55), false);
             g.drawText(F.trimToWidth(lit ? P.DATE(at) : a.desc(), maxW), tx, ty + 26, lit ? P.MUTE : P.alpha(P.DIM, 0.7), false);

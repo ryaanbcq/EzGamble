@@ -116,6 +116,7 @@ public final class GambleData {
         mode = on;
         if (on) newSession();
         else { Session s = current(); if (s != null) { s.end = System.currentTimeMillis(); save(s); if (!s.txns.isEmpty()) dev.ryaan.ezgamble.recap.Recap.readyAt = System.currentTimeMillis(); } }   // the HUD hints at the recap
+        if (!on) dev.ryaan.ezgamble.achievements.Achievements.onSessionEnd(last());   // badges the closed session unlocks (Even Steven, Settled, Comeback)
         saveConfig();
         MinecraftClient mc = MinecraftClient.getInstance();
         dev.ryaan.ezgamble.proto.Snd.play(on ? "open" : "close", 0.8, 0.6);
