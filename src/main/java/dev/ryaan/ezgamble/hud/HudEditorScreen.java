@@ -29,11 +29,11 @@ public final class HudEditorScreen extends ProtoScreen {
     static final int IW = 150, PAD = 12;
     /** Inspector rows per widget; the toast only has its switch, it wears the card's style. */
     static final Map<String, String[]> ROWS = Map.of(
-            "session", new String[]{"visible", "size", "color", "opacity", "numbers", "sign", "curve", "winrate", "total"},
+            "session", new String[]{"visible", "size", "color", "opacity", "numbers", "sign", "curve", "winrate", "total", "house"},
             "last", new String[]{"visible"},
             "pay", new String[]{"visible", "size", "color", "opacity", "numbers"});
     static final Map<String, String> LABEL = Map.of("visible", "Visible", "size", "Size", "color", "Color", "opacity", "Opacity", "numbers", "Numbers",
-            "sign", "+/- colors", "curve", "Curve", "winrate", "Win rate", "total", "All-time");
+            "sign", "+/- colors", "curve", "Curve", "winrate", "Win rate", "total", "All-time", "house", "House");
 
     private record Pt(double x, double y) {}
     private record Guide(char axis, double v) {}
@@ -125,6 +125,7 @@ public final class HudEditorScreen extends ProtoScreen {
                 case "curve" -> put.accept(new Ctl(new GlassSwitch(0, 0, 28, 14, () -> c.rows.curve, v -> { c.rows.curve = v; save(); selAt = now(); }), rx - 28, y));
                 case "winrate" -> put.accept(new Ctl(new GlassSwitch(0, 0, 28, 14, () -> c.rows.winrate, v -> { c.rows.winrate = v; save(); selAt = now(); }), rx - 28, y));
                 case "total" -> put.accept(new Ctl(new GlassSwitch(0, 0, 28, 14, () -> c.rows.total, v -> { c.rows.total = v; save(); selAt = now(); }), rx - 28, y));
+                case "house" -> put.accept(new Ctl(new GlassSwitch(0, 0, 28, 14, () -> c.rows.house, v -> { c.rows.house = v; save(); selAt = now(); }), rx - 28, y));
                 default -> {}
             }
         }

@@ -36,6 +36,12 @@ public abstract class Host {
 
     public boolean fail(String text) { P.play("fail", 1, 0.5); warn = new Warn(text, P.now() + 2200); return false; }
 
+    /** The house guard: a round whose top win the gambler could not pay on top of what he owes is refused (house.House). */
+    protected boolean covered(long maxWin) {
+        if (!dev.ryaan.ezgamble.data.GambleData.houseGuard || dev.ryaan.ezgamble.house.House.canCover(maxWin)) return true;
+        return fail(dev.ryaan.ezgamble.house.House.reason(maxWin));
+    }
+
     public boolean addChip(Chips.Chip c) {
         if (backer == null) return fail("Pick a player first");
         if (bet + c.v() > balance()) return fail("Not enough chips");

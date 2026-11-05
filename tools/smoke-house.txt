@@ -1,0 +1,46 @@
+# House guard smoke test: ./tools/smoke.sh tools/smoke-house.txt
+# The bank has 50M, players put 70M of chips on the table: the house is under-covered, bets above the free bankroll are refused.
+size 1280 800
+gui 2
+mode on
+balance 50M
+paid Alice 40M
+paid Bob 30M
+wait 60
+house
+open
+tab dashboard
+wait 20
+shot house-dashboard-under
+tab hud
+wait 10
+shot house-hudtab
+sub coinflip
+wait 10
+cfbet Alice 20M
+wait 10
+shot house-refused
+houseguard off
+cfbet Alice 1M
+wait 60
+houseguard on
+close
+# the bank fills up: healthy again, the dashboard line turns green
+balance 900M
+wait 60
+house
+open
+tab dashboard
+wait 20
+shot house-dashboard-healthy
+close
+# tight: between 1x and 2x, the gold dot by the title with its label
+balance 100M
+wait 60
+house
+open
+mouse @290 @15
+wait 10
+shot house-dot-tight
+close
+quit

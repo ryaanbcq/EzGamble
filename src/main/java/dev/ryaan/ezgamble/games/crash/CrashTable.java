@@ -59,6 +59,7 @@ public final class CrashTable extends Host {
         if (backer == null) return fail("Pick a player first");
         if (bet <= 0) return fail("Place a bet");
         if (bet > balance()) return fail("Not enough chips");
+        if (!covered((long) Math.min(CRASH_MAX_WIN, Math.floor(bet * CRASH_MAX_X)))) return false;   // house guard: the top of the curve
         settle();
         var fr = dev.ryaan.ezgamble.data.Fair.round("Crash");
         double c = (1 - CRASH_EDGE) / (1 - fr.next()), crash = Math.min(CRASH_MAX_X, Math.max(1, Math.floor(c * 100) / 100));
