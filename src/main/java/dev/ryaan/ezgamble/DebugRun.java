@@ -149,6 +149,11 @@ public final class DebugRun {
             case "vipstate" -> EzGambleMod.LOG.info("[ezgamble] debug: vip {} = {}", arg, dev.ryaan.ezgamble.vip.Vip.describe(arg));   // vipstate NAME
             case "vippaid" -> dev.ryaan.ezgamble.vip.Vip.markPaid(n[0], dev.ryaan.ezgamble.Money.parse(n[1]));   // vippaid NAME AMT: as if a cashback /pay had been confirmed
             case "chipswho" -> { dev.ryaan.ezgamble.ui.ChipsView.who = arg; GambleScreen.debug("sub", "chips"); }   // chipswho session|all|vip
+            case "badges" -> EzGambleMod.LOG.info("[ezgamble] debug: badges {} = {}", arg, dev.ryaan.ezgamble.achievements.Achievements.describe(arg));   // badges NAME
+            case "wagerwin" -> {   // wagerwin NAME AMT N: N Coinflip wins in a row for NAME (the streak badges), recorded like wager
+                int k = n.length > 2 ? Integer.parseInt(n[2]) : 1; long amt = dev.ryaan.ezgamble.Money.parse(n[1]);
+                for (int i = 0; i < k; i++) GambleData.record(new dev.ryaan.ezgamble.data.Txn(System.currentTimeMillis() + i, "Coinflip", amt, -amt, n[0], "debug win " + n[0] + " " + i));
+            }
             case "skindirect" -> dev.ryaan.ezgamble.proto.Faces.forceDirect = true;
             case "txn" -> GambleData.record(new dev.ryaan.ezgamble.data.Txn(System.currentTimeMillis(), n[0], dev.ryaan.ezgamble.Money.parse(n[1]), n[2].startsWith("-") ? -dev.ryaan.ezgamble.Money.parse(n[2].substring(1)) : dev.ryaan.ezgamble.Money.parse(n[2]), null, "debug"));   // txn GAME BET DELTA
             case "demo" -> EzGambleMod.demoBets(Integer.parseInt(arg));

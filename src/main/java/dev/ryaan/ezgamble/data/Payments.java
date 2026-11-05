@@ -107,6 +107,7 @@ public final class Payments {
             cs.payments.add(new Session.Pay(name, amount, P.now(), false));
             GambleData.touch();
             Payouts.ver++;
+            dev.ryaan.ezgamble.achievements.Achievements.onPaid(name);   // badges this payment unlocks (Generous, Regular)
         }
     }
 

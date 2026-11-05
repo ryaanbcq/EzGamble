@@ -21,6 +21,7 @@ public final class Views {
             case "rollers" -> new dev.ryaan.ezgamble.ui.RollersView(s);
             case "rain" -> new dev.ryaan.ezgamble.games.rain.RainView(s);
             case "fair" -> new dev.ryaan.ezgamble.ui.FairView(s);
+            case "badges" -> new dev.ryaan.ezgamble.achievements.BadgesView(s);
             default -> new Stub(s, id);
         };
     }

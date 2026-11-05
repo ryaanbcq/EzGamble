@@ -129,6 +129,7 @@ public final class GambleData {
         if (!mode || s == null) return false;
         s.txns.add(tx);
         dev.ryaan.ezgamble.vip.Vip.onTxn(tx);   // XP and tier-ups
+        dev.ryaan.ezgamble.achievements.Achievements.onTxn(tx);   // badges this bet unlocks
         dirtyAt = System.currentTimeMillis();
         lastTxAt = System.currentTimeMillis();
         if (tx.delta() > 0) dev.ryaan.ezgamble.proto.Snd.play("pay", 1, 0.35);

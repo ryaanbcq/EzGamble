@@ -47,8 +47,13 @@ public final class PlayerView implements GameView {
                 payBtn = s.add(new GlassButton(rx - bw, vipRowY() - 2, bw, 14, lbl, "PRIMARY", () -> { if (!Vip.pay(player)) P.play("fail", 1, 0.5); }));
                 payBtn.active = !Vip.paying(player) && dev.ryaan.ezgamble.data.Payouts.pending.stream().noneMatch(p -> dev.ryaan.ezgamble.data.Payouts.same(p.name(), player));
             }
+            // the badges row (under the loyalty row) opens the whole catalogue, the player kept (achievements.BadgesView)
+            s.add(dev.ryaan.ezgamble.games.Widgets.area(s.x0 + GambleScreen.PAD, badgesRowY(), GambleScreen.W - 2 * GambleScreen.PAD, 16, () -> { P.play("click"); GambleScreen.sub = "badges"; s.rebuild(); }));
         }
     }
+
+    /** The badges row sits under the loyalty row (or where it would be when he has no tier). */
+    private double badgesRowY() { return vipRowY() + (Vip.tier(player) != null ? 19 : 0); }
 
     private static GlassButton payBtn;
     private static int vipVer = Vip.ver;
@@ -98,8 +103,11 @@ public final class PlayerView implements GameView {
             if (payBtn == null && Vip.paidCashback(player) > 0) { String pd = "Cashback paid " + Money.format(Vip.paidCashback(player)); g.drawText(pd, rx - 8 - F.width(pd), y + 2, P.MUTE, false); }
             y += 19;
         }
-        // what you made with him over time: each payment in goes up, each send back goes down
-        double ch = (st.bj.hands() > 0 ? 44 : 54) - (tier != null ? 14 : 0);
+        // the badges row: "Badges N / 24" and the 24 icons (earned lit, locked faint); hovering one names it in a tooltip drawn last
+        dev.ryaan.ezgamble.achievements.Achievement badgeHover = dev.ryaan.ezgamble.achievements.BadgeIcons.row(g, player, lx, rx, y, mx, my);
+        y += 16;
+        // what you made with him over time: each payment in goes up, each send back goes down (16 px shorter: the badges row)
+        double ch = (st.bj.hands() > 0 ? 44 : 54) - (tier != null ? 14 : 0) - 16;
         P.card(g, lx, y, rx - lx, ch, "chart");
         if (!st.ev.isEmpty()) {
             long[] d = new long[st.ev.size()];
@@ -134,5 +142,6 @@ public final class PlayerView implements GameView {
             g.drawText(dd, rx - 10 - F.width(dd), ry + 4, P.DIM, false);
         }
         s.endList(g, lid, content);
+        if (badgeHover != null) dev.ryaan.ezgamble.achievements.BadgeIcons.tooltip(g, badgeHover, dev.ryaan.ezgamble.achievements.BadgeIcons.earnedAt(player, badgeHover), mx, my, lx, rx, s.y0 + 30);
     }
 }

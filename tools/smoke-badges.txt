@@ -1,0 +1,38 @@
+# Achievements smoke test: ./tools/smoke.sh tools/smoke-badges.txt
+# Payments and wagers unlock several badges, the All players pills, the profile row, the catalogue grid, then a streak
+# unlocked with the menu closed shows the HUD slide.
+size 1280 800
+gui 2
+mode on
+paid Alpha 500M
+paid Alpha 100M
+paid Bravo 2B
+# Alpha: 120 x 1M at Blackjack (First Blood, Centurion, Marathon) and one 150M bet (Whale).
+# Bravo: 20 x 60M = 1.2B (First Blood, Big Spender, Platinum so Loyal, High Roller). Bravo paid the most: first row of All players.
+wager Alpha 1M 120
+wager Alpha 150M 1
+wager Bravo 60M 20
+badges Alpha
+badges Bravo
+wait 20
+open
+chipswho all
+wait 20
+shot badges-all
+# the first row (Bravo): his profile with the badges row under the loyalty row
+click @100 @116
+wait 20
+shot badges-profile
+# the badges row (y0 + 178, 16 px tall): the catalogue grid
+click @100 @186
+wait 20
+shot badges-grid
+close
+wait 10
+# 7 Coinflip wins in a row with the menu closed: Hot Streak then Lucky Seven slide down from the top of the screen
+wagerwin Bravo 5M 7
+wait 15
+shot badges-toast
+badges Bravo
+wait 60
+quit

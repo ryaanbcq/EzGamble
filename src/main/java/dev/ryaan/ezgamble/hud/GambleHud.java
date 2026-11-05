@@ -39,6 +39,7 @@ public final class GambleHud implements HudElement {
             drawToast(g, toastK());
             for (String id : new String[]{"session", "pay"}) if (HUD.get(id).visible) { Rect r = wrect(id); drawWidget(g, id, r.x(), r.y()); }
             drawTierUp(g);   // "X reached Gold", 3 s under the top of the screen
+            dev.ryaan.ezgamble.achievements.Achievements.drawSlide(g);   // "X unlocked Whale", 3 s, under the tier-up pill when both show
             drawRain(g);   // last: its finale covers the whole screen
         } catch (Throwable e) {
             if (!logged) { logged = true; EzGambleMod.LOG.error("[ezgamble] HUD render failed (not logged again)", e); }
