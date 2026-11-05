@@ -151,9 +151,15 @@ public final class RaceFinaleScreen extends ProtoScreen {
             if (rank >= n) continue;
             Events.Winner w = ev.top.get(rank);
             double sx = cx - stepW * 1.5 - gap + col * (stepW + gap), scx = sx + stepW / 2;
-            double grow = easeOut((e - DELAY[rank]) / 700.0), sh = (STEP_BIG[rank] + (STEP_SMALL[rank] - STEP_BIG[rank]) * mk) * grow, top = base - sh;
+            double stepFull = STEP_BIG[rank] + (STEP_SMALL[rank] - STEP_BIG[rank]) * mk;
+            double grow = easeOut((e - DELAY[rank]) / 700.0), sh = stepFull * grow, top = base - sh;
+            double pp = rank == 0 ? p : ps, kk = rank == 0 ? 1 : 0.55;
+            // the name sits 12 above the chibi, plus the crown (3 texels) and the hop (4 texels) of the winner, who always has both;
+            // the title tracks where the names rest once every step is full, not the growing steps or the falling chibis
+            double lift = CHIBI_H * pp + (rank == 0 ? 7 * pp : 0) + 12;
+            topName = Math.min(topName, base - stepFull - 1 - lift);
             if (sh < 1) continue;
-            double pp = rank == 0 ? p : ps, kk = rank == 0 ? 1 : 0.55, hy = top - 1 - CHIBI_H / 2.0 * pp;
+            double hy = top - 1 - CHIBI_H / 2.0 * pp;
             if (mk < 1) for (int rr : new int[]{15, 11, 7}) smooth(g, scx - rr * pp, hy - rr * pp * 1.2, 2 * rr * pp, 2.4 * rr * pp, rr * pp * 0.9, alpha(m, 0.06 * kk * grow * (1 - mk)));
             smooth(g, sx, top, stepW, sh, 6, v(alpha(m, 0.2), alpha(m, 0.03)), alpha(m, 0.5));
             g.fill(sx + 8, top + 1, sx + stepW - 8, top + 2, alpha(m, 0.9));
@@ -163,10 +169,6 @@ public final class RaceFinaleScreen extends ProtoScreen {
             String v = Money.format(w.wagered);
             if (sh > 32) { if (rank == 0) gradientText(g, v, scx - F.width(v) / 2.0, top + 24, true); else g.drawText(v, scx - F.width(v) / 2.0, top + 24, WHITE, true); }
             if (sh > 44 && w.share > 0) g.drawText("wins " + Money.format(w.share), scx - F.width("wins " + Money.format(w.share)) / 2.0, top + 36, m, false);
-            // the name sits 12 above the chibi, plus the crown (3 texels) and the hop (4 texels) of the winner, who always has both;
-            // the title tracks where the names rest, not the falling chibis
-            double lift = CHIBI_H * pp + (rank == 0 ? 7 * pp : 0) + 12;
-            topName = Math.min(topName, top - 1 - lift);
             // the chibi drops onto his step once it has grown
             double land = easeOut((e - DELAY[rank] - 600) / 380.0);
             if (land <= 0.01) continue;
@@ -180,7 +182,7 @@ public final class RaceFinaleScreen extends ProtoScreen {
             if (rank == 0) gradientText(g, nm, scx - F.width(nm) / 2.0, ny, true, land); else g.drawText(nm, scx - F.width(nm) / 2.0, ny, alpha(TEXT, land), true);
         }
         // the title above the tallest name, the pool under the podium (until the card takes that place)
-        double ty = topName == Double.MAX_VALUE ? base - 180 : topName - 18;
+        double ty = topName - 18;   // rank 0 always exists: Events only opens the finale when ev.top is non-empty
         text(g, "Wager race", cx, Math.max(6, ty), 1, MUTE, easeOut(e / 500.0));
         if (mk < 1) {
             String pool = Money.format(ev.prize) + " prize pool · " + ev.minutes() + " min";
