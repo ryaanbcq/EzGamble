@@ -9,8 +9,9 @@ import static dev.ryaan.ezgamble.proto.P.*;
 /**
  * The jackpot counter of the HUD's persistent row: a glass pill, "JACKPOT $12.4M" in gradient text. The shown amount
  * springs toward the real pot (GambleHud's lvl spring), a golden pulse rings it when the pot grows. hud.Banners places
- * it (x, y) next to the event banner and hides it under the rain cloud and the auction card; its width is the pot's
- * target width, so the centred pair does not jitter while the number springs.
+ * it (x, y) next to the event banner and hides it under the rain cloud and the auction card; its width is the wider of
+ * the pot's target and the shown amount, so the text stays inside the pill while the number springs through longer
+ * intermediate strings ($999.99K on the way to $12M) and settles with it.
  */
 public final class JackpotHud {
     private JackpotHud() {}
@@ -22,7 +23,12 @@ public final class JackpotHud {
 
     public static boolean showing() { return Jackpot.enabled(); }
 
-    public static int width() { return 10 + F.width("JACKPOT") + 6 + F.width(Money.format(Jackpot.pot())) + 10; }
+    /** Sized for the wider of the target pot and the springing shown amount, so the text never leaves the pill mid spring and the width settles with the number. */
+    public static int width() {
+        int tw = F.width(Money.format(Jackpot.pot()));
+        int sw = shown < 0 ? tw : F.width(Money.format(Math.max(0, Math.round(shown))));
+        return 10 + F.width("JACKPOT") + 6 + Math.max(tw, sw) + 10;
+    }
 
     /** The spring step and the pulse detection, in real time (same feel at any frame rate). */
     private static void tick() {
