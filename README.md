@@ -16,7 +16,7 @@ Client-side Fabric mod for Minecraft 1.21.11 by ZKR5: host gambling games on an 
 
 ## Smoke tests
 
-`tools/smoke.sh <script>` runs a script of `DebugRun` commands in the EzTest instance and saves screenshots: `tools/smoke-vip.txt`, `tools/smoke-house.txt`, `tools/smoke-recap.txt`, `tools/smoke-lobby.txt`, `tools/smoke-events.txt`, `tools/smoke-badges.txt`.
+`tools/smoke.sh <script>` runs a script of `DebugRun` commands in the EzTest instance and saves screenshots: `tools/smoke-vip.txt`, `tools/smoke-house.txt`, `tools/smoke-recap.txt`, `tools/smoke-lobby.txt`, `tools/smoke-events.txt`, `tools/smoke-badges.txt`, `tools/smoke-books.txt`, `tools/smoke-themes.txt`, `tools/smoke-jackpot.txt`.
 
 ## Install
 
