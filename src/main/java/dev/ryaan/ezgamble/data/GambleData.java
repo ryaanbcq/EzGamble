@@ -134,6 +134,7 @@ public final class GambleData {
         dev.ryaan.ezgamble.vip.Vip.onTxn(tx);   // XP and tier-ups
         dev.ryaan.ezgamble.events.Events.onTxn(tx);   // the running event's live leaderboard
         dev.ryaan.ezgamble.achievements.Achievements.onTxn(tx);   // badges this bet unlocks
+        dev.ryaan.ezgamble.jackpot.Jackpot.onTxn(tx);   // the pot's slice and its draw (bets with a player's chips only)
         dirtyAt = System.currentTimeMillis();
         lastTxAt = System.currentTimeMillis();
         if (tx.delta() > 0) dev.ryaan.ezgamble.proto.Snd.play("pay", 1, 0.35);

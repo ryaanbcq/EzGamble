@@ -42,7 +42,9 @@ public final class GambleHud implements HudElement {
             dev.ryaan.ezgamble.lobby.LobbyHud.drawJoin(g);   // "X joined the line for Blackjack", 2.5 s
             dev.ryaan.ezgamble.events.EventHud.draw(g);   // the running event's banner, top centre (under the tier-up while it shows)
             dev.ryaan.ezgamble.achievements.Achievements.drawSlide(g);   // "X unlocked Whale", 3 s, under the tier-up pill when both show
+            dev.ryaan.ezgamble.jackpot.JackpotHud.draw(g);   // the jackpot counter, top centre under the banner spot (when enabled)
             drawRain(g);   // last: its finale covers the whole screen
+            dev.ryaan.ezgamble.jackpot.JackpotFinale.drawHud(g);   // a jackpot hit: its finale over everything for 7 s (the menu draws its own copy when open)
         } catch (Throwable e) {
             if (!logged) { logged = true; EzGambleMod.LOG.error("[ezgamble] HUD render failed (not logged again)", e); }
         } finally {

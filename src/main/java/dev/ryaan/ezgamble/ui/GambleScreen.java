@@ -291,6 +291,7 @@ public final class GambleScreen extends ProtoScreen {
             g.pop();
             dev.ryaan.ezgamble.duel.TableChat.render(g, this, pop());
             renderUpdateStatus(g);
+            dev.ryaan.ezgamble.jackpot.JackpotFinale.drawOver(g, this);   // a jackpot hit on a felt: its finale over the menu too
             if (DebugRun.ON) { DebugRun.renderNanos += System.nanoTime() - t0; DebugRun.renderFrames++; }
             return;
         }
@@ -310,6 +311,7 @@ public final class GambleScreen extends ProtoScreen {
         renderHouseTip(g, mx, my);
         g.pop();
         renderUpdateStatus(g);
+        dev.ryaan.ezgamble.jackpot.JackpotFinale.drawOver(g, this);   // the jackpot finale over everything, menu included (7 s after a hit)
         if (DebugRun.ON) { DebugRun.renderNanos += System.nanoTime() - t0; DebugRun.renderFrames++; }
     }
 
@@ -368,7 +370,7 @@ public final class GambleScreen extends ProtoScreen {
         if (r.hover() > 0) {
             Txn t = list.get(r.hover() - 1);
             ProfitChart.tooltip(g.d, t.game(), Money.signed(t.delta()), t.delta() >= 0 ? P.GREEN : P.RED, r.px()[r.hover()], (int) cy, (int) lx, (int) rx,
-                    P.DATE_S(t.t()), t.bet() != null ? "Bet " + Money.format(t.bet()) : "");
+                    P.DATE_S(t.t()), t.bet() != null && t.bet() > 0 ? "Bet " + Money.format(t.bet()) : "");
         }
     }
 
@@ -452,7 +454,7 @@ public final class GambleScreen extends ProtoScreen {
             }
             String d = P.DATE_S(t.t());
             g.drawText(d, rx - 6 - F.width(d), y + 4, P.DIM, false);
-            if (t.bet() != null) g.drawText("Bet " + Money.format(t.bet()), lx + 26, y + 15, P.MUTE, false);
+            if (t.bet() != null && t.bet() > 0) g.drawText("Bet " + Money.format(t.bet()), lx + 26, y + 15, P.MUTE, false);   // a Jackpot hit has bet 0: no "Bet $0" line
             String right = Money.signed(t.delta());
             g.drawText(right, rx - 6 - F.width(right), y + 15, t.delta() >= 0 ? P.GREEN : P.RED, false);
             y += 30;
@@ -472,10 +474,12 @@ public final class GambleScreen extends ProtoScreen {
             {"Rain", "Win the pot", "game/rain"},
             {"High rollers", "Top wagers", "game/highrollers"},
             {"Events", "Timed events", "fill:events"},
-            {"Books", "Analytics", "fill:books"}};
-    // Provably fair left the grid for a button by Requests; past 9 tiles the grid scrolls, the tiles keep the height of 3 rows
+            {"Books", "Analytics", "fill:books"},
+            {"Jackpot", "Hit the pot", "fill:jackpot"}};
+    // Provably fair left the grid for a button by Requests. The tiles keep the height of a 3-row grid under the credit card;
+    // from the 10th tile on the "games" list scrolls.
     private static final String[] GAME_IDS = {"blackjack", "auction", "mines", "crates", "roulette", "crash", "coinflip", "rain", "rollers",
-            "events", "books"};
+            "events", "books", "jackpot"};
 
     /** The credit card, one line high: the 3 rows of tiles fit under it, nothing scrolls or gets cut. */
     private static final int CARD_H = 40, TILE_GAP = 6;

@@ -18,6 +18,7 @@ public final class Icons {
         String k = String.valueOf(game).toLowerCase(Locale.ROOT);
         if (k.equals("events")) { drawEvents(g, x, y, size); return; }   // drawn with fills, no sprite
         if (k.equals("books")) { drawBooks(g, x, y, size); return; }   // the Books tile: fills, no sprite
+        if (k.equals("jackpot")) { drawJackpot(g, x, y, size); return; }   // the Jackpot tile and its rows: fills, no sprite
         if (OWN.contains(k)) g.drawSprite("game/" + k, x, y, size, size);
         else g.drawItem(ICON.getOrDefault(game, "paper"), x + (size - 16) / 2, y + (size - 16) / 2);
     }
@@ -46,5 +47,18 @@ public final class Icons {
         for (int i = 0; i < 3; i++) g.fill(x + 13 * u, y + (9 + i * 3) * u, x + 23 * u, y + (10 + i * 3) * u, 0x30403060);   // ruled lines
         int[] hs = {4, 7, 10};   // three bars rising, the last one the mod's green
         for (int i = 0; i < 3; i++) g.fill(x + (13 + i * 4) * u, y + (24 - hs[i]) * u, x + (16 + i * 4) * u, y + 24 * u, i == 2 ? 0xFF4BE07A : 0xFF3BBE63);
+    /** Jackpot: a big gold coin (rim, face, a crescent of light) over two coins lying behind it, a sparkle top right. 32 px art scaled to `size`, fills only. */
+    public static void drawJackpot(G g, double x, double y, double size) {
+        double u = size / 32;   // one icon pixel
+        int gold = 0xFFF2C14E, dark = 0xFF9A6A1C, light = 0xFFFFF0B0;
+        P.smooth(g, x + 2 * u, y + 22 * u, 18 * u, 8 * u, 4 * u, 0xFFC8902E, dark);    // the coins lying behind, edge on
+        P.smooth(g, x + 12 * u, y + 24 * u, 18 * u, 8 * u, 4 * u, 0xFFD9A62E, dark);
+        P.smooth(g, x + 5 * u, y + 3 * u, 22 * u, 22 * u, 11 * u, P.v(light, gold), dark);   // the big coin: rim and face
+        P.ring(g, x + 8 * u, y + 6 * u, 16 * u, 16 * u, 8 * u, 0x80B8821E, Math.max(1, u));   // the inner ring of the face
+        g.fill(x + 15 * u, y + 9 * u, x + 17 * u, y + 19 * u, dark);                      // a "$" stroke: the bar and its two bowls
+        g.fill(x + 12 * u, y + 10 * u, x + 20 * u, y + 12 * u, dark); g.fill(x + 12 * u, y + 16 * u, x + 20 * u, y + 18 * u, dark);
+        g.fill(x + 12 * u, y + 12 * u, x + 14 * u, y + 14 * u, dark); g.fill(x + 18 * u, y + 14 * u, x + 20 * u, y + 16 * u, dark);
+        g.fill(x + 12 * u, y + 13 * u, x + 20 * u, y + 15 * u, dark);
+        g.fill(x + 26 * u, y + 1 * u, x + 28 * u, y + 7 * u, light); g.fill(x + 24 * u, y + 3 * u, x + 30 * u, y + 5 * u, light);   // the sparkle
     }
 }

@@ -25,6 +25,7 @@ public final class Views {
             case "events" -> new dev.ryaan.ezgamble.events.EventsView(s);
             case "badges" -> new dev.ryaan.ezgamble.achievements.BadgesView(s);
             case "books" -> new dev.ryaan.ezgamble.books.BooksView(s);
+            case "jackpot" -> new dev.ryaan.ezgamble.jackpot.JackpotView(s);
             default -> new Stub(s, id);
         };
     }

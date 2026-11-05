@@ -170,6 +170,9 @@ public final class DebugRun {
             case "books" -> EzGambleMod.LOG.info("[ezgamble] debug: books {}", dev.ryaan.ezgamble.books.Books.get().describe());   // the all-time totals
             case "booksexport" -> { var ex = dev.ryaan.ezgamble.books.Books.export(); EzGambleMod.LOG.info("[ezgamble] debug: books export {}", ex == null ? "failed" : ex.rows() + " rows to " + ex.txns() + " and " + ex.sessions()); }
             case "bookstab" -> { dev.ryaan.ezgamble.books.BooksView.setTab(arg); GambleScreen.debug("sub", "books"); }   // bookstab tables|hours|days|sessions
+            case "jackpot" -> EzGambleMod.LOG.info("[ezgamble] debug: jackpot {}", dev.ryaan.ezgamble.jackpot.Jackpot.describe());   // the pot and the odds
+            case "jackpotset" -> dev.ryaan.ezgamble.jackpot.Jackpot.setPot(dev.ryaan.ezgamble.Money.parse(arg));   // jackpotset POT
+            case "jackpothit" -> dev.ryaan.ezgamble.jackpot.Jackpot.forceHit(arg);   // jackpothit NAME: a forced hit (smoke test), logged as forced in the Fair rounds
             case "chat" -> { c.inGameHud.getChatHud().addMessage(Text.literal(arg)); EzGambleMod.onChat(arg); }
             case "mouse" -> { mx = (int) Double.parseDouble(n[0]); my = (int) Double.parseDouble(n[1]); dev.ryaan.ezgamble.proto.ProtoScreen.forceMx = mx; dev.ryaan.ezgamble.proto.ProtoScreen.forceMy = my; }
             case "click", "rclick" -> {
