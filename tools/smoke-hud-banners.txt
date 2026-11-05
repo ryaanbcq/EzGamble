@@ -2,11 +2,13 @@
 # the race start, the jackpot counter) and hud.Banners shows them one at a time at y 8 while the event banner and the
 # jackpot pill share the persistent row at y 30. Run: ./tools/smoke.sh tools/smoke-hud-banners.txt ; expect 4 screenshots
 # ezgamble-hud-banners-{5,60,130,200}.png (the toast queue advancing: one toast per shot, never two, the row under it)
-# and no "step failed" line.
+# and no "step failed" line. Every line below runs in one tick, so the whole burst is queued before a frame draws: Alpha's first
+# bet also unlocks High Roller and First Blood, and Banners' cap of 4 drops those two; the four toasts seen are the tier-up
+# (the 5th 5M bet crosses Silver's 25M), the join, Hot Streak, the race start.
 mode on
 demo 20
 paid Alpha 50M
-wager Alpha 1M 4
+wager Alpha 5M 6
 chat Alpha whispers to you: join blackjack 5M
 wagerwin Alpha 1M 5
 event race 5 1M

@@ -34,6 +34,9 @@ public final class EzGambleMod implements ClientModInitializer {
         OPEN = dev.ryaan.ezgamble.proto.Snd.event("open"); CLOSE = dev.ryaan.ezgamble.proto.Snd.event("close"); PAY = dev.ryaan.ezgamble.proto.Snd.event("pay");
         CASH = dev.ryaan.ezgamble.proto.Snd.event("cash"); FAIL = dev.ryaan.ezgamble.proto.Snd.event("fail");
         GambleData.load();
+        // the session, the pot and the fair nonce are written 2 s after a change: a quit within those 2 s (MinecraftClient.stop
+        // ends in System.exit, so hooks run on a normal close) must not lose them, or the next launch replays nonces the players saw
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> { GambleData.flush(); dev.ryaan.ezgamble.jackpot.Jackpot.flush(); dev.ryaan.ezgamble.data.Fair.flush(); }));
         dev.ryaan.ezgamble.duel.Duel.register();
         dev.ryaan.ezgamble.house.House.addOwed(dev.ryaan.ezgamble.vip.Vip::totalOwed);   // the cashback owed to VIPs counts against the bankroll too
         dev.ryaan.ezgamble.house.House.addOwed(dev.ryaan.ezgamble.jackpot.Jackpot::owed);   // the progressive pot: the house owes it to whoever hits it

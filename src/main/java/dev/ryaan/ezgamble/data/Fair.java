@@ -64,7 +64,7 @@ public final class Fair {
     /** Client tick: fair.json 2 s after its last change. */
     public static void tick() { if (dirtyAt != 0 && System.currentTimeMillis() - dirtyAt > 2000) { dirtyAt = 0; write(); } }
 
-    /** Whatever waits goes to disk now (the mode turning off, a seed revealed). */
+    /** Whatever waits goes to disk now (the mode turning off, a seed revealed, the JVM shutdown hook: a quit must never replay a nonce). */
     public static void flush() { if (dirtyAt != 0) { dirtyAt = 0; write(); } }
 
     private static void write() {

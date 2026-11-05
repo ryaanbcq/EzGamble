@@ -1,22 +1,24 @@
 # Whole-GUI tour: ./tools/smoke.sh tools/smoke-all.txt 420
 # Seeds a session with players, chips, bets, a VIP, badges, a race, a jackpot pot and the lobby, then screenshots every screen
 # of the menu, the HUD and the HUD tab, with a perf sample on the heavy ones. Expect ezgamble-all-*.png and "[ezgamble] debug: perf" lines.
+# The race starts BEFORE the bets: its leaderboard counts only the bets placed while it runs, so a race started after them ends
+# with "nobody wagered" and no finale. Joins use the whisper shape Lobby reads ("X whispers to you: join ..."), names at most 16 chars.
 size 1280 800
 gui 2
 mode on
 balance 900M
+event race 15 10M
 paid Alice 40M
 paid Bob 30M
-paid Charlie_Longname99 25M
+paid Charlie_Long99 25M
 wager Alice 2M 30
 wager Bob 1M 20
-wager Charlie_Longname99 500K 10
+wager Charlie_Long99 500K 10
 wagerwin Alice 1M 5
 demo 40
 jackpotset 12.4M
-event race 15 10M
-chat [Bob -> me] join blackjack 5M
-chat [Charlie_Longname99 -> me] join coinflip
+chat Bob whispers to you: join blackjack 5M
+chat Charlie_Long99 whispers to you: join coinflip
 wait 40
 shot all-hud
 open

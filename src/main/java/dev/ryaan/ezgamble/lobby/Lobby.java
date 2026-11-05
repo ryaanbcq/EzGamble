@@ -159,7 +159,7 @@ public final class Lobby {
         if (i >= 0) queue.set(i, s); else queue.add(s);
         lastJoin = s; joinAt = P.now();
         final String nm = s.name, gm = s.game;   // the HUD toast: his gem, his name, the game's icon and name, in the one top-centre slot
-        dev.ryaan.ezgamble.hud.Banners.show(new dev.ryaan.ezgamble.hud.Banners.Toast(dev.ryaan.ezgamble.vip.VipBadge.w(nm) > 0 ? (g, x, y) -> dev.ryaan.ezgamble.vip.VipBadge.draw(g, nm, x, y - 1) : null, java.util.List.of(dev.ryaan.ezgamble.hud.Banners.seg(nm, P.WHITE), dev.ryaan.ezgamble.hud.Banners.seg(" joined the line for ", P.MUTE), dev.ryaan.ezgamble.hud.Banners.icon((g, x, y) -> dev.ryaan.ezgamble.ui.Icons.drawGameIcon(g, gm, x, y - 2, 11), 14), dev.ryaan.ezgamble.hud.Banners.seg(gm, P.PINK)), P.LAV, 2500, null));
+        dev.ryaan.ezgamble.hud.Banners.show(new dev.ryaan.ezgamble.hud.Banners.Toast(dev.ryaan.ezgamble.vip.VipBadge.w(nm) > 0 ? (g, x, y) -> dev.ryaan.ezgamble.vip.VipBadge.draw(g, nm, x, y) : null, java.util.List.of(dev.ryaan.ezgamble.hud.Banners.seg(nm, P.WHITE), dev.ryaan.ezgamble.hud.Banners.seg(" joined the line for ", P.MUTE), dev.ryaan.ezgamble.hud.Banners.icon((g, x, y) -> dev.ryaan.ezgamble.ui.Icons.drawGameIcon(g, gm, x, y - 2, 11), 14), dev.ryaan.ezgamble.hud.Banners.seg(gm, P.PINK)), P.LAV, 2500, null));
         changed();
         P.play("ui_tick_open", 1.2, 0.6);
         return true;

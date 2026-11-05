@@ -254,7 +254,11 @@ public final class Achievements {
         if (celebrate && !fresh.isEmpty()) {
             // a long history folded in at once (a first hook for an old regular): the four rarest get the show, the rest unlock quietly
             fresh.sort(Comparator.comparingInt((Achievement a) -> -a.rank()));
-            for (int i = 0; i < Math.min(4, fresh.size()); i++) enqueue(name, fresh.get(i));
+            // Vip.onTxn ran just before us on this bet: its "X reached Gold" toast is the oldest in Banners' 4-slot queue and a
+            // fifth show() would evict it, so a tier-up on this bet leaves room for three badges, not four
+            Vip.TierUp tu = Vip.lastTierUp();
+            int room = tu != null && P.now() - tu.at() < 100 ? 3 : 4;
+            for (int i = 0; i < Math.min(room, fresh.size()); i++) enqueue(name, fresh.get(i));
         }
         return out;
     }
@@ -301,6 +305,9 @@ public final class Achievements {
         check(name, true);
     }
 
+    /** GambleData.forget: his seen set restarts and the all-time podium may change hands, so every cached list goes (a forget is rare, the views rebuild lazily). */
+    public static void onForget(String name) { cache.clear(); leaderNorm = null; }
+
     /** GambleData.setMode(false), once s.end is set: the badges that need a closed session (Even Steven, Settled, Comeback) get their show now, not at his next bet. */
     public static void onSessionEnd(Session s) {
         if (s == null || s.end == null) return;
@@ -315,8 +322,8 @@ public final class Achievements {
 
     /**
      * The badge icon, "X unlocked " and the badge name in its colour, 3 s. The sound and the overlay play when the toast
-     * shows, not when it is queued: four unlocks folded in at once (check caps the show at 4, Banners' queue too) chime
-     * one after the other.
+     * shows, not when it is queued: four unlocks folded in at once (check caps the show at 4, or 3 when the same bet queued a
+     * tier-up, Banners' queue holds 4) chime one after the other.
      */
     private static void enqueue(String name, Achievement a) {
         Banners.show(new Banners.Toast((g, x, y) -> BadgeIcons.draw(g, a, x, y - 1, 1, true),
