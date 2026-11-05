@@ -240,7 +240,7 @@ public final class HudEditorScreen extends ProtoScreen {
             }
         }
         for (Guide gd : guides) {
-            if (gd.axis() == 'x') g.fill(gd.v(), 0, gd.v() + 1, SH, 0x99A18CD1); else g.fill(0, gd.v(), SW, gd.v() + 1, 0x99A18CD1);
+            if (gd.axis() == 'x') g.fill(gd.v(), 0, gd.v() + 1, SH, alpha(LAV, 0.6)); else g.fill(0, gd.v(), SW, gd.v() + 1, alpha(LAV, 0.6));
         }
         renderInspector(g, mx, my, dt);
         renderToolbar(g, mx, my, dt);

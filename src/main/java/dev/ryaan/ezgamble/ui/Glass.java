@@ -7,11 +7,13 @@ import net.minecraft.client.gui.DrawContext;
 public final class Glass {
     private Glass() {}
 
-    public static final int LAV = 0xFFA18CD1, PINK = 0xFFFBC2EB;
-    public static final int TEXT = 0xFFCFC8DE, WHITE = 0xFFFFFFFF, MUTE = 0xFFB8AFCC, DIM = 0xFF9C93B5;   // the vibrant greys of the glass (prototype MUTE_GLASS / DIM_GLASS)
-    public static final int GREEN = 0xFF4BE07A, RED = 0xFFFF8A8A, INK = 0xFF1A1226;
-    public static final int PANEL_TOP = 0xF6161022, PANEL_BOT = 0xF80C0A14, HUD_TOP = 0xDC161022, HUD_BOT = 0xE60C0A14;
-    public static final int BORDER = 0x4DFBC2EB, BORDER_SOFT = 0x1AFFFFFF, FILL_SOFT = 0x0AFFFFFF;
+    // the palette is mutable: themes.Themes.apply keeps it equal to P's (never snapshot it into a static final)
+    public static int LAV = 0xFFA18CD1, PINK = 0xFFFBC2EB;
+    public static int TEXT = 0xFFCFC8DE, MUTE = 0xFFB8AFCC, DIM = 0xFF9C93B5;   // the vibrant greys of the glass (prototype MUTE_GLASS / DIM_GLASS)
+    public static final int WHITE = 0xFFFFFFFF, GREEN = 0xFF4BE07A, RED = 0xFFFF8A8A, INK = 0xFF1A1226;
+    public static int PANEL_TOP = 0xF6221836, PANEL_BOT = 0xF80C0A14, HUD_TOP = 0xDC221836, HUD_BOT = 0xE60C0A14;
+    public static int BORDER = 0x4DFBC2EB;
+    public static final int BORDER_SOFT = 0x1AFFFFFF, FILL_SOFT = 0x0AFFFFFF;
 
     // row insets for a 3 px pixel-art corner: rows 0 and 1 are shortened, the rest is square
     private static final int[] INSET = {2, 1};

@@ -173,7 +173,7 @@ public final class RouletteView implements GameView {
         int n = c.key.charAt(0) == 'n' ? Integer.parseInt(c.key.substring(1)) : c.key.equals("red") ? 1 : c.key.equals("black") ? 2 : -1;
         boolean colored = n >= 0;
         int fill = colored ? tint(n, hov ? 2.2 : 1) : hov ? 0x26FFFFFF : 0x0DFFFFFF;
-        P.smooth(g, c.x, c.y, c.w, c.h, 4, fill, hov ? 0xCCFBC2EB : 0x14FFFFFF);
+        P.smooth(g, c.x, c.y, c.w, c.h, 4, fill, hov ? P.alpha(P.PINK, 0.8) : 0x14FFFFFF);
         String l = BETS.get(c.key).label();
         int ink = colored ? ink(n) : P.TEXT;
         double ty = Math.round(c.y + (c.h - 8) / 2);

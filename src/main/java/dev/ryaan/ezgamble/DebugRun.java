@@ -117,6 +117,7 @@ public final class DebugRun {
             case "chips" -> EzGambleMod.LOG.info("[ezgamble] debug: chips {} = {}", arg, dev.ryaan.ezgamble.data.Payouts.balance(arg));
             case "mode" -> GambleData.setMode(arg.equals("on"));
             case "lens" -> GambleData.lens = arg.equals("on");
+            case "theme" -> GambleData.setTheme(arg);   // theme ID: lavender, emerald, gold, crimson, ocean, mono
             case "cmd" -> c.getNetworkHandler().sendChatCommand(arg);
             case "srv" -> {   // run as the integrated server's console (full permission): tellraw reaches us as a real chat packet
                 var srv = c.getServer();

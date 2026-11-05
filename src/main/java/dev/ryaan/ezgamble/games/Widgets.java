@@ -128,7 +128,7 @@ public final class Widgets {
                 Payouts.Row r = list.get(i);
                 double ry = ly + 3 + i * 18;
                 boolean on = i == (hov >= 0 ? hov : sel), picked = r.name().equals(host.backer);
-                if (on) P.smooth(g, x + 3, ry, w - 6, 18, 5, P.h(0x33A18CD1, 0x26FBC2EB));
+                if (on) P.smooth(g, x + 3, ry, w - 6, 18, 5, P.h(P.alpha(P.LAV, 0.2), P.alpha(P.PINK, 0.15)));
                 g.drawHead(r.name(), x + 9, ry + 5, 8);
                 String v = Money.format(r.bal());
                 int vw = F.width(v);

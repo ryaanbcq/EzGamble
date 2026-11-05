@@ -22,7 +22,7 @@ public final class Ui {
     /** Content card (Apple "standard material"): smooth corners, translucent fill. kind: accent, red, row, soft, chart. */
     public static void card(DrawContext g, int x, int y, int w, int h, String kind) {
         switch (kind) {
-            case "accent" -> Liquid.smooth(g, x, y, w, h, 7, Liquid.hgrad(0x24A18CD1, 0x14FBC2EB), 0x4DFBC2EB);
+            case "accent" -> Liquid.smooth(g, x, y, w, h, 7, Liquid.hgrad(Glass.alpha(Glass.LAV, 0.14f), Glass.alpha(Glass.PINK, 0.08f)), Glass.alpha(Glass.PINK, 0.3f));
             case "red" -> Liquid.smooth(g, x, y, w, h, h / 2f, 0x26FF5C5C, 0x80FF5C5C);
             case "row" -> Liquid.smooth(g, x, y, w, h, 6, 0x0DFFFFFF, 0x0FFFFFFF);
             case "chart" -> Liquid.smooth(g, x, y, w, h, 7, 0x0AFFFFFF, 0x0DFFFFFF);

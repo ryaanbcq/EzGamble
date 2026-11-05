@@ -220,7 +220,7 @@ public final class RainView implements GameView {
             double x = Math.round(cx - pos + i * CELL);
             boolean win = done && i == WIN_AT;
             double k = win ? easeOut(Math.min(1, (t - r.landedAt) / 300.0)) : 0;
-            smooth(g, x + 2, ry + 4, CELL - 4, rh - 8, 6, alpha(0xFFA18CD1, 0.07 + 0.25 * k), alpha(win ? 0xFFFBC2EB : 0xFFA18CD1, 0.25 + 0.6 * k));
+            smooth(g, x + 2, ry + 4, CELL - 4, rh - 8, 6, alpha(LAV, 0.07 + 0.25 * k), alpha(win ? PINK : LAV, 0.25 + 0.6 * k));
             double hs = 18 * (1 + 0.15 * k);
             g.drawHead(name, x + (CELL - hs) / 2, ry + 10 - 0.15 * k * 9, hs);
             String nm = F.trimToWidth(name, CELL - 6);

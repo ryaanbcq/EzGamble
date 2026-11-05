@@ -177,8 +177,8 @@ public final class CrashView implements GameView {
             String a = x != 0 ? Widgets.multText(x) : "Off";
             double p = x != 0 ? ((1 - CRASH_EDGE) / x) * 100 : 0;
             String ps = x != 0 ? (p >= 10 ? String.valueOf(Math.round(p)) : num(p, 1)) + "%" : "manual";
-            int stroke = sel ? 0xCCFBC2EB : hov ? 0x40FFFFFF : 0x18FFFFFF;
-            if (sel) P.smooth(g, w.x, w.y, w.w, w.h, 6, P.h(0x33A18CD1, 0x26FBC2EB), stroke);
+            int stroke = sel ? P.alpha(P.PINK, 0.8) : hov ? 0x40FFFFFF : 0x18FFFFFF;
+            if (sel) P.smooth(g, w.x, w.y, w.w, w.h, 6, P.h(P.alpha(P.LAV, 0.2), P.alpha(P.PINK, 0.15)), stroke);
             else P.smooth(g, w.x, w.y, w.w, w.h, 6, hov ? 0x14FFFFFF : 0x0AFFFFFF, stroke);
             g.drawText(a, w.x + ((int) (w.w - F.width(a)) >> 1), w.y + 6, sel ? P.WHITE : x >= 10 ? P.PINK : P.TEXT, sel);
             g.drawText(ps, w.x + ((int) (w.w - F.width(ps)) >> 1), w.y + 19, P.MUTE, false);
@@ -223,7 +223,7 @@ public final class CrashView implements GameView {
         if (t >= r.launch) {
             boolean dead = r.crashed;
             double tipX = gx0 + (ms / tMax) * (gx1 - gx0), tipY = py(Math.min(r.crash, Math.exp(CRASH_RATE * ms / 1000)), gy0, gy1, yMax);
-            int fillTop = dead ? 0xFF5C5C : 0xFBC2EB, fillRim = 0xA18CD1;
+            int fillTop = dead ? 0xFF5C5C : P.PINK & 0xFFFFFF, fillRim = P.LAV & 0xFFFFFF;   // RGB only, the alpha is set below
             double span = Math.max(1, gy1 - tipY);
             for (double xx = gx0; xx < tipX; xx += 2) {
                 double m = ((xx + 1 - gx0) / (gx1 - gx0)) * tMax;

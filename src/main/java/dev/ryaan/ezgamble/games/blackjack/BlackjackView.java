@@ -201,8 +201,8 @@ public final class BlackjackView implements GameView {
         List<Chips.Stack> stacks = all.subList(0, Math.min(4, all.size()));
         int span = (stacks.size() - 1) * 34;
         if (stacks.isEmpty()) {   // the betting spot
-            P.smooth(g, cx - 26, fy + 60, 52, 26, 13, 0x14A18CD1);
-            P.ring(g, cx - 26, fy + 60, 52, 26, 13, 0x80A18CD1, 1.5);
+            P.smooth(g, cx - 26, fy + 60, 52, 26, 13, P.alpha(P.LAV, 0.08));
+            P.ring(g, cx - 26, fy + 60, 52, 26, 13, P.alpha(P.LAV, 0.5), 1.5);
         }
         for (int i = 0; i < stacks.size(); i++) Chips.chipStack(g, cx - (span >> 1) + i * 34, fy + 88, 14, stacks.get(i).chip(), stacks.get(i).n());
         String warn = T.warn != null && P.now() < T.warn.until() ? T.warn.text() : !GambleData.mode ? "Gambling mode is off" : null;

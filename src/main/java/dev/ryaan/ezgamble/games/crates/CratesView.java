@@ -183,7 +183,7 @@ public final class CratesView implements GameView {
             if (!(wd instanceof CrateTile w)) continue;
             CrateType c = CRATE_TYPES.get(w.idx);
             boolean sel = CR.crate == w.idx, hov = w.over(mx, my);
-            smooth(g, w.x, w.y, w.w, w.h, 7, sel ? h(0x33A18CD1, 0x26FBC2EB) : dev.ryaan.ezgamble.ui.Liquid.solid(hov ? 0x14FFFFFF : 0x0AFFFFFF), sel ? 0xCCFBC2EB : hov ? 0x40FFFFFF : 0x18FFFFFF);
+            smooth(g, w.x, w.y, w.w, w.h, 7, sel ? h(alpha(LAV, 0.2), alpha(PINK, 0.15)) : dev.ryaan.ezgamble.ui.Liquid.solid(hov ? 0x14FFFFFF : 0x0AFFFFFF), sel ? alpha(PINK, 0.8) : hov ? 0x40FFFFFF : 0x18FFFFFF);
             g.drawSprite(c.icon, w.x + 6, w.y + 7, 32, 32);
             g.drawText(c.name, w.x + 42, w.y + 7, sel ? WHITE : TEXT, true);
             g.drawText(c.desc, w.x + 42, w.y + 18, MUTE, false);
