@@ -26,6 +26,7 @@ public final class ProfitChart {
         // the menu is drawn under viewZ (P.zoom): rasterise at the real pixel density, like Liquid, or the curve is
         // upscaled 2x at zoom 2 (blurry) and oversampled at 0.5
         float k = (float) (MinecraftClient.getInstance().getWindow().getScaleFactor() * P.zoom);
+        if (Liquid.live) k = Math.max(1, Math.round(k));   // the zoom is in motion (resize grip): a whole density keeps the texture key, like Liquid
         Geo ge = geo(deltas, cx, cy, cw, ch, k, mini);
         long[] cum = ge.cum;
         double[] xs = ge.xs, ys = ge.ys;

@@ -3,6 +3,7 @@ package dev.ryaan.ezgamble.themes;
 import dev.ryaan.ezgamble.proto.P;
 import dev.ryaan.ezgamble.proto.Vec;
 import dev.ryaan.ezgamble.ui.Glass;
+import dev.ryaan.ezgamble.ui.Liquid;
 
 import java.util.List;
 
@@ -49,5 +50,6 @@ public final class Themes {
         P.BORDER = Glass.BORDER = P.alpha(t.pink(), 0.3);
         ver++;
         Vec.clear();   // the chips, coins and wheel sprites were painted in the old colours
+        Liquid.clearBaked();   // and the glass bodies, washes and rims: keyed on ver they would never draw again, but they sat in the budget
     }
 }

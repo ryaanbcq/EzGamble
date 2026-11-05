@@ -263,6 +263,7 @@ public final class GambleScreen extends ProtoScreen {
             g.fill(vx(0), vy(0), vx(width), vy(height), ((int) (0x55 * p) << 24) | 0x0A0710);   // the whole screen, wherever the window is
         }
         beginPop(g, p);
+        Liquid.live = resizing && !closing;   // written every frame, not on click / release: a close mid-drag never leaves it stuck
         P.glass(g, x0, y0, W, H, 12, 0.84, 1);
         renderGrip(g, mx, my);
         renderTitle(g);
@@ -278,10 +279,12 @@ public final class GambleScreen extends ProtoScreen {
         if (GambleData.name != null && !welcome && tab.equals("dashboard")) {
             String pre = greeting[0], suf = greeting[1];
             // the greeting stops 8 px short of whatever sits right of it: the Update / Restart button, the house dot or "Gambling mode"
-            // ("Luck looks good on you, " plus a 16-char name ran under the button); a name trimmed under 3 chars is no greeting: EZ GAMBLE
+            // ("Luck looks good on you, " plus a 16-char name ran under the button). A cut name greets the wrong person, so the name
+            // must fit whole: a greeting that cannot hold it tries "Hi, " first, and when even that would cut it the title is EZ GAMBLE
             double lim = (updateBtn != null ? updateBtn.x : houseDot() != null ? houseDot()[0] : x0 + W - PAD - 28 - 6 - F.width("Gambling mode")) - 8;
             String name = F.trimToWidth(GambleData.name, lim - x - F.width(pre) - F.width(suf));
-            if (name.length() >= 3) {
+            if (!name.equals(GambleData.name)) { pre = "Hi, "; suf = ""; name = F.trimToWidth(GambleData.name, lim - x - F.width(pre)); }
+            if (name.equals(GambleData.name)) {
                 g.drawText(pre, x, y, P.alpha(P.WHITE, a), true);
                 P.gradientText(g, name, x + F.width(pre), y, true, a);
                 if (!suf.isEmpty()) g.drawText(suf, x + F.width(pre) + F.width(name), y, P.alpha(P.WHITE, a), true);
@@ -425,11 +428,12 @@ public final class GambleScreen extends ProtoScreen {
         for (Object[] p : pills) pw += P.pillW((String) p[0], (String) p[1]) + 4;
         g.drawText("House", lx + 12, y + 4, P.MUTE, false);
         double wx = lx + 12 + F.width("House") + 5;
-        // the word never runs under the pills: with three pills "Under-covered" has about 58 px and read "Under-cov", so the two
-        // long words have a short form first (the hover tip on the house dot keeps the long one)
+        // the word never runs under the pills: with three pills "Under-covered" has about 58 px and read "Under-cov", and at two
+        // 8-char amounts the room is 34 px, under "Healthy" (37), so three words have a short form first (24 px at most, like
+        // "Tight"; the hover tip on the house dot keeps the long one where there is a dot). trimToWidth stays as a last guard.
         double room = rx - pw - 6 - wx;
         String word = dev.ryaan.ezgamble.house.House.word(st);
-        if (F.width(word) > room) word = switch (st) { case UNDER -> "Under"; case UNKNOWN -> "Unknown"; default -> word; };
+        if (F.width(word) > room) word = switch (st) { case UNDER -> "Under"; case UNKNOWN -> "Unknown"; case HEALTHY -> "Good"; default -> word; };
         g.drawText(F.trimToWidth(word, room), wx, y + 4, col, false);
         P.pillsRight(g, rx, y, pills);
     }
@@ -756,6 +760,7 @@ public final class GambleScreen extends ProtoScreen {
     public void close() {
         if (closing) return;
         leaveSub();
+        moving = resizing = false; Liquid.live = false;
         closing = true; closeAt = P.now();
         P.play("close", 0.8);
     }

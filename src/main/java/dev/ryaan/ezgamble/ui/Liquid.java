@@ -210,8 +210,12 @@ public final class Liquid {
         try { real0(g, r); } finally { F.nanos += System.nanoTime() - t0; F.by.merge(who, F.n - n0, Long::sum); }
     }
 
+    /** True while the menu's zoom is in motion (the resize grip): GambleScreen writes it every frame it draws. */
+    public static boolean live;
+
     private static void real0(DrawContext g, Real r) {
         float k = k();
+        if (live) k = Math.max(1, Math.round(k));   // a transient zoom: a whole density keeps every baked key (the quads resample a little, the geometry stays exact in GUI space); the release snaps to a whole k anyway
         g.getMatrices().pushMatrix();
         try {
             g.getMatrices().scale(1 / k, 1 / k);
@@ -242,16 +246,19 @@ public final class Liquid {
     // A glass sheet was about 180 slivers a frame (shadow, body, wash, sheen, rim), a capsule rim about 90, for pictures
     // identical frame to frame: a felt's bottom row alone was 650 rim draws. The static layers are now rendered once per
     // size, per pixel, into a texture (same paints, same 4x4 supersampled edge coverage as the corner masks) and drawn as
-    // one tinted quad. Alpha and strength are NOT in the keys: the body's and the rim's alphas are linear in them, so a
-    // fade (EventHud, RecapScreen, a switch) is a quad tint and never re-bakes; the shadow's tint is within 10 % of the
-    // stacked version. Every key carries Themes.ver: a theme switch repaints.
+    // one tinted quad. Alpha and rim strength are NOT in the keys: the body's and the rim's alphas are linear in them, so a
+    // fade (EventHud, RecapScreen, a switch) is a quad tint and never re-bakes. The shadow's six stacked rings are NOT
+    // linear in their strength (a plain tint of a strength-1 bake was 19 % light as the strength tends to 0, 14 % at a HUD
+    // card at background 0.3), so the shadow is baked per tenth of strength and tinted the rest of the way: within 2 %
+    // everywhere, at most ten bakes per size for a fade. Every key carries Themes.ver and a theme switch drops the lot
+    // (clearBaked). While the resize grip is dragged (live) the density is rounded, so nothing bakes per frame.
 
     private record Baked(net.minecraft.util.Identifier id, int w, int h) {}
     private static final java.util.Map<String, Baked> BAKED = new java.util.LinkedHashMap<>(64, 0.75f, true);
     private static long bakedPx;
     private static int bakedSeq;
-    private static final long PX_BUDGET = 48_000_000L;   // about 192 MB of textures at most
-    private static final long MAX_BAKE = 4_000_000L;     // bigger than this (a 4K panel at zoom 2) stays on the live path
+    private static final long PX_BUDGET = 12_000_000L;   // 8 B per pixel (the NativeImage stays with the texture next to the GPU copy): about 96 MB, 3x the biggest glass triple plus the HUD
+    private static final long MAX_BAKE = 1_200_000L;     // bigger than this (the menu panel from 4 real px per GUI px up) stays on the live path: a bake is a dozen per-pixel passes on the render thread
     private static final float SHADOW_PAD = 16;          // GUI px around a glass that its shadow can reach (14 k spread, 4 k drop)
     private static final float RIM_UNIT = 1.1f;          // the strongest rim asked for (a primary capsule): baked at that, tinted down
 
@@ -274,6 +281,15 @@ public final class Liquid {
             tm.destroyTexture(old.id());
         }
         return b;
+    }
+
+    /** Drops every baked surface (a theme switch: the body's tints and the wash are theme colours). Safe before the texture manager exists. */
+    public static void clearBaked() {
+        if (BAKED.isEmpty()) return;
+        var tm = MinecraftClient.getInstance().getTextureManager();
+        for (Baked b : BAKED.values()) tm.destroyTexture(b.id());
+        BAKED.clear();
+        bakedPx = 0;
     }
 
     /** One quad: the baked picture at (x, y) in real pixels, multiplied by tint (its alpha = the layer's opacity). */
@@ -326,6 +342,7 @@ public final class Liquid {
             int x2 = Math.min(w, (int) Math.ceil(X + W) + 1), y2 = Math.min(h, (int) Math.ceil(Y + H) + 1);
             for (int py = y1; py < y2; py++)
                 for (int px = x1; px < x2; px++) {
+                    if (lw > 0 && sd(px + 0.5f, py + 0.5f, X, Y, W, H, R) < -(lw + 1.5f)) continue;   // inside the ring both coverages are 1: a stroke was two full passes over an empty interior
                     float cv = cov(px, py, X, Y, W, H, R);
                     if (lw > 0) cv -= cov(px, py, X + lw, Y + lw, W - 2 * lw, H - 2 * lw, R - lw);
                     if (cv <= 0.001f) continue;
@@ -431,8 +448,16 @@ public final class Liquid {
             String size = iw + "x" + ih + "/" + R + "/" + k + "#" + dev.ryaan.ezgamble.themes.Themes.ver;
             if (shadowStrength > 0) {
                 int pad = (int) Math.ceil(SHADOW_PAD * k);
-                Baked sh = baked("shadow/" + size, iw + 2 * pad, ih + 2 * pad, c -> shadowInto(c, pad, pad, iw, ih, R, k, 1));
-                blit(g, sh, x0 - pad, y0 - pad, tint(shadowStrength));
+                // the strength rounded up to a tenth goes in the key (never over 1 for the tint); baked at half resolution, it is a
+                // 14 k blur so the loss is invisible and the bake four times cheaper, then drawn 2x by the quad
+                float sq = Math.max(0.1f, (float) Math.ceil(shadowStrength * 10 - 1e-4) / 10f);
+                int bw = (iw + 2 * pad + 1) / 2, bh = (ih + 2 * pad + 1) / 2;
+                Baked sh = baked("shadow/" + size + "/" + sq, bw, bh, c -> shadowInto(c, pad / 2f, pad / 2f, iw / 2f, ih / 2f, R / 2f, k / 2, sq));
+                int tn = tint(shadowStrength / sq);
+                if ((tn >>> 24) != 0) {
+                    F.n++;
+                    g.drawTexture(net.minecraft.client.gl.RenderPipelines.GUI_TEXTURED, sh.id(), x0 - pad, y0 - pad, 0, 0, 2 * bw, 2 * bh, bw, bh, bw, bh, tn);
+                }
             }
             float aa = Math.min(0.94f, a);
             Baked body = baked("body/" + size, iw, ih, c -> c.shape(0, 0, iw, ih, R, vgrad(Glass.alpha(Glass.PANEL_TOP, 0.88f), Glass.alpha(Glass.PANEL_BOT, 1)), 1));   // the theme's tints (Lavender: 221836 over 0C0A14)
