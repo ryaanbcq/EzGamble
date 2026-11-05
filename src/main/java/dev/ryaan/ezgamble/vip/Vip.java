@@ -83,6 +83,14 @@ public final class Vip {
 
     // ---- the model
 
+    /**
+     * Timed events (events.Events) register here: the XP multiplier of a bet placed at t (Double XP = 2) and the cashback
+     * rate added to every tier at t (Happy hour = 0.01). Defaults 1 and 0: the history folds the same way, event or not.
+     */
+    public static java.util.function.LongToDoubleFunction xpHook, rateHook;
+    public static double xpMultiplierAt(long t) { return xpHook == null ? 1 : xpHook.applyAsDouble(t); }
+    public static double rateBonusAt(long t) { return rateHook == null ? 0 : rateHook.applyAsDouble(t); }
+
     public static Tier tierOf(long xp) {
         Tier t = null;
         for (Tier k : TIERS) if (xp >= k.from()) t = k;
@@ -98,8 +106,8 @@ public final class Vip {
             if (t.player() == null || t.bet() == null || t.bet() <= 0 || t.t() <= GambleData.cutoff(t.player())) continue;
             Standing s = m.computeIfAbsent(Payouts.norm(t.player()), k -> { Standing n = new Standing(); n.name = t.player(); return n; });
             Tier before = tierOf(s.xp);
-            s.earned += (long) Math.floor(t.bet() * before.rate());
-            s.xp += t.bet();
+            s.earned += (long) Math.floor(t.bet() * (before.rate() + rateBonusAt(t.t())));   // a Happy hour adds to the tier's rate
+            s.xp += Math.round(t.bet() * xpMultiplierAt(t.t()));   // a Double XP counts the bet twice
         }
         standings = m; dirty = false;
         return m;
@@ -190,7 +198,7 @@ public final class Vip {
     public static void onTxn(Txn t) {
         invalidate();
         if (t.player() == null || t.bet() == null || t.bet() <= 0 || t.t() <= GambleData.cutoff(t.player())) return;
-        long xpAfter = xp(t.player()), xpBefore = xpAfter - t.bet();   // the transaction is already counted
+        long xpAfter = xp(t.player()), xpBefore = xpAfter - Math.round(t.bet() * xpMultiplierAt(t.t()));   // the transaction is already counted, at the event's multiplier
         Tier after = tierOf(xpAfter);
         if (xpBefore <= 0) return;   // his very first bet: Bronze, no fanfare
         if (after.rank() <= tierOf(xpBefore).rank()) return;

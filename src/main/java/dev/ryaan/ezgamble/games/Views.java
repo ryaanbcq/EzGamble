@@ -22,6 +22,7 @@ public final class Views {
             case "rain" -> new dev.ryaan.ezgamble.games.rain.RainView(s);
             case "fair" -> new dev.ryaan.ezgamble.ui.FairView(s);
             case "lobby" -> new dev.ryaan.ezgamble.lobby.LobbyView(s);
+            case "events" -> new dev.ryaan.ezgamble.events.EventsView(s);
             default -> new Stub(s, id);
         };
     }

@@ -1,0 +1,48 @@
+# Timed events smoke test: ./tools/smoke.sh tools/smoke-events.txt 300
+# A 5-minute wager race with a 100M pool over three players, its live page and HUD banner, the forced end, the podium
+# finale and the results with the Pay buttons, the race in the past list, then a Double XP that doubles the VIP XP.
+size 1280 800
+gui 2
+mode on
+paid Alpha 500M
+paid Bravo 2B
+paid Charlie 100M
+event race 5 100M
+wager Alpha 2M 6
+wager Bravo 10M 4
+wager Charlie 1M 3
+eventstate
+wait 10
+open
+sub events
+wait 20
+shot events-live
+close
+wait 10
+shot events-hud
+eventend
+eventstate
+wait 40
+shot events-finale
+wait 140
+shot events-results
+# the first winner's Pay button (results card, first row, right side): one /pay, left waiting in the offline world
+press-button Pay $50M
+wait 10
+shot events-results-sending
+open
+sub events
+wait 20
+shot events-past
+eventstate
+# Double XP: two more 2M bets of Alpha count twice in his VIP XP (12M XP before the event, 20M after)
+event xp 5
+wager Alpha 2M 2
+vipstate Alpha
+eventstate
+wait 10
+shot events-xp-live
+close
+wait 10
+shot events-xp-hud
+quit
