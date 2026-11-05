@@ -471,10 +471,11 @@ public final class GambleScreen extends ProtoScreen {
             {"Crates", "Open crates", "game/crates"}, {"Roulette", "Red, black", "game/roulette"}, {"Crash", "Cash out", "game/crash"}, {"Coinflip", "Heads, tails", "game/coinflip"},
             {"Rain", "Win the pot", "game/rain"},
             {"High rollers", "Top wagers", "game/highrollers"},
-            {"Events", "Timed events", "fill:events"}};
+            {"Events", "Timed events", "fill:events"},
+            {"Books", "Analytics", "fill:books"}};
     // Provably fair left the grid for a button by Requests; past 9 tiles the grid scrolls, the tiles keep the height of 3 rows
     private static final String[] GAME_IDS = {"blackjack", "auction", "mines", "crates", "roulette", "crash", "coinflip", "rain", "rollers",
-            "events"};
+            "events", "books"};
 
     /** The credit card, one line high: the 3 rows of tiles fit under it, nothing scrolls or gets cut. */
     private static final int CARD_H = 40, TILE_GAP = 6;
@@ -484,7 +485,7 @@ public final class GambleScreen extends ProtoScreen {
     /** x, y, w, h, index: 3 per row, the rows share the height left under the card as a 3-row grid (more rows scroll, same tile height). */
     private List<double[]> gameTilesRects() {
         double[] gc = gamesClip();
-        int rows = 3;
+        int rows = 3;   // tiles keep the height of a 3-row grid whatever their number: from the 10th tile on, the list "games" scrolls
         double lx = x0 + PAD, rx = x0 + W - PAD, tw = (int) ((rx - lx - 2 * TILE_GAP) / 3), th = Math.floor((gc[3] - (rows - 1) * TILE_GAP) / rows), y = gc[1];
         List<double[]> out = new ArrayList<>();
         for (int i = 0; i < GAMES.length; i++) out.add(new double[]{lx + (i % 3) * (tw + TILE_GAP), y + Math.floor(i / 3.0) * (th + TILE_GAP), tw, th, i});
