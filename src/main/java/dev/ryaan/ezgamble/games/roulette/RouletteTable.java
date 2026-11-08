@@ -133,7 +133,7 @@ public final class RouletteTable extends Host {
     /** Put `amount` (the composed one by default) on a cell. */
     public boolean place(String key) { return place(key, bet); }
     public boolean place(String key, long amount) {
-        if (!GambleData.mode) return fail("Gambling mode is off");
+        if (!GambleData.playing()) return fail("Gambling mode is off");
         if (backer == null) return fail("Pick a player first");
         if (!stage.equals("bet")) return false;
         if (!(amount > 0)) return fail("Pick an amount first");
@@ -158,7 +158,7 @@ public final class RouletteTable extends Host {
 
     /** Draw the number, build the reel around it, start the spin. */
     public boolean spin() {
-        if (!GambleData.mode) return fail("Gambling mode is off");
+        if (!GambleData.playing()) return fail("Gambling mode is off");
         if (backer == null) return fail("Pick a player first");
         long total = placed();
         if (total <= 0) return fail("Click a cell to bet");

@@ -113,11 +113,11 @@ public final class CoinflipView implements GameView {
         CF.tick();
         if (!uiState().equals(uiKey)) { screen.rebuild(); return; }
         if (flipBtn != null) {
-            String warn = CF.warn != null && P.now() < CF.warn.until() ? CF.warn.text() : !GambleData.mode ? "Gambling mode is off" : null;
+            String warn = CF.warn != null && P.now() < CF.warn.until() ? CF.warn.text() : !GambleData.playing() ? "Gambling mode is off" : null;
             GlassButton b = flipBtn; boolean again = CF.stage.equals("done");
             b.label = warn != null ? warn : again ? "Flip again" : CF.bet > 0 ? "Flip " + Money.format(CF.bet) : "Flip";
             b.kind = warn != null ? "DANGER" : again && CF.payState() != null ? "GHOST" : "PRIMARY";
-            b.active = warn != null || (again ? CF.balance() > 0 : GambleData.mode && !CF.backers().isEmpty());
+            b.active = warn != null || (again ? CF.balance() > 0 : GambleData.playing() && !CF.backers().isEmpty());
         }
         if (payBtn != null) syncPay();
     }
@@ -157,7 +157,7 @@ public final class CoinflipView implements GameView {
         GambleScreen.Geom G = screen.geom();
         double lx = G.lx(), rx = G.rx(), hy = G.hy();
         g.drawText("Coinflip", lx + 24, hy + 4, P.WHITE, true);
-        if (CF.stage.equals("bet")) { if (CF.backer != null) P.pillsRight(g, rx, hy, new Object[][]{{"Chips", Money.format(CF.balance())}}); }
+        if (CF.stage.equals("bet")) { if (CF.backer != null) P.pillsRight(g, rx, hy, new Object[][]{{"Chips", CF.balanceText()}}); }
         else P.pillsRight(g, rx, hy, new Object[][]{{"On", cfName(CF.round.side)}, {"Bet", Money.format(CF.round.bet)}});
         felt(g, lx, G.ft(), rx - lx, G.fth());
         if (CF.stage.equals("bet")) renderBet(g, mx, my); else renderFlip(g);
@@ -183,7 +183,7 @@ public final class CoinflipView implements GameView {
             String me = net.minecraft.client.MinecraftClient.getInstance().getSession().getUsername();
             g.drawText("No chips on the table yet.", lx + 8, fy + 44, P.TEXT, false);
             g.drawText("Players who /pay " + me + " during a session can flip with you.", lx + 8, fy + 58, P.MUTE, false);
-            if (!GambleData.mode) g.drawText("Turn gambling mode on to start a session.", lx + 8, fy + 74, P.RED, false);
+            if (!GambleData.playing()) g.drawText("Turn gambling mode on to start a session.", lx + 8, fy + 74, P.RED, false);
             return;
         }
         renderStreak(g, fy + 4);
@@ -209,7 +209,7 @@ public final class CoinflipView implements GameView {
         GambleScreen.Geom G = screen.geom();
         double fy = G.fy(), cx = G.cx();
         CoinTable.Rnd r = CF.round; long t = P.now(); boolean done = CF.stage.equals("done");
-        String name = F.trimToWidth(r.backer, 70), bal = Money.format(CF.balance());
+        String name = F.trimToWidth(r.backer, 70), bal = CF.balanceText();
         int tw = P.seatTagW(name, cfName(r.side)), cw = P.pillW("Chips", bal);
         double sx = cx - ((tw + 4 + cw) >> 1);
         P.seatTag(g, sx + (tw >> 1), fy + 2, P.skinOf(r.backer), name, cfName(r.side), P.WHITE);

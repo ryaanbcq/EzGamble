@@ -108,13 +108,13 @@ public final class RouletteView implements GameView {
         RL.tick();
         if (!uiState().equals(uiKey)) { screen.rebuild(); return; }
         if (spinBtn != null) {
-            String warn = RL.warn != null && P.now() < RL.warn.until() ? RL.warn.text() : !GambleData.mode ? "Gambling mode is off" : null;
+            String warn = RL.warn != null && P.now() < RL.warn.until() ? RL.warn.text() : !GambleData.playing() ? "Gambling mode is off" : null;
             var b = spinBtn;
             boolean again = RL.stage.equals("done");
             long tot = RL.placed();
             b.label = warn != null ? warn : again ? "Spin again" : tot > 0 ? "Spin " + Money.format(tot) : "Spin";
             b.kind = warn != null ? "DANGER" : again && RL.payState() != null ? "GHOST" : "PRIMARY";
-            b.active = warn != null || (again ? RL.balance() > 0 : GambleData.mode && !RL.backers().isEmpty());
+            b.active = warn != null || (again ? RL.balance() > 0 : GambleData.playing() && !RL.backers().isEmpty());
             if (warn != null) { b.w = Math.max(110, F.width(warn) + 20); b.x = geom().rx() - b.w; }
             else { b.w = 110; b.x = geom().rx() - 110; }
         }
@@ -197,7 +197,7 @@ public final class RouletteView implements GameView {
         if (list.isEmpty()) {
             g.drawText("No chips on the table yet.", lx + 8, fy + 44, P.TEXT, false);
             g.drawText("Players who /pay " + G.mc().getSession().getUsername() + " during a session can play roulette with you.", lx + 8, fy + 58, P.MUTE, false);
-            if (!GambleData.mode) g.drawText("Turn gambling mode on to start a session.", lx + 8, fy + 74, P.RED, false);
+            if (!GambleData.playing()) g.drawText("Turn gambling mode on to start a session.", lx + 8, fy + 74, P.RED, false);
             return;
         }
         double tipX = 0, tipY = 0; String tip = null;
@@ -249,7 +249,7 @@ public final class RouletteView implements GameView {
         var Ge = geom();
         double lx = Ge.lx(), rx = Ge.rx(), fy = Ge.fy(), cx = Ge.cx();
         Spin r = RL.round; long t = P.now(); boolean done = RL.stage.equals("done");
-        String name = F.trimToWidth(r.backer, 70), bal = Money.format(RL.balance());
+        String name = F.trimToWidth(r.backer, 70), bal = RL.balanceText();
         int tw = P.seatTagW(name, Money.format(r.total)), cw = P.pillW("Chips", bal);
         double sx = cx - ((tw + 4 + cw) >> 1);
         P.seatTag(g, sx + (tw >> 1), fy + 8, P.skinOf(r.backer), name, Money.format(r.total), P.WHITE);

@@ -90,6 +90,7 @@ public final class Payouts {
      */
     public static boolean send(String name, long amount, boolean cashback) {
         if (amount <= 0 || pending.stream().anyMatch(p -> p.name.equals(name))) return false;
+        if (GambleData.free) { P.play("fail", 1, 0.5); return false; }   // free mode: no money ever leaves
         pending.add(new Pending(name, amount, P.now(), 0, false, cashback));   // before the command: typed() sees our own /pay go out and must find it already waiting
         var nh = MinecraftClient.getInstance().getNetworkHandler();
         if (nh != null) nh.sendChatCommand("pay " + name + " " + amount);   // whole dollars: no K/M rounding on the server

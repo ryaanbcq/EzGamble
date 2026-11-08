@@ -55,7 +55,7 @@ public final class CrashTable extends Host {
     private CrashTable() {}
 
     public boolean start() {
-        if (!GambleData.mode) return fail("Gambling mode is off");
+        if (!GambleData.playing()) return fail("Gambling mode is off");
         if (backer == null) return fail("Pick a player first");
         if (bet <= 0) return fail("Place a bet");
         if (bet > balance()) return fail("Not enough chips");

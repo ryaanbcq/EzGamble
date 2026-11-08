@@ -27,18 +27,34 @@ public abstract class Host {
 
     /** Players with chips on the table, biggest first. */
     public List<Payouts.Row> backers() {
-        List<Payouts.Row> l = new ArrayList<>(Payouts.rows().stream().filter(r -> r.bal() > 0).toList());
+        List<Payouts.Row> l = new ArrayList<>(Payouts.rows().stream().filter(r -> r.bal() > 0 || dev.ryaan.ezgamble.data.GambleData.free).toList());
+        if (dev.ryaan.ezgamble.data.GambleData.free) freePlayers(l);
         l.sort(Comparator.comparingLong((Payouts.Row r) -> -r.bal()).thenComparing(Payouts.Row::name));
         return l;
     }
 
-    public long balance() { return Payouts.balance(backer); }
+    public long balance() { return dev.ryaan.ezgamble.data.GambleData.free && backer != null ? dev.ryaan.ezgamble.data.GambleData.FREE_BAL : Payouts.balance(backer); }
+
+    /** What the table shows as his chips: "Free" in free mode. */
+    public String balanceText() { return dev.ryaan.ezgamble.data.GambleData.free ? "Free" : dev.ryaan.ezgamble.Money.format(balance()); }
+
+    /** Free mode: everyone in the tab list can be played for (nobody has to /pay first), yourself excluded. */
+    private static void freePlayers(List<Payouts.Row> l) {
+        var mc = net.minecraft.client.MinecraftClient.getInstance();
+        if (mc.getNetworkHandler() == null) return;
+        String me = mc.getSession().getUsername();
+        for (var e : mc.getNetworkHandler().getPlayerList()) {
+            String n = e.getProfile().name();
+            if (n == null || Payouts.same(n, me) || l.stream().anyMatch(r -> Payouts.same(r.name(), n))) continue;
+            l.add(new Payouts.Row(n, 0, 0, 0, 0, null, null));
+        }
+    }
 
     public boolean fail(String text) { P.play("fail", 1, 0.5); warn = new Warn(text, P.now() + 2200); return false; }
 
     /** The house guard: a round whose top win the gambler could not pay on top of what he owes is refused (house.House). */
     protected boolean covered(long maxWin) {
-        if (!dev.ryaan.ezgamble.data.GambleData.houseGuard || dev.ryaan.ezgamble.house.House.canCover(maxWin)) return true;
+        if (!dev.ryaan.ezgamble.data.GambleData.houseGuard || dev.ryaan.ezgamble.data.GambleData.free || dev.ryaan.ezgamble.house.House.canCover(maxWin)) return true;
         return fail(dev.ryaan.ezgamble.house.House.reason(maxWin));
     }
 

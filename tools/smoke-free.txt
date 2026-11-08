@@ -1,0 +1,41 @@
+# Free mode, clearing a player's chips, another account: ./tools/smoke.sh tools/smoke-free.txt 200
+# Expect: chips Alice unchanged after a free flip, "coinflip start true" for Zed (no chips), send refused, txns 0,
+# chips Bob = 0 after forget, whoami name = the offline account after "account OtherGuy". Shots ezgamble-free-*.png
+size 1280 800
+gui 2
+mode on
+balance 900M
+paid Alice 40M
+paid Bob 30M
+wait 20
+whoami
+free on
+cfbet Zed 50M
+wait 160
+chips Alice
+chips Zed
+send Alice 1M
+paystate Alice
+whoami
+open
+tab games
+wait 30
+shot free-card
+sub coinflip
+wait 30
+shot free-coinflip
+close
+free off
+chips Bob
+forget Bob
+chips Bob
+chips Alice
+account OtherGuy
+whoami
+wait 5
+whoami
+open
+tab dashboard
+wait 30
+shot free-account
+quit

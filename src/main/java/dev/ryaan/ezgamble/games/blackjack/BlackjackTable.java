@@ -75,7 +75,7 @@ public final class BlackjackTable extends Host {
     public void pay() { Widgets.payOut(game, backer, payState(), this::apply); }   // the hand's win is in his chips before the money leaves them
 
     public boolean deal() {
-        if (!GambleData.mode) return fail("Gambling mode is off");
+        if (!GambleData.playing()) return fail("Gambling mode is off");
         if (backer == null) return fail("Pick a player first");
         if (bet <= 0) return fail("Place a bet");
         if (bet > balance()) return fail("Not enough chips");

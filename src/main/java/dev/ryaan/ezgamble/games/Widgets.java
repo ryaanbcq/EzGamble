@@ -29,7 +29,7 @@ public final class Widgets {
      * result shows.
      */
     public static PayState payStateOf(Round round, String backer, long amount, long shownAt) {
-        if (round == null || (amount <= 0 && round.paid == null)) return null;
+        if (round == null || (amount <= 0 && round.paid == null) || dev.ryaan.ezgamble.data.GambleData.free) return null;   // free mode: nothing to pay
         if (round.paid == null) return new PayState("Pay " + F.trimToWidth(backer, 70) + " " + Money.format(amount), P.now() >= shownAt + 600, amount, false, false);
         if (Payouts.pending.stream().anyMatch(p -> p.name().equals(backer))) return new PayState("Sending...", false, 0, false, false);
         Payouts.Recent r = Payouts.recent.get(backer);
@@ -111,7 +111,7 @@ public final class Widgets {
                 g.fill(x + 9, ty, x + 12, ty + 1, c); g.fill(x + 9, ty + 4, x + 12, ty + 5, c); g.fill(x + 8, ty + 1, x + 9, ty + 4, c); g.fill(x + 12, ty + 1, x + 13, ty + 4, c);
                 g.fill(x + 13, ty + 5, x + 14, ty + 6, c); g.fill(x + 14, ty + 6, x + 15, ty + 7, c);
                 if (host.backer != null) {
-                    String v = Money.format(host.balance());
+                    String v = host.balanceText();
                     int vw = F.width(v);
                     g.drawHead(host.backer, x + 20, y + 6, 8);
                     int bw = dev.ryaan.ezgamble.vip.VipBadge.w(host.backer); dev.ryaan.ezgamble.vip.VipBadge.draw(g, host.backer, x + 32, y + 6);   // his tier gem before the name
@@ -131,7 +131,7 @@ public final class Widgets {
                 boolean on = i == (hov >= 0 ? hov : sel), picked = r.name().equals(host.backer);
                 if (on) P.smooth(g, x + 3, ry, w - 6, 18, 5, P.h(P.alpha(P.LAV, 0.2), P.alpha(P.PINK, 0.15)));
                 g.drawHead(r.name(), x + 9, ry + 5, 8);
-                String v = Money.format(r.bal());
+                String v = dev.ryaan.ezgamble.data.GambleData.free ? "Free" : Money.format(r.bal());
                 int vw = F.width(v), bw = dev.ryaan.ezgamble.vip.VipBadge.w(r.name());
                 dev.ryaan.ezgamble.vip.VipBadge.draw(g, r.name(), x + 21, ry + 5);
                 g.drawText(F.trimToWidth(r.name(), w - 40 - vw - bw), x + 21 + bw, ry + 5, on || picked ? P.WHITE : P.TEXT, picked);
@@ -207,6 +207,7 @@ public final class Widgets {
         record St(String label, String kind, boolean busy, boolean done, boolean retry, int color) {}
 
         St state() {
+            if (dev.ryaan.ezgamble.data.GambleData.free) return null;   // free mode: no refund, the pill only says Free
             String n = host.backer;
             boolean pend = Payouts.pending.stream().anyMatch(p -> p.name().equals(n));
             Payouts.Recent r = Payouts.recent.get(n);
@@ -221,7 +222,7 @@ public final class Widgets {
         public void place(double x, double y, int color) {
             this.x = x; this.y = y; this.color = color;
             St st = state();
-            w = st != null ? F.width(st.label) + 14 : P.pillW("Chips", Money.format(host.balance()));
+            w = st != null ? F.width(st.label) + 14 : P.pillW("Chips", host.balanceText());
         }
 
         @Override
@@ -229,7 +230,7 @@ public final class Widgets {
             St st = state();
             boolean hov = over(mx, my) && !(st != null && (st.busy || st.done));
             if (st == null) {
-                String v = Money.format(host.balance());
+                String v = host.balanceText();
                 P.capsule(g, x, y, w, 15, hov ? "selected" : "ghost", hov);
                 g.drawText("Chips", x + 7, y + 4, hov ? P.TEXT : P.MUTE, false);
                 g.drawText(v, x + 7 + F.width("Chips") + 4, y + 4, hov ? P.WHITE : color, false);
@@ -244,6 +245,7 @@ public final class Widgets {
         public void click(double mx, double my) {
             St st = state();
             if (st != null && (st.busy || st.done)) return;
+            if (dev.ryaan.ezgamble.data.GambleData.free) return;
             if (!open && !(st != null && st.retry)) { if (host.balance() <= 0) return; P.play("click"); open = true; openAt = P.now(); return; }
             if (P.now() - openAt < 400) return;
             settle.run();

@@ -33,6 +33,12 @@ public final class GambleData {
     public static final List<Session> sessions = new ArrayList<>();
     public static boolean mode;
     public static String name;
+    /** The Minecraft account the name belongs to: another account takes its own name (and head) at once. */
+    public static String account;
+    /** "Free mode": the tables play for fun, nobody's chips move, nothing is recorded and no /pay is ever sent. */
+    public static boolean free = false;
+    /** What a backer "has" at a table in free mode: big enough for any bet. */
+    public static final long FREE_BAL = 1_000_000_000_000L;
     /** Players removed from the player database (normalised name -> when): what they did up to then is ignored. */
     public static final java.util.Map<String, Long> forgotten = new java.util.LinkedHashMap<>();
     /** The menu window: offset from the centre (screen GUI px) and zoom, kept between openings. */
@@ -51,6 +57,8 @@ public final class GambleData {
             if (Files.exists(cfg)) {
                 JsonObject o = GSON.fromJson(Files.readString(cfg), JsonObject.class);
                 if (o.has("name")) name = o.get("name").getAsString();
+                if (o.has("account")) account = o.get("account").getAsString();
+                if (o.has("free")) free = o.get("free").getAsBoolean();
                 if (o.has("mode")) mode = o.get("mode").getAsBoolean();
                 if (o.has("lens")) lens = o.get("lens").getAsBoolean();
                 if (o.has("theme")) theme = o.get("theme").getAsString();
@@ -129,10 +137,10 @@ public final class GambleData {
                 .withColor(on ? 0x4BE07A : 0xFF5C5C), false);
     }
 
-    /** @return false when the mode is off: nothing is recorded. */
+    /** @return false when the mode is off (or free): nothing is recorded. */
     public static boolean record(Txn tx) {
         Session s = current();
-        if (!mode || s == null) return false;
+        if (!mode || s == null || free) return false;
         s.txns.add(tx);
         dev.ryaan.ezgamble.vip.Vip.onTxn(tx);   // XP and tier-ups
         dev.ryaan.ezgamble.events.Events.onTxn(tx);   // the running event's live leaderboard
@@ -156,9 +164,52 @@ public final class GambleData {
         }
     }
 
-    public static void setName(String n) { name = n; saveConfig(); }
+    public static void setName(String n) { name = n; account = me(); saveConfig(); }
+
+    private static String me() {
+        var ses = MinecraftClient.getInstance().getSession();
+        return ses == null ? null : ses.getUsername();
+    }
+
+    /**
+     * Minecraft opened with another account: the name chosen on the previous one (greeting, "/pay NAME") gives way to
+     * this account's own name. A config from before 0.5.1 has no account: a name that is not this account's is reset.
+     */
+    public static void syncAccount() {
+        String u = me();
+        if (u == null || u.equalsIgnoreCase(String.valueOf(account))) return;
+        if (account != null || name == null || !name.equalsIgnoreCase(u)) name = name == null ? null : u;
+        account = u;
+        saveConfig();
+    }
+
+    /** The tables open: gambling mode on, or free mode (nothing counted, so no session needed). */
+    public static boolean playing() { return mode || free; }
+
+    public static void setFree(boolean on) {
+        if (on == free) return;
+        free = on;
+        saveConfig();
+        MinecraftClient mc = MinecraftClient.getInstance();
+        dev.ryaan.ezgamble.proto.Snd.play(on ? "open" : "close", 0.8, 0.6);
+        if (mc.inGameHud != null) mc.inGameHud.setOverlayMessage(Text.literal(on ? "Free mode ON: no chips, no /pay" : "Free mode OFF")
+                .withColor(on ? 0x8FD3FF : 0xFF5C5C), false);
+    }
     /** Removes a player from the player database: everything up to now is ignored; a later payment brings him back fresh. */
-    public static void forget(String player) { forgotten.put(Payouts.norm(player), System.currentTimeMillis()); saveConfig(); dev.ryaan.ezgamble.vip.Vip.forget(player); }
+    public static void forget(String player) {
+        forgotten.put(Payouts.norm(player), System.currentTimeMillis()); saveConfig(); dev.ryaan.ezgamble.vip.Vip.forget(player);
+        clearChips(player);
+    }
+
+    /** His chips go to zero: what he paid, won and got back this session leave the books (the chips list, the tables). */
+    public static void clearChips(String player) {
+        Session s = last();
+        if (s == null) return;
+        java.util.function.Predicate<String> his = n -> n != null && Payouts.same(n, player);
+        s.credit.keySet().removeIf(his); s.won.keySet().removeIf(his); s.sent.keySet().removeIf(his);
+        Payouts.ver++;
+        save(s);
+    }
 
     /** Events at or before this time no longer count for the player (0 = none removed). */
     public static long cutoff(String player) { return forgotten.getOrDefault(Payouts.norm(player), 0L); }
@@ -187,6 +238,8 @@ public final class GambleData {
     private static void saveConfig() {
         JsonObject o = new JsonObject();
         if (name != null) o.addProperty("name", name);
+        if (account != null) o.addProperty("account", account);
+        o.addProperty("free", free);
         o.addProperty("mode", mode);
         o.addProperty("lens", lens);
         o.addProperty("theme", theme);

@@ -115,6 +115,7 @@ public final class Lobby {
     public static Seat next(String game) { for (Seat s : queue) if (s.game.equals(game) && !isShort(s)) return s; return null; }
 
     public static long chips(String name) {
+        if (dev.ryaan.ezgamble.data.GambleData.free) return dev.ryaan.ezgamble.data.GambleData.FREE_BAL;
         for (Payouts.Row r : Payouts.rows()) if (Payouts.same(r.name(), name)) return r.bal();
         return 0;
     }

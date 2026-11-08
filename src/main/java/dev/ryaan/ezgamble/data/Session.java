@@ -20,6 +20,6 @@ public final class Session {
 
     public record Pay(String name, long amount, long t, boolean bid) {}
 
-    public void addWon(String name, long v) { won.merge(name, v, Long::sum); GambleData.touch(); }
+    public void addWon(String name, long v) { if (GambleData.free) return; won.merge(name, v, Long::sum); GambleData.touch(); }
     transient String file;
 }

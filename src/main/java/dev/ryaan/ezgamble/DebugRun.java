@@ -105,6 +105,10 @@ public final class DebugRun {
             case "close" -> c.setScreen(null);
             case "tab", "sub", "range", "hook" -> GambleScreen.debug(cmd, arg);
             case "name" -> GambleData.setName(arg);
+            case "free" -> GambleData.setFree(arg.equals("on"));
+            case "forget" -> GambleData.forget(arg);   // forget NAME: the player's Remove button
+            case "account" -> { GambleData.name = arg; GambleData.account = arg; }   // account NAME: as if the config came from another account
+            case "whoami" -> EzGambleMod.LOG.info("[ezgamble] debug: whoami name={} account={} txns={}", GambleData.name, GambleData.account, GambleData.current() == null ? -1 : GambleData.current().txns.size());
             case "paid" -> dev.ryaan.ezgamble.data.Payments.received(n[0], dev.ryaan.ezgamble.Money.parse(n[1]));
             case "typed" -> dev.ryaan.ezgamble.data.Payouts.typed(arg);   // typed pay NAME AMT: a /pay typed by hand
             case "send" -> dev.ryaan.ezgamble.data.Payouts.send(n[0], dev.ryaan.ezgamble.Money.parse(n[1]));   // send NAME AMT: the Pay button's path

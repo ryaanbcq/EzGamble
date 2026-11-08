@@ -61,7 +61,7 @@ public final class MinesTable extends Host {   // the player, the chips and the 
 
     /** Draw the board and start: the mines are placed now and never move. */
     public boolean start() {
-        if (!GambleData.mode) return fail("Gambling mode is off");
+        if (!GambleData.playing()) return fail("Gambling mode is off");
         if (backer == null) return fail("Pick a player first");
         if (bet <= 0) return fail("Place a bet");
         if (bet > balance()) return fail("Not enough chips");

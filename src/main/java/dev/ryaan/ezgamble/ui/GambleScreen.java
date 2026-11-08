@@ -161,6 +161,7 @@ public final class GambleScreen extends ProtoScreen {
         }
         if (tab.equals("games") && sub == null) {
             cardBtn = add(new Widget(lx, y0 + 80, rx - lx, CARD_H) { @Override public void click(double mx, double my) { P.play("click"); sub = "chips"; rebuild(); } });
+            add(new GlassSwitch(rx - 10 - 28, y0 + 80 + 19, 28, 14, () -> GambleData.free, v -> { GambleData.setFree(v); rebuild(); }));   // Free play: on the card, over its click
             double[] gc = gamesClip();
             Widget.Clip clip = new Widget.Clip(gc[0], gc[1], gc[2], gc[3]);
             for (double[] tl : gameTilesRects()) {
@@ -525,13 +526,16 @@ public final class GambleScreen extends ProtoScreen {
         double after = tx + F.width(amt) * 2 + 14;
         // right: who backed it (heads, the biggest first), else what to do
         String me = MinecraftClient.getInstance().getSession().getUsername();
-        if (held.isEmpty()) {
-            String hint = !GambleData.mode ? "Counted while gambling mode is on" : "Send /pay " + me + " to back the session";
-            hint = F.trimToWidth(hint, rx - 10 - after);
-            g.drawText(hint, rx - 10 - F.width(hint), y + (ch - 8) / 2, P.DIM, false);
+        String fl = "Free play";
+        g.drawText(fl, rx - 10 - F.width(fl), y + 7, GambleData.free ? P.TEXT : P.MUTE, false);   // over its switch
+        double rr = rx - 10 - Math.max(28, F.width(fl)) - 12;
+        if (GambleData.free || held.isEmpty()) {
+            String hint = GambleData.free ? "No chips used, no /pay" : !GambleData.mode ? "Counted while gambling mode is on" : "Send /pay " + me + " to back the session";
+            hint = F.trimToWidth(hint, rr - after);
+            g.drawText(hint, rr - F.width(hint), y + (ch - 8) / 2, P.DIM, false);
         } else {
             int shown = 0;
-            double hx = rx - 10;
+            double hx = rr;
             String more = held.size() > 4 ? "+" + (held.size() - 4) : null;
             if (more != null) { hx -= F.width(more); g.drawText(more, hx, y + 22, P.MUTE, false); hx -= 4; }
             for (int i = Math.min(4, held.size()) - 1; i >= 0; i--) {   // heads right to left, the biggest backer leftmost
@@ -541,7 +545,7 @@ public final class GambleScreen extends ProtoScreen {
                 hx -= 2; shown++;
             }
             String from = "From " + held.size() + " player" + (held.size() == 1 ? "" : "s");
-            g.drawText(from, rx - 10 - F.width(from), y + 7, P.DIM, false);
+            g.drawText(from, rr - F.width(from), y + 7, P.DIM, false);
         }
         g.pop();
         // tiles, 3 per row, sized to fit

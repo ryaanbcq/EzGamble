@@ -102,7 +102,7 @@ public final class RainView implements GameView {
         if (!uiState().equals(uiKey)) { screen.rebuild(); return; }
         if (mainBtn != null && RN.stage.equals("setup")) {
             boolean w = RN.warn != null && P.now() < RN.warnUntil;
-            String warn = w ? RN.warn : !GambleData.mode ? "Gambling mode is off" : null;
+            String warn = w ? RN.warn : !GambleData.playing() ? "Gambling mode is off" : null;
             mainBtn.label = warn != null ? warn : "Start rain";
             mainBtn.kind = warn != null ? "DANGER" : "PRIMARY";
         }

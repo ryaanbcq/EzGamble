@@ -130,11 +130,11 @@ public final class MinesView implements GameView {
     public void tick() {
         if (!uiState().equals(uiKey)) { screen.rebuild(); return; }
         if (startBtn != null) {   // an error shows ON the button, in red, for 2 s (Crates' rule)
-            String warn = MN.warn != null && P.now() < MN.warn.until() ? MN.warn.text() : !GambleData.mode ? "Gambling mode is off" : null;
+            String warn = MN.warn != null && P.now() < MN.warn.until() ? MN.warn.text() : !GambleData.playing() ? "Gambling mode is off" : null;
             var b = startBtn; boolean again = MN.stage.equals("done");
             b.label = warn != null ? warn : again ? "Play again" : MN.bet > 0 ? "Start " + Money.format(MN.bet) : "Start";
             b.kind = warn != null ? "DANGER" : again && MN.payState() != null ? "GHOST" : "PRIMARY";
-            b.active = warn != null || (again ? MN.balance() > 0 : GambleData.mode && !MN.backers().isEmpty());
+            b.active = warn != null || (again ? MN.balance() > 0 : GambleData.playing() && !MN.backers().isEmpty());
         }
         if (cashBtn != null) {
             int n = MN.round.picked.size();
@@ -176,7 +176,7 @@ public final class MinesView implements GameView {
         var G = geom();
         double lx = G.lx(), rx = G.rx(), hy = G.hy();
         g.drawText("Mines", lx + 24, hy + 4, WHITE, true);
-        if (MN.stage.equals("bet")) { if (MN.backer != null) pillsRight(g, rx, hy, new Object[][]{{"Chips", Money.format(MN.balance())}}); }
+        if (MN.stage.equals("bet")) { if (MN.backer != null) pillsRight(g, rx, hy, new Object[][]{{"Chips", MN.balanceText()}}); }
         else pillsRight(g, rx, hy, new Object[][]{{"Mines", String.valueOf(MN.round.mines)}, {"Bet", Money.format(MN.round.bet)}});
         CratesView.felt(g, lx, G.ft(), rx - lx, G.fth());
         if (MN.stage.equals("bet")) renderBet(g, mx, my); else renderBoard(g, mx, my);
@@ -199,7 +199,7 @@ public final class MinesView implements GameView {
         if (list.isEmpty()) {
             g.drawText("No chips on the table yet.", lx + 8, fy + 44, TEXT, false);
             g.drawText("Players who /pay " + GambleData.name + " during a session can play Mines with you.", lx + 8, fy + 58, MUTE, false);
-            if (!GambleData.mode) g.drawText("Turn gambling mode on to start a session.", lx + 8, fy + 74, RED, false);
+            if (!GambleData.playing()) g.drawText("Turn gambling mode on to start a session.", lx + 8, fy + 74, RED, false);
             return;
         }
         // what each safe tile is worth with this many mines: the ladder, then the promise
@@ -271,7 +271,7 @@ public final class MinesView implements GameView {
         double[] p = panel();
         double pw = p[1], pcx = p[2];
         boolean done = MN.stage.equals("done");
-        String name = F.trimToWidth(r.backer, 70), bal = Money.format(MN.balance());
+        String name = F.trimToWidth(r.backer, 70), bal = MN.balanceText();
         seatTag(g, pcx, fy + 8, skinOf(r.backer), name, r.mines + " mines", WHITE);
         int chipsCol = done && t - r.endAt < 1800 ? (r.cashed ? GREEN : RED) : WHITE;
         int cw = refund != null ? 0 : pillW("Chips", bal);

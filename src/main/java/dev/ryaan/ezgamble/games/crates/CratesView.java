@@ -118,13 +118,13 @@ public final class CratesView implements GameView {
         CR.tick();
         if (!uiState().equals(uiKey)) { screen.rebuild(); return; }
         if (openBtn != null) {   // an error shows ON the button that was clicked, in red, for 2 s (never written over a crate)
-            String warn = CR.warn != null && P.now() < CR.warn.until() ? CR.warn.text() : !GambleData.mode ? "Gambling mode is off" : null;
+            String warn = CR.warn != null && P.now() < CR.warn.until() ? CR.warn.text() : !GambleData.playing() ? "Gambling mode is off" : null;
             var b = openBtn;
             boolean again = CR.stage.equals("done");
             String calm = again ? (CR.payState() != null ? "GHOST" : "PRIMARY") : "PRIMARY";
             b.label = warn != null ? warn : again ? "Open again" : CR.bet > 0 ? "Open " + Money.format(CR.bet) : "Open";
             b.kind = warn != null ? "DANGER" : calm;
-            b.active = warn != null || (again ? CR.balance() > 0 : GambleData.mode && !CR.backers().isEmpty());
+            b.active = warn != null || (again ? CR.balance() > 0 : GambleData.playing() && !CR.backers().isEmpty());
         }
         if (payBtn != null) syncPay();
     }
@@ -161,7 +161,7 @@ public final class CratesView implements GameView {
         var G = geom();
         double lx = G.lx(), rx = G.rx(), hy = G.hy();
         g.drawText("Crates", lx + 24, hy + 4, WHITE, true);
-        if (CR.stage.equals("bet")) { if (CR.backer != null) pillsRight(g, rx, hy, new Object[][]{{"Chips", Money.format(CR.balance())}}); }
+        if (CR.stage.equals("bet")) { if (CR.backer != null) pillsRight(g, rx, hy, new Object[][]{{"Chips", CR.balanceText()}}); }
         else pillsRight(g, rx, hy, new Object[][]{{"Bet", Money.format(CR.round.bet)}});
         felt(g, lx, G.ft(), rx - lx, G.fth());
         if (CR.stage.equals("bet")) renderBet(g, mx, my); else renderSpin(g);
@@ -175,7 +175,7 @@ public final class CratesView implements GameView {
         if (list.isEmpty()) {
             g.drawText("No chips on the table yet.", lx + 8, fy + 44, TEXT, false);
             g.drawText("Players who /pay " + GambleData.name + " during a session can open crates with you.", lx + 8, fy + 58, MUTE, false);
-            if (!GambleData.mode) g.drawText("Turn gambling mode on to start a session.", lx + 8, fy + 74, RED, false);
+            if (!GambleData.playing()) g.drawText("Turn gambling mode on to start a session.", lx + 8, fy + 74, RED, false);
             return;
         }
         // the crates: icon, name, what kind of ride; the picked one glows
@@ -221,7 +221,7 @@ public final class CratesView implements GameView {
         long t = P.now();
         boolean done = CR.stage.equals("done");
         // who and which crate, above the reel
-        String name = F.trimToWidth(r.backer, 70), bal = Money.format(CR.balance());
+        String name = F.trimToWidth(r.backer, 70), bal = CR.balanceText();
         int tw = seatTagW(name, r.type.name), cw = pillW("Chips", bal), sx = (int) cx - ((tw + 4 + cw) >> 1);
         seatTag(g, sx + (tw >> 1), fy + 10, skinOf(r.backer), name, r.type.name, WHITE);
         int chipsCol = done && t - r.landedAt < 1800 ? (CR.payoutOf(r) >= r.bet ? GREEN : RED) : WHITE;

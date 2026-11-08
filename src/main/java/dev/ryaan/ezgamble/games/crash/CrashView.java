@@ -99,11 +99,11 @@ public final class CrashView implements GameView {
         CX.tick();
         if (!uiState().equals(uiKey)) { screen.rebuild(); return; }
         if (startBtn != null) {
-            String warn = CX.warn != null && P.now() < CX.warn.until() ? CX.warn.text() : !GambleData.mode ? "Gambling mode is off" : null;
+            String warn = CX.warn != null && P.now() < CX.warn.until() ? CX.warn.text() : !GambleData.playing() ? "Gambling mode is off" : null;
             GlassButton b = startBtn; boolean again = CX.stage.equals("done");
             b.label = warn != null ? warn : again ? "Play again" : CX.bet > 0 ? "Launch " + Money.format(CX.bet) : "Launch";
             b.kind = warn != null ? "DANGER" : again && CX.payState() != null ? "GHOST" : "PRIMARY";
-            b.active = warn != null || (again ? CX.balance() > 0 : GambleData.mode && !CX.backers().isEmpty());
+            b.active = warn != null || (again ? CX.balance() > 0 : GambleData.playing() && !CX.backers().isEmpty());
         }
         if (cashBtn != null) {
             var r = CX.round; boolean on = P.now() >= r.launch;
@@ -146,7 +146,7 @@ public final class CrashView implements GameView {
         GambleScreen.Geom G = screen.geom();
         double lx = G.lx(), rx = G.rx(), hy = G.hy();
         g.drawText("Crash", lx + 24, hy + 4, P.WHITE, true);
-        if (CX.stage.equals("bet")) { if (CX.backer != null) P.pillsRight(g, rx, hy, new Object[][]{{"Chips", Money.format(CX.balance())}}); }
+        if (CX.stage.equals("bet")) { if (CX.backer != null) P.pillsRight(g, rx, hy, new Object[][]{{"Chips", CX.balanceText()}}); }
         else P.pillsRight(g, rx, hy, new Object[][]{{"Auto", CX.round.auto != 0 ? crashText(CX.round.auto) : "Off"}, {"Bet", Money.format(CX.round.bet)}});
         felt(g, lx, G.ft(), rx - lx, G.fth());
         if (CX.stage.equals("bet")) renderBet(g, mx, my); else renderFlight(g);
@@ -165,7 +165,7 @@ public final class CrashView implements GameView {
             String me = net.minecraft.client.MinecraftClient.getInstance().getSession().getUsername();
             g.drawText("No chips on the table yet.", lx + 8, fy + 44, P.TEXT, false);
             g.drawText("Players who /pay " + me + " during a session can play Crash with you.", lx + 8, fy + 58, P.MUTE, false);
-            if (!GambleData.mode) g.drawText("Turn gambling mode on to start a session.", lx + 8, fy + 74, P.RED, false);
+            if (!GambleData.playing()) g.drawText("Turn gambling mode on to start a session.", lx + 8, fy + 74, P.RED, false);
             return;
         }
         // auto cash out: each target with its real chance to be reached (the tiles are the choices)
@@ -193,7 +193,7 @@ public final class CrashView implements GameView {
         double lx = G.lx(), rx = G.rx(), fy = G.fy(), fh = G.fh(), cx = G.cx();
         CrashTable.Rnd r = CX.round; long t = P.now();
         // who, his chips (the refund pill once it is over for him)
-        String name = F.trimToWidth(r.backer, 70), bal = Money.format(CX.balance()), autoT = r.auto != 0 ? "auto " + crashText(r.auto) : "no auto";
+        String name = F.trimToWidth(r.backer, 70), bal = CX.balanceText(), autoT = r.auto != 0 ? "auto " + crashText(r.auto) : "no auto";
         int tw = P.seatTagW(name, autoT), cw = P.pillW("Chips", bal);
         double sx = cx - ((tw + 4 + cw) >> 1);
         P.seatTag(g, sx + (tw >> 1), fy + 8, P.skinOf(r.backer), name, autoT, P.WHITE);

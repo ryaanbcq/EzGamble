@@ -81,7 +81,8 @@ public final class RainTable {
     private boolean fail(String w) { warn = w; warnUntil = P.now() + 2200; P.play("fail", 1, 0.5); return false; }
 
     public boolean start() {
-        if (!GambleData.mode) return fail("Gambling mode is off");
+        if (!GambleData.playing()) return fail("Gambling mode is off");
+        if (GambleData.free) return fail("Rain uses real /pay: free mode is on");
         if (entry <= 0) return fail("Set a ticket price");
         if (goal < 2 * entry) return fail("Goal: 2 tickets at least");
         if (fee < 0 || fee > 50) return fail("Fee: 0 to 50%");

@@ -75,7 +75,7 @@ public final class BlackjackView implements GameView {
                 s.add(new GlassButton(lx + 116, by, 56, 24, "Clear", "GHOST", T::clearBet));
             }
             dealBtn = s.add(new GlassButton(rx - 96, by, 96, 24, "Deal", "PRIMARY", T::deal));
-            dealBtn.active = GambleData.mode && !list.isEmpty();
+            dealBtn.active = GambleData.playing() && !list.isEmpty();
             if (!list.isEmpty()) {   // added last: drawn over the felt and the chips, and gets the clicks first while its list is open
                 double[] pb = pickerBox();
                 if (T.picker == null) T.picker = new Widgets.BackerPicker(pb[0], pb[1], pb[2], T);
@@ -115,7 +115,7 @@ public final class BlackjackView implements GameView {
         BJ.tick();
         if (!uiState().equals(uiKey)) { screen.rebuild(); return; }
         if (actBtns != null) for (int i = 0; i < actBtns.length; i++) actBtns[i].active = BJ.canDo(actNames[i]);
-        if (dealBtn != null) dealBtn.active = GambleData.mode && !BJ.backers().isEmpty();
+        if (dealBtn != null) dealBtn.active = GambleData.playing() && !BJ.backers().isEmpty();
         if (payBtn != null) syncPay();
     }
 
@@ -171,7 +171,7 @@ public final class BlackjackView implements GameView {
         double lx = G0.lx(), rx = G0.rx(), hy = G0.hy(), fy = G0.fy(), fh = G0.fh();
         g.drawText("Blackjack", lx + 24, hy + 4, P.WHITE, true);
         List<Object[]> pills = new ArrayList<>();
-        if (T.backer != null && !T.stage.equals("play")) pills.add(new Object[]{"Chips", Money.format(T.balance())});   // in a hand, his name and chips sit on his seat
+        if (T.backer != null && !T.stage.equals("play")) pills.add(new Object[]{"Chips", T.balanceText()});   // in a hand, his name and chips sit on his seat
         pills.add(T.stage.equals("play") ? new Object[]{"Bet", Money.format(T.committed())} : new Object[]{"Shoe", T.shoe.remaining() + " cards"});
         P.pillsRight(g, rx, hy, pills.toArray(new Object[0][]));
         felt(g, lx, G0.ft(), rx - lx, G0.fth());
@@ -192,7 +192,7 @@ public final class BlackjackView implements GameView {
             g.drawText("No chips on the table yet.", lx + 8, fy + 44, P.TEXT, false);
             g.drawText("Players who /pay " + me() + " during a session become your backers:", lx + 8, fy + 58, P.MUTE, false);
             g.drawText("you play here with their chips, and the result is theirs.", lx + 8, fy + 69, P.MUTE, false);
-            if (!GambleData.mode) g.drawText("Turn gambling mode on to start a session.", lx + 8, fy + 86, P.RED, false);
+            if (!GambleData.playing()) g.drawText("Turn gambling mode on to start a session.", lx + 8, fy + 86, P.RED, false);
             return;
         }
         // the bet, the hero of this screen: stacks side by side in the middle of the felt, the amount x2 under them;
@@ -205,7 +205,7 @@ public final class BlackjackView implements GameView {
             P.ring(g, cx - 26, fy + 60, 52, 26, 13, P.alpha(P.LAV, 0.5), 1.5);
         }
         for (int i = 0; i < stacks.size(); i++) Chips.chipStack(g, cx - (span >> 1) + i * 34, fy + 88, 14, stacks.get(i).chip(), stacks.get(i).n());
-        String warn = T.warn != null && P.now() < T.warn.until() ? T.warn.text() : !GambleData.mode ? "Gambling mode is off" : null;
+        String warn = T.warn != null && P.now() < T.warn.until() ? T.warn.text() : !GambleData.playing() ? "Gambling mode is off" : null;
         if (warn != null) g.drawText(warn, cx - (F.width(warn) >> 1), fy + 98, P.RED, true);
         else if (T.bet > 0) {
             String v = Money.format(T.bet);
@@ -280,7 +280,7 @@ public final class BlackjackView implements GameView {
         if (real != (T.balAnim != null ? T.balAnim.to : T.balShown)) T.balAnim = new BalAnim(T.balShown, real, t);
         if (T.balAnim != null) { double k = P.easeOut(Math.min(1, (double) (t - T.balAnim.at) / 700)); T.balShown = Math.round(T.balAnim.from + (T.balAnim.to - T.balAnim.from) * k); }
         boolean moving = T.balAnim != null && t - T.balAnim.at < 1800, upBal = T.balAnim != null && T.balAnim.to > T.balAnim.from;
-        String bv = Money.format(T.balShown);
+        String bv = GambleData.free ? "Free" : Money.format(T.balShown);
         int chipsCol = moving ? (upBal ? P.GREEN : P.RED) : P.WHITE;
         double ty = py - 20;   // the player's tag row
         for (int i = 0; i < gm.hands.size(); i++) {
