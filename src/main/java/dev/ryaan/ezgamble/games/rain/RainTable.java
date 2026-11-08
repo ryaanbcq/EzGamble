@@ -82,7 +82,7 @@ public final class RainTable {
 
     public boolean start() {
         if (!GambleData.playing()) return fail("Gambling mode is off");
-        if (GambleData.free) return fail("Rain uses real /pay: free mode is on");
+        if (GambleData.free) return fail("Turn free play off for a rain");
         if (entry <= 0) return fail("Set a ticket price");
         if (goal < 2 * entry) return fail("Goal: 2 tickets at least");
         if (fee < 0 || fee > 50) return fail("Fee: 0 to 50%");

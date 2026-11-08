@@ -13,6 +13,9 @@ public class GlassButton extends Widget {
     public void render(G g, double mx, double my) {
         boolean hover = over(mx, my) && active;
         double op = active ? 1 : 0.4;   // disabled: faded
+        // a label wider than the capsule (a warning: "Not enough chips"...) grows it to the left, never out of its glass
+        double need = F.width(label) + 16, x = this.x, w = this.w;
+        if (need > w) { x -= need - w; w = need; }
         g.push();
         if (down && hover) P.squish(g, x, y, w, h);   // pressed: the capsule gives a little
         P.capsule(g, x, y, w, h, kind.equals("PRIMARY") ? "primary" : kind.equals("DANGER") ? "danger" : "ghost", hover, op);
